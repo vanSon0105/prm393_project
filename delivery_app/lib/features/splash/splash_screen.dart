@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-
-import '../theme/app_theme.dart';
-import '../widgets/common.dart';
-import '../widgets/responsive_auth_layout.dart';
+import '../../shared/theme/app_theme.dart';
+import '../../shared/widgets/common.dart';
+import '../../shared/widgets/responsive_auth_layout.dart';
 
 /// STT 1 – Màn hình splash (khởi động ứng dụng)
 /// Logo + slogan hiện dần lên, bấm "Tiếp tục" để sang màn Đăng nhập.
