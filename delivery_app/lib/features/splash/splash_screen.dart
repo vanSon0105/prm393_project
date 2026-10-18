@@ -181,7 +181,7 @@ class _SplashScreenState extends State<SplashScreen>
     );
   }
 
-  /// Slogan + mô tả – cỡ chữ đổi theo màn hình
+  /// Slogan
   Widget _texts(ScreenSize size) {
     final titleSize = switch (size) {
       ScreenSize.mobile => 34.0,
@@ -218,7 +218,7 @@ class _SplashScreenState extends State<SplashScreen>
     );
   }
 
-  /// Nút "Tiếp tục"
+  /// button : tiếp tục
   Widget _button() {
     return ElevatedButton(
       onPressed: _continue,
