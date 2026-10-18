@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
+
 import '../../shared/theme/app_theme.dart';
 import '../../shared/widgets/common.dart';
 import '../../shared/widgets/responsive_auth_layout.dart';
 
-/// STT 1 – Màn hình splash (khởi động ứng dụng)
-/// Logo + slogan hiện dần lên, bấm "Tiếp tục" để sang màn Đăng nhập.
-///
 /// RESPONSIVE:
 ///   • Mobile  (< 600)     : chữ dồn xuống dưới, nút full chiều ngang
 ///   • Tablet  (600–1023)  : nội dung căn giữa, rộng tối đa 520
@@ -22,7 +20,7 @@ class _SplashScreenState extends State<SplashScreen>
   late final AnimationController _ctrl = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 900),
-  )..forward(); // chạy hiệu ứng ngay khi mở màn
+  )..forward();
 
   late final Animation<double> _fade = CurvedAnimation(
     parent: _ctrl,
@@ -148,7 +146,7 @@ class _SplashScreenState extends State<SplashScreen>
 
             return Stack(
               children: [
-                // Vòng tròn trang trí góc dưới phải
+                // Vòng tròn
                 Positioned(
                   right: -140,
                   bottom: -140,
@@ -220,7 +218,7 @@ class _SplashScreenState extends State<SplashScreen>
     );
   }
 
-  /// Nút "Tiếp tục" – nền trắng chữ xanh để nổi trên nền xanh
+  /// Nút "Tiếp tục"
   Widget _button() {
     return ElevatedButton(
       onPressed: _continue,
@@ -240,7 +238,6 @@ class _SplashScreenState extends State<SplashScreen>
   }
 }
 
-/// Hình minh họa: vòng tròn trắng mờ với 3 dịch vụ (đồ ăn, hàng hóa, đưa đón)
 class _Illustration extends StatelessWidget {
   const _Illustration({required this.size});
   final double size;

@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
+
 import '../../../shared/theme/app_theme.dart';
 import '../../../shared/widgets/common.dart';
 import '../../../shared/widgets/responsive_auth_layout.dart';
 
-/// STT 3 – Màn hình đăng ký tài khoản – NgLinh
-/// Khách hàng: dùng ngay. Tài xế: gửi yêu cầu, chờ admin duyệt.
 enum AccountType { customer, driver }
 
 class RegisterScreen extends StatefulWidget {
@@ -34,7 +33,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   void dispose() {
-    for (final c in [_nameCtrl, _phoneCtrl, _addressCtrl, _plateCtrl, _passCtrl, _confirmCtrl]) {
+    for (final c in [
+      _nameCtrl,
+      _phoneCtrl,
+      _addressCtrl,
+      _plateCtrl,
+      _passCtrl,
+      _confirmCtrl,
+    ]) {
       c.dispose();
     }
     super.dispose();
@@ -67,7 +73,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: [Expanded(child: a), const SizedBox(width: 16), Expanded(child: b)],
+      children: [
+        Expanded(child: a),
+        const SizedBox(width: 16),
+        Expanded(child: b),
+      ],
     );
   }
 
@@ -76,8 +86,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return ResponsiveAuthLayout(
       cardMaxWidth: 560,
       brandTitle: 'Tham gia Nối\nchỉ trong 1 phút.',
-      brandSubtitle:
-          'Khách hàng dùng ngay sau khi đăng ký. Tài khoản tài xế sẽ được admin duyệt trước khi nhận chuyến.',
+      brandSubtitle: 'Khách hàng dùng ngay sau khi đăng ký. Tài khoản tài xế sẽ được admin duyệt trước khi nhận chuyến.',
       brandChips: const [
         BrandChip(label: 'Miễn phí đăng ký'),
         BrandChip(label: 'Thanh toán tiền mặt / QR'),
@@ -95,10 +104,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             ),
 
             // Tab Khách hàng / Tài xế
-            _Segment(
-              value: _type,
-              onChanged: (t) => setState(() => _type = t),
-            ),
+            _Segment(value: _type, onChanged: (t) => setState(() => _type = t)),
             const SizedBox(height: 22),
 
             LabeledField(
@@ -110,7 +116,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   hintText: 'Nguyễn Văn A',
                   prefixIcon: Icon(Icons.person_outline_rounded),
                 ),
-                validator: (v) => Validators.notEmpty(v, 'Vui lòng nhập họ và tên.'),
+                validator: (v) =>
+                    Validators.notEmpty(v, 'Vui lòng nhập họ và tên.'),
               ),
             ),
             const SizedBox(height: 16),
@@ -168,7 +175,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               prefixIcon: Icon(Icons.credit_card_outlined),
                             ),
                             validator: (v) => _isDriver
-                                ? Validators.notEmpty(v, 'Vui lòng nhập biển số xe.')
+                                ? Validators.notEmpty(
+                                    v,
+                                    'Vui lòng nhập biển số xe.',
+                                  )
                                 : null,
                           ),
                         ),
@@ -189,9 +199,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     hintText: 'Tối thiểu 6 ký tự',
                     prefixIcon: const Icon(Icons.lock_outline_rounded),
                     suffixIcon: IconButton(
-                      icon: Icon(_obscure
-                          ? Icons.visibility_outlined
-                          : Icons.visibility_off_outlined),
+                      icon: Icon(
+                        _obscure
+                            ? Icons.visibility_outlined
+                            : Icons.visibility_off_outlined,
+                      ),
                       onPressed: () => setState(() => _obscure = !_obscure),
                     ),
                   ),
@@ -223,24 +235,34 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   onChanged: (v) => setState(() => _agree = v ?? false),
                 ),
                 const Expanded(
-                  child: Text('Tôi đồng ý với điều khoản sử dụng',
-                      style: TextStyle(color: AppColors.muted)),
+                  child: Text(
+                    'Tôi đồng ý với điều khoản sử dụng',
+                    style: TextStyle(color: AppColors.muted),
+                  ),
                 ),
               ],
             ),
             const SizedBox(height: 16),
 
-            ElevatedButton(onPressed: _submit, child: const Text('Gửi đăng ký')),
+            ElevatedButton(
+              onPressed: _submit,
+              child: const Text('Gửi đăng ký'),
+            ),
             const SizedBox(height: 12),
 
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Text('Đã có tài khoản?', style: TextStyle(color: AppColors.muted)),
+                const Text(
+                  'Đã có tài khoản?',
+                  style: TextStyle(color: AppColors.muted),
+                ),
                 TextButton(
                   onPressed: () => Navigator.maybePop(context),
-                  child: const Text('Đăng nhập',
-                      style: TextStyle(fontWeight: FontWeight.w700)),
+                  child: const Text(
+                    'Đăng nhập',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
                 ),
               ],
             ),
@@ -271,7 +293,13 @@ class _Segment extends StatelessWidget {
               color: selected ? AppColors.surface : Colors.transparent,
               borderRadius: BorderRadius.circular(999),
               boxShadow: selected
-                  ? const [BoxShadow(color: Color(0x140F172A), blurRadius: 8, offset: Offset(0, 2))]
+                  ? const [
+                      BoxShadow(
+                        color: Color(0x140F172A),
+                        blurRadius: 8,
+                        offset: Offset(0, 2),
+                      ),
+                    ]
                   : null,
             ),
             alignment: Alignment.center,
@@ -293,17 +321,23 @@ class _Segment extends StatelessWidget {
         color: const Color(0xFFEEF2F7),
         borderRadius: BorderRadius.circular(999),
       ),
-      child: Row(children: [
-        tab(AccountType.customer, 'Khách hàng'),
-        tab(AccountType.driver, 'Tài xế'),
-      ]),
+      child: Row(
+        children: [
+          tab(AccountType.customer, 'Khách hàng'),
+          tab(AccountType.driver, 'Tài xế'),
+        ],
+      ),
     );
   }
 }
 
 /// Chọn loại xe (bấm để mở danh sách)
 class _VehiclePicker extends StatelessWidget {
-  const _VehiclePicker({required this.value, required this.options, required this.onChanged});
+  const _VehiclePicker({
+    required this.value,
+    required this.options,
+    required this.onChanged,
+  });
   final String value;
   final List<String> options;
   final ValueChanged<String> onChanged;
@@ -312,7 +346,9 @@ class _VehiclePicker extends StatelessWidget {
   Widget build(BuildContext context) {
     return PopupMenuButton<String>(
       onSelected: onChanged,
-      itemBuilder: (_) => [for (final o in options) PopupMenuItem(value: o, child: Text(o))],
+      itemBuilder: (_) => [
+        for (final o in options) PopupMenuItem(value: o, child: Text(o)),
+      ],
       child: InputDecorator(
         decoration: const InputDecoration(
           prefixIcon: Icon(Icons.two_wheeler_rounded),

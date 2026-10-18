@@ -1,21 +1,22 @@
 import 'package:flutter/material.dart';
+
 import '../../../shared/theme/app_theme.dart';
 import '../../../shared/widgets/common.dart';
 import '../../../shared/widgets/responsive_auth_layout.dart';
-/// STT 2 – Màn hình đăng nhập (Khách hàng / Tài xế / Admin) – NgLinh
+
 enum UserRole { customer, driver, admin }
 
 extension on UserRole {
   String get label => switch (this) {
-        UserRole.customer => 'Khách hàng',
-        UserRole.driver => 'Tài xế',
-        UserRole.admin => 'Admin',
-      };
+    UserRole.customer => 'Khách hàng',
+    UserRole.driver => 'Tài xế',
+    UserRole.admin => 'Admin',
+  };
   IconData get icon => switch (this) {
-        UserRole.customer => Icons.person_outline_rounded,
-        UserRole.driver => Icons.two_wheeler_rounded,
-        UserRole.admin => Icons.verified_user_outlined,
-      };
+    UserRole.customer => Icons.person_outline_rounded,
+    UserRole.driver => Icons.two_wheeler_rounded,
+    UserRole.admin => Icons.verified_user_outlined,
+  };
 }
 
 class LoginScreen extends StatefulWidget {
@@ -43,7 +44,9 @@ class _LoginScreenState extends State<LoginScreen> {
   void _submit() {
     if (!_formKey.currentState!.validate()) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Đăng nhập thành công với vai trò: ${_role.label}')),
+      SnackBar(
+        content: Text('Đăng nhập thành công với vai trò: ${_role.label}'),
+      ),
     );
   }
 
@@ -51,8 +54,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     return ResponsiveAuthLayout(
       brandTitle: 'Đi đúng nơi.\nGiao đúng lúc.',
-      brandSubtitle:
-          'Đồ ăn, hàng hóa và dịch vụ vận chuyển chuyên biệt trong một ứng dụng.',
+      brandSubtitle: 'Đồ ăn, hàng hóa và dịch vụ vận chuyển chuyên biệt trong một ứng dụng.',
       brandChips: const [
         BrandChip(label: 'Đồ ăn', icon: Icons.two_wheeler_rounded),
         BrandChip(label: 'Hàng hóa', icon: Icons.inventory_2_outlined),
@@ -65,9 +67,10 @@ class _LoginScreenState extends State<LoginScreen> {
           children: [
             AuthTopBar(size: size),
             AuthHeading(
-                title: 'Chào bạn',
-                subtitle: 'Chọn vai trò để tiếp tục.',
-                size: size),
+              title: 'Chào bạn',
+              subtitle: 'Chọn vai trò để tiếp tục.',
+              size: size,
+            ),
 
             // Chọn vai trò
             Row(
@@ -112,9 +115,11 @@ class _LoginScreenState extends State<LoginScreen> {
                   prefixIcon: const Icon(Icons.lock_outline_rounded),
                   suffixIcon: IconButton(
                     tooltip: _obscure ? 'Hiện mật khẩu' : 'Ẩn mật khẩu',
-                    icon: Icon(_obscure
-                        ? Icons.visibility_outlined
-                        : Icons.visibility_off_outlined),
+                    icon: Icon(
+                      _obscure
+                          ? Icons.visibility_outlined
+                          : Icons.visibility_off_outlined,
+                    ),
                     onPressed: () => setState(() => _obscure = !_obscure),
                   ),
                 ),
@@ -130,12 +135,17 @@ class _LoginScreenState extends State<LoginScreen> {
                   activeColor: AppColors.primary,
                   onChanged: (v) => setState(() => _remember = v ?? false),
                 ),
-                const Text('Ghi nhớ tôi', style: TextStyle(color: AppColors.muted)),
+                const Text(
+                  'Ghi nhớ tôi',
+                  style: TextStyle(color: AppColors.muted),
+                ),
                 const Spacer(),
                 TextButton(
                   onPressed: () {},
-                  child: const Text('Quên mật khẩu?',
-                      style: TextStyle(fontWeight: FontWeight.w600)),
+                  child: const Text(
+                    'Quên mật khẩu?',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
                 ),
               ],
             ),
@@ -147,12 +157,16 @@ class _LoginScreenState extends State<LoginScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Text('Chưa có tài khoản?',
-                    style: TextStyle(color: AppColors.muted)),
+                const Text(
+                  'Chưa có tài khoản?',
+                  style: TextStyle(color: AppColors.muted),
+                ),
                 TextButton(
                   onPressed: () => Navigator.pushNamed(context, '/register'),
-                  child: const Text('Đăng ký',
-                      style: TextStyle(fontWeight: FontWeight.w700)),
+                  child: const Text(
+                    'Đăng ký',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
                 ),
               ],
             ),
@@ -164,7 +178,11 @@ class _LoginScreenState extends State<LoginScreen> {
 }
 
 class _RoleTile extends StatelessWidget {
-  const _RoleTile({required this.role, required this.selected, required this.onTap});
+  const _RoleTile({
+    required this.role,
+    required this.selected,
+    required this.onTap,
+  });
   final UserRole role;
   final bool selected;
   final VoidCallback onTap;
@@ -187,8 +205,11 @@ class _RoleTile extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 4),
           child: Column(
             children: [
-              Icon(role.icon,
-                  color: selected ? AppColors.primary : AppColors.muted, size: 24),
+              Icon(
+                role.icon,
+                color: selected ? AppColors.primary : AppColors.muted,
+                size: 24,
+              ),
               const SizedBox(height: 6),
               Text(
                 role.label,
