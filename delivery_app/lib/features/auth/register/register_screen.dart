@@ -63,7 +63,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   void _toast(String msg) =>
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
 
-  /// RESPONSIVE: mobile xếp dọc 1 cột, tablet/desktop xếp 2 cột cạnh nhau
+  /// RESPONSIVE
   Widget _pair(ScreenSize size, Widget a, Widget b) {
     if (size == ScreenSize.mobile) {
       return Column(
@@ -273,7 +273,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 }
 
-/// Tab bo tròn Khách hàng / Tài xế
+/// Tab Khách hàng / Tài xế
 class _Segment extends StatelessWidget {
   const _Segment({required this.value, required this.onChanged});
   final AccountType value;
@@ -331,7 +331,7 @@ class _Segment extends StatelessWidget {
   }
 }
 
-/// Chọn loại xe (bấm để mở danh sách)
+/// Chọn loại xe
 class _VehiclePicker extends StatelessWidget {
   const _VehiclePicker({
     required this.value,
