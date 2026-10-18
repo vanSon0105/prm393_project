@@ -18,14 +18,23 @@ class MainPage extends StatelessWidget {
     return Scaffold(
       body: navigationShell,
 
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: navigationShell.currentIndex,
-        onTap: _onTabSelected,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Setting'),
-        ],
-      ),
+      bottomNavigationBar: navigationShell.currentIndex == 1
+          ? null
+          : BottomNavigationBar(
+              currentIndex: navigationShell.currentIndex,
+              onTap: _onTabSelected,
+              items: const [
+                BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.local_shipping),
+                  label: 'Chuyến đi',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.settings),
+                  label: 'Setting',
+                ),
+              ],
+            ),
     );
   }
 }
