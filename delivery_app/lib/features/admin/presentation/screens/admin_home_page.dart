@@ -7,6 +7,7 @@ import '../../../driver/presentation/screens/driver_requests_page.dart';
 import '../providers/admin_navigation_provider.dart';
 import '../widgets/admin_bottom_nav.dart';
 import 'admin_dashboard_page.dart';
+import 'user_management_page.dart';
 
 class AdminHomePage extends ConsumerWidget {
   const AdminHomePage({super.key});
@@ -29,6 +30,7 @@ class AdminHomePage extends ConsumerWidget {
               ),
               DriverListPage(onBack: () => navigation.select(0)),
               DriverRequestsPage(onBack: () => navigation.select(0)),
+              const UserManagementPage(),
             ],
           ),
         ),

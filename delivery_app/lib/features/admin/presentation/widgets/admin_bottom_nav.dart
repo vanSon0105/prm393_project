@@ -47,6 +47,13 @@ class AdminBottomNav extends StatelessWidget {
                 selected: selectedIndex == 2,
                 onTap: () => onSelected(2),
               ),
+              _AdminNavItem(
+                key: const ValueKey('admin-nav-users'),
+                materialIcon: Icons.manage_accounts_outlined,
+                label: 'Người dùng',
+                selected: selectedIndex == 3,
+                onTap: () => onSelected(3),
+              ),
             ],
           ),
         ),
@@ -57,14 +64,16 @@ class AdminBottomNav extends StatelessWidget {
 
 class _AdminNavItem extends StatelessWidget {
   const _AdminNavItem({
-    required this.icon,
     required this.label,
     required this.selected,
     required this.onTap,
+    this.icon,
+    this.materialIcon,
     super.key,
-  });
+  }) : assert(icon != null || materialIcon != null);
 
-  final SvgGenImage icon;
+  final SvgGenImage? icon;
+  final IconData? materialIcon;
   final String label;
   final bool selected;
   final VoidCallback onTap;
@@ -82,12 +91,15 @@ class _AdminNavItem extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              icon.svg(
-                width: 24,
-                height: 24,
-                colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
-                excludeFromSemantics: true,
-              ),
+              if (icon != null)
+                icon!.svg(
+                  width: 24,
+                  height: 24,
+                  colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
+                  excludeFromSemantics: true,
+                )
+              else
+                Icon(materialIcon, size: 24, color: color),
               const SizedBox(height: 3),
               Text(
                 label,

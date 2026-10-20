@@ -1,5 +1,6 @@
 import 'package:delivery_app/features/detail_delivery/detail_delivery_page.dart';
 import 'package:delivery_app/features/admin/presentation/screens/admin_home_page.dart';
+import 'package:delivery_app/features/driver/presentation/screens/driver_earnings_page.dart';
 import 'package:delivery_app/features/map/map_page.dart';
 import 'package:delivery_app/features/setting/setting_page.dart';
 import 'package:delivery_app/routes/app_navigate.dart';
@@ -13,6 +14,7 @@ enum AppRoute {
   splash(rawValue: '/splash'),
   login(rawValue: '/login'),
   admin(rawValue: '/admin'),
+  driverEarnings(rawValue: '/driver-earnings'),
   map(rawValue: '/map'),
   detailDelivery(rawValue: '/detailDelivery'),
   setting(rawValue: '/setting');
@@ -42,6 +44,12 @@ GoRouter createAppRouter({String? initialLocation}) => GoRouter(
       path: AppRoute.admin.rawValue,
       name: AppRoute.admin.rawValue,
       builder: (context, state) => const AdminHomePage(),
+    ),
+
+    GoRoute(
+      path: AppRoute.driverEarnings.rawValue,
+      name: AppRoute.driverEarnings.rawValue,
+      builder: (context, state) => const DriverEarningsPage(),
     ),
 
     StatefulShellRoute.indexedStack(

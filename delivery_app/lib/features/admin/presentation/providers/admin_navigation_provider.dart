@@ -5,7 +5,7 @@ class AdminNavigation extends Notifier<int> {
   int build() => 0;
 
   void select(int index) {
-    if (index >= 0 && index <= 2) state = index;
+    if (index >= 0 && index <= 3) state = index;
   }
 }
 
