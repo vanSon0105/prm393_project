@@ -1,4 +1,7 @@
 {
   "login_btn": "Login",
-  "loading_txt": "Loading"
+  "loading_txt": "Loading",
+  "login_customer_txt": "Customer",
+  "login_driver_txt": "Driver",
+  "login_admin_txt": "Admin"
 }

@@ -12,8 +12,20 @@ import 'package:flutter/painting.dart';
 import 'package:flutter/material.dart';
 
 abstract final class ColorName {
+  /// Color: #F1F5F9
+  static const Color backgroundDefaultColor = Color(0xFFF1F5F9);
+
   /// Color: #000000
   static const Color black = Color(0xFF000000);
+
+  /// Color: #0F172A
+  static const Color primary = Color(0xFF0F172A);
+
+  /// Color: #0F172A
+  static const Color textColor = Color(0xFF0F172A);
+
+  /// Color: #64748B
+  static const Color textColorSub = Color(0xFF64748B);
 
   /// Color: #ffffff
   static const Color white = Color(0xFFFFFFFF);

@@ -1,4 +1,7 @@
 {
   "login_btn": "로그인",
-  "loading_txt": "로딩 중"
+  "loading_txt": "로딩 중",
+  "login_customer_txt": "Customer",
+  "login_driver_txt": "Driver",
+  "login_admin_txt": "Admin"
 }
