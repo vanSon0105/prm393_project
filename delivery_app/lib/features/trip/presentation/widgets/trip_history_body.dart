@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
+import 'package:delivery_app/generated/locale_keys.g.dart';
 
 import '../../../../core/theme/trip_colors.dart';
 import '../../../../shared/widgets/asset_icon.dart';
@@ -36,9 +38,9 @@ class TripHistoryBody extends StatelessWidget {
       key: ValueKey('history-$filter'),
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
       children: [
-        const Text(
-          'KHÁCH HÀNG',
-          style: TextStyle(
+        Text(
+          LocaleKeys.trip_customer_upper.tr(),
+          style: const TextStyle(
             fontSize: 11,
             color: muted,
             fontWeight: FontWeight.w600,
@@ -46,9 +48,9 @@ class TripHistoryBody extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 8),
-        const Text(
-          'Mọi hành trình, một nơi.',
-          style: TextStyle(color: muted, fontSize: 14),
+        Text(
+          LocaleKeys.trip_tagline.tr(),
+          style: const TextStyle(color: muted, fontSize: 14),
         ),
         const SizedBox(height: 20),
         SingleChildScrollView(
@@ -60,7 +62,12 @@ class TripHistoryBody extends StatelessWidget {
                 padding: const EdgeInsets.only(right: 8),
                 child: ChoiceChip(
                   label: Text(
-                    ['Tất cả', 'Đang thực hiện', 'Hoàn tất', 'Đã hủy'][i],
+                    [
+                      LocaleKeys.trip_filter_all.tr(),
+                      LocaleKeys.trip_status_in_progress.tr(),
+                      LocaleKeys.trip_status_completed.tr(),
+                      LocaleKeys.trip_status_cancelled.tr(),
+                    ][i],
                   ),
                   selected: filter == i,
                   showCheckmark: false,
@@ -82,19 +89,22 @@ class TripHistoryBody extends StatelessWidget {
                   children: [
                     const StatusDot(blue),
                     const SizedBox(width: 8),
-                    const Expanded(
+                    Expanded(
                       child: Text(
-                        'Chuyến đang thực hiện',
-                        style: TextStyle(fontWeight: FontWeight.w700),
+                        LocaleKeys.trip_active.tr(),
+                        style: const TextStyle(fontWeight: FontWeight.w700),
                       ),
                     ),
-                    Text(
-                      t.status == TripStatus.approaching
-                          ? 'Còn 6 phút'
-                          : 'Đang giao',
-                      style: const TextStyle(
-                        color: blue,
-                        fontWeight: FontWeight.w600,
+                    Flexible(
+                      child: Text(
+                        t.status == TripStatus.approaching
+                            ? LocaleKeys.trip_six_minutes_left.tr()
+                            : LocaleKeys.trip_delivering.tr(),
+                        textAlign: TextAlign.end,
+                        style: const TextStyle(
+                          color: blue,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                   ],
@@ -106,7 +116,7 @@ class TripHistoryBody extends StatelessWidget {
                   width: double.infinity,
                   child: FilledButton(
                     onPressed: () => onSelected(t),
-                    child: const Text('Theo dõi chuyến'),
+                    child: Text(LocaleKeys.trip_track.tr()),
                   ),
                 ),
               ],
@@ -117,10 +127,10 @@ class TripHistoryBody extends StatelessWidget {
         if (past.isNotEmpty) ...[
           Text(
             filter == 2
-                ? 'Chuyến đã hoàn tất'
+                ? LocaleKeys.trip_completed_history.tr()
                 : filter == 3
-                ? 'Chuyến đã hủy'
-                : 'Chuyến trước',
+                ? LocaleKeys.trip_cancelled_history.tr()
+                : LocaleKeys.trip_previous.tr(),
             style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 12),
@@ -165,15 +175,22 @@ class TripHistoryBody extends StatelessWidget {
                           runSpacing: 8,
                           children: [
                             statusBadge(t),
-                            const Row(
+                            Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Text(
-                                  'Xem chi tiết',
-                                  style: TextStyle(color: blue, fontSize: 12),
+                                  LocaleKeys.trip_view_details.tr(),
+                                  style: const TextStyle(
+                                    color: blue,
+                                    fontSize: 12,
+                                  ),
                                 ),
-                                SizedBox(width: 6),
-                                AssetIcon('ic_continue', size: 16, color: blue),
+                                const SizedBox(width: 6),
+                                const AssetIcon(
+                                  'ic_continue',
+                                  size: 16,
+                                  color: blue,
+                                ),
                               ],
                             ),
                           ],
@@ -186,22 +203,22 @@ class TripHistoryBody extends StatelessWidget {
             ),
         ],
         if (visible.isEmpty)
-          const Surface(
+          Surface(
             child: Padding(
-              padding: EdgeInsets.symmetric(vertical: 30),
+              padding: const EdgeInsets.symmetric(vertical: 30),
               child: Column(
                 children: [
-                  AssetIcon('ic_history', color: muted, size: 40),
-                  SizedBox(height: 16),
+                  const AssetIcon('ic_history', color: muted, size: 40),
+                  const SizedBox(height: 16),
                   Text(
-                    'Chưa có chuyến phù hợp',
-                    style: TextStyle(fontWeight: FontWeight.w600),
+                    LocaleKeys.trip_no_matching.tr(),
+                    style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
-                  SizedBox(height: 8),
+                  const SizedBox(height: 8),
                   Text(
-                    'Các chuyến ở trạng thái này sẽ xuất hiện tại đây.',
+                    LocaleKeys.trip_empty_status.tr(),
                     textAlign: TextAlign.center,
-                    style: TextStyle(color: muted),
+                    style: const TextStyle(color: muted),
                   ),
                 ],
               ),

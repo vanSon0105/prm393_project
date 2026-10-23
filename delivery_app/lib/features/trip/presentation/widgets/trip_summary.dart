@@ -13,7 +13,7 @@ Widget tripSummary(Trip t) => Row(
       height: 46,
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: const Color(0xFFF0F4FA),
+        color: surface,
         borderRadius: BorderRadius.circular(13),
       ),
       child: AssetIcon(t.icon, color: blue, size: 25),

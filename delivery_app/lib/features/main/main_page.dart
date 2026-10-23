@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
+import 'package:delivery_app/generated/locale_keys.g.dart';
+import 'package:delivery_app/gen/assets.gen.dart';
 import 'package:go_router/go_router.dart';
 
 class MainPage extends StatelessWidget {
@@ -23,15 +26,18 @@ class MainPage extends StatelessWidget {
           : BottomNavigationBar(
               currentIndex: navigationShell.currentIndex,
               onTap: _onTabSelected,
-              items: const [
-                BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+              items: [
                 BottomNavigationBarItem(
-                  icon: Icon(Icons.local_shipping),
-                  label: 'Chuyến đi',
+                  icon: Assets.images.icMap.svg(width: 24, height: 24),
+                  label: LocaleKeys.trip_home.tr(),
                 ),
                 BottomNavigationBarItem(
-                  icon: Icon(Icons.settings),
-                  label: 'Setting',
+                  icon: Assets.images.icRoute.svg(width: 24, height: 24),
+                  label: LocaleKeys.trip_tab.tr(),
+                ),
+                BottomNavigationBarItem(
+                  icon: Assets.images.icSettings.svg(width: 24, height: 24),
+                  label: LocaleKeys.trip_setting.tr(),
                 ),
               ],
             ),

@@ -1,8 +1,12 @@
-import 'package:flutter/material.dart';
+import 'app_theme.dart';
 
-const blue = Color(0xFF2F6EDB);
-const ink = Color(0xFF111B28);
-const muted = Color(0xFF607083);
-const pale = Color(0xFFE4EEFF);
-const green = Color(0xFF2F7D5A);
-const red = Color(0xFFBD3D48);
+const blue = AppColors.blue;
+const ink = AppColors.text;
+const muted = AppColors.textSoft;
+const pale = AppColors.blueSoft;
+const green = AppColors.success;
+const red = AppColors.danger;
+const line = AppColors.line;
+const lineStrong = AppColors.lineStrong;
+const surfaceMuted = AppColors.surfaceMuted;
+const surface = AppColors.surface;

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
+import 'package:delivery_app/generated/locale_keys.g.dart';
 
 import '../../../../core/theme/trip_colors.dart';
 import '../../../../shared/widgets/asset_icon.dart';
@@ -37,7 +39,7 @@ class _TripAppState extends ConsumerState<TripApp> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: const Text('Quay lại'),
+              child: Text(LocaleKeys.trip_back.tr()),
             ),
             FilledButton(
               onPressed: () => Navigator.pop(context, true),
@@ -51,9 +53,9 @@ class _TripAppState extends ConsumerState<TripApp> {
   Future<void> cancel() async {
     final t = trip;
     if (await confirm(
-          'Hủy chuyến đi?',
-          'Bạn có chắc muốn hủy chuyến ${t.code}?',
-          'Hủy chuyến',
+          LocaleKeys.trip_cancel_question.tr(),
+          LocaleKeys.trip_cancel_confirm.tr(namedArgs: {'code': t.code}),
+          LocaleKeys.trip_cancel.tr(),
         ) &&
         mounted) {
       setState(() {
@@ -61,7 +63,7 @@ class _TripAppState extends ConsumerState<TripApp> {
         selectedCode = null;
         tab = 1;
       });
-      notify('Đã hủy chuyến đi');
+      notify(LocaleKeys.trip_cancelled_notice.tr());
     }
   }
 
@@ -72,13 +74,13 @@ class _TripAppState extends ConsumerState<TripApp> {
       return;
     }
     if (await confirm(
-          'Xác nhận hoàn tất',
-          'Bạn đã giao hàng và thu ${t.price} tiền mặt?',
-          'Đã giao và thu tiền',
+          LocaleKeys.trip_confirm_finish.tr(),
+          LocaleKeys.trip_cash_confirm.tr(namedArgs: {'price': t.price}),
+          LocaleKeys.trip_delivered_paid.tr(),
         ) &&
         mounted) {
       ref.read(tripsProvider.notifier).advance(t.code);
-      notify('Chuyến đi đã hoàn tất');
+      notify(LocaleKeys.trip_finished_notice.tr());
     }
   }
 
@@ -96,13 +98,18 @@ class _TripAppState extends ConsumerState<TripApp> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text(
-                  'Chuyến đi thế nào?',
-                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
+                Text(
+                  LocaleKeys.trip_how_was_it.tr(),
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Đánh giá tài xế ${t.driver}',
+                  LocaleKeys.trip_rate_driver_name.tr(
+                    namedArgs: {'driver': t.driver},
+                  ),
                   style: const TextStyle(color: muted),
                 ),
                 const SizedBox(height: 20),
@@ -111,12 +118,14 @@ class _TripAppState extends ConsumerState<TripApp> {
                   children: List.generate(
                     5,
                     (i) => IconButton(
-                      tooltip: '${i + 1} sao',
+                      tooltip: LocaleKeys.trip_stars_count.tr(
+                        namedArgs: {'count': '${i + 1}'},
+                      ),
                       onPressed: () => update(() => stars = i + 1),
                       icon: AssetIcon(
                         'ic_star',
                         size: 28,
-                        color: i < stars ? blue : const Color(0xFFCBD4DE),
+                        color: i < stars ? blue : lineStrong,
                       ),
                     ),
                   ),
@@ -128,7 +137,7 @@ class _TripAppState extends ConsumerState<TripApp> {
                     onPressed: stars == 0
                         ? null
                         : () => Navigator.pop(context, stars),
-                    child: const Text('Gửi đánh giá'),
+                    child: Text(LocaleKeys.trip_send_rating.tr()),
                   ),
                 ),
               ],
@@ -139,7 +148,7 @@ class _TripAppState extends ConsumerState<TripApp> {
     );
     if (result != null && mounted) {
       ref.read(tripsProvider.notifier).rate(t.code, result);
-      notify('Cảm ơn bạn đã đánh giá');
+      notify(LocaleKeys.trip_thank_rating.tr());
     }
   }
 
@@ -151,7 +160,7 @@ class _TripAppState extends ConsumerState<TripApp> {
       appBar: AppBar(
         leading: selected == null && widget.onExit != null
             ? IconButton(
-                tooltip: 'Về bản đồ',
+                tooltip: LocaleKeys.trip_back_map.tr(),
                 onPressed: widget.onExit,
                 icon: const AssetIcon('ic_back'),
               )
@@ -164,17 +173,19 @@ class _TripAppState extends ConsumerState<TripApp> {
                 ),
               )
             : IconButton(
-                tooltip: 'Quay lại lịch sử',
+                tooltip: LocaleKeys.trip_back_history.tr(),
                 onPressed: () => setState(() => selectedCode = null),
                 icon: const AssetIcon('ic_back'),
               ),
         title: Text(
-          history ? 'Lịch sử chuyến đi' : 'Chi tiết chuyến đi',
+          history
+              ? LocaleKeys.trip_history_title.tr()
+              : LocaleKeys.trip_details_title.tr(),
           style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
         ),
         actions: [
           PopupMenuButton<bool>(
-            tooltip: 'Chọn vai trò',
+            tooltip: LocaleKeys.trip_choose_role.tr(),
             icon: AssetIcon(driver ? 'ic_driver' : 'ic_user', color: blue),
             initialValue: driver,
             onSelected: (value) => setState(() {
@@ -182,8 +193,14 @@ class _TripAppState extends ConsumerState<TripApp> {
               selectedCode = null;
             }),
             itemBuilder: (context) => [
-              const PopupMenuItem(value: false, child: Text('Khách hàng')),
-              const PopupMenuItem(value: true, child: Text('Tài xế')),
+              PopupMenuItem(
+                value: false,
+                child: Text(LocaleKeys.trip_customer.tr()),
+              ),
+              PopupMenuItem(
+                value: true,
+                child: Text(LocaleKeys.trip_driver.tr()),
+              ),
             ],
           ),
           const SizedBox(width: 8),
@@ -220,16 +237,16 @@ class _TripAppState extends ConsumerState<TripApp> {
                 tab = value;
                 selectedCode = null;
               }),
-              destinations: const [
+              destinations: [
                 NavigationDestination(
-                  icon: AssetIcon('ic_map'),
-                  selectedIcon: AssetIcon('ic_map', color: blue),
-                  label: 'Chuyến hiện tại',
+                  icon: const AssetIcon('ic_map'),
+                  selectedIcon: const AssetIcon('ic_map', color: blue),
+                  label: LocaleKeys.trip_current.tr(),
                 ),
                 NavigationDestination(
-                  icon: AssetIcon('ic_history'),
-                  selectedIcon: AssetIcon('ic_history', color: blue),
-                  label: 'Lịch sử',
+                  icon: const AssetIcon('ic_history'),
+                  selectedIcon: const AssetIcon('ic_history', color: blue),
+                  label: LocaleKeys.trip_history_nav.tr(),
                 ),
               ],
             ),

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
+import 'package:delivery_app/generated/locale_keys.g.dart';
 
 import '../../../../core/theme/trip_colors.dart';
 import '../../../../shared/widgets/asset_icon.dart';
@@ -36,12 +38,14 @@ class TripDetailsBody extends StatelessWidget {
           children: [
             Expanded(
               child: Text(
-                'Mã chuyến ${t.code}',
+                LocaleKeys.trip_code.tr(namedArgs: {'code': t.code}),
                 style: const TextStyle(color: muted, fontSize: 13),
               ),
             ),
             Text(
-              driver ? 'TÀI XẾ' : 'KHÁCH HÀNG',
+              driver
+                  ? LocaleKeys.trip_driver_upper.tr()
+                  : LocaleKeys.trip_customer_upper.tr(),
               style: const TextStyle(
                 color: blue,
                 fontSize: 11,
@@ -78,8 +82,8 @@ class TripDetailsBody extends StatelessWidget {
                     Text(
                       t.active && driver
                           ? (stage == 0
-                                ? 'Đi đến điểm lấy hàng'
-                                : 'Đang giao đến khách hàng')
+                                ? LocaleKeys.trip_go_pickup.tr()
+                                : LocaleKeys.trip_deliver_customer.tr())
                           : t.statusLabel,
                       style: const TextStyle(
                         fontSize: 16,
@@ -90,8 +94,8 @@ class TripDetailsBody extends StatelessWidget {
                     Text(
                       t.active
                           ? (stage == 0
-                                ? 'Dự kiến đến sau 6 phút'
-                                : 'Dự kiến giao trong 18 phút')
+                                ? LocaleKeys.trip_arrive_six_minutes.tr()
+                                : LocaleKeys.trip_deliver_eighteen_minutes.tr())
                           : t.date,
                       style: const TextStyle(fontSize: 12, color: muted),
                     ),
@@ -119,7 +123,7 @@ class TripDetailsBody extends StatelessWidget {
                                 ? Colors.transparent
                                 : i <= stage
                                 ? blue
-                                : const Color(0xFFDDE3EA),
+                                : line,
                           ),
                         ),
                         Container(
@@ -127,7 +131,7 @@ class TripDetailsBody extends StatelessWidget {
                           height: 26,
                           alignment: Alignment.center,
                           decoration: BoxDecoration(
-                            color: i <= stage ? blue : const Color(0xFFEEF2F6),
+                            color: i <= stage ? blue : surfaceMuted,
                             shape: BoxShape.circle,
                           ),
                           child: Text(
@@ -145,14 +149,18 @@ class TripDetailsBody extends StatelessWidget {
                                 ? Colors.transparent
                                 : i < stage
                                 ? blue
-                                : const Color(0xFFDDE3EA),
+                                : line,
                           ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      ['Đến điểm lấy', 'Đang giao', 'Hoàn tất'][i],
+                      [
+                        LocaleKeys.trip_step_pickup.tr(),
+                        LocaleKeys.trip_delivering.tr(),
+                        LocaleKeys.trip_status_completed.tr(),
+                      ][i],
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 11,
@@ -201,7 +209,11 @@ class TripDetailsBody extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      driver ? 'Khách hàng · 090 123 4567' : t.plate,
+                      driver
+                          ? LocaleKeys.trip_customer_contact.tr(
+                              namedArgs: const {'phone': '090 123 4567'},
+                            )
+                          : t.plate,
                       style: const TextStyle(color: muted, fontSize: 12),
                     ),
                   ],
@@ -209,12 +221,14 @@ class TripDetailsBody extends StatelessWidget {
               ),
               if (t.active)
                 IconButton(
-                  tooltip: 'Thông tin liên hệ',
+                  tooltip: LocaleKeys.trip_contact_tooltip.tr(),
                   onPressed: () => showDialog<void>(
                     context: context,
                     builder: (context) => AlertDialog(
                       title: Text(
-                        driver ? 'Liên hệ khách hàng' : 'Liên hệ tài xế',
+                        driver
+                            ? LocaleKeys.trip_contact_customer.tr()
+                            : LocaleKeys.trip_contact_driver.tr(),
                       ),
                       content: Text(
                         driver
@@ -224,7 +238,7 @@ class TripDetailsBody extends StatelessWidget {
                       actions: [
                         TextButton(
                           onPressed: () => Navigator.pop(context),
-                          child: const Text('Đóng'),
+                          child: Text(LocaleKeys.trip_close.tr()),
                         ),
                       ],
                     ),
@@ -235,15 +249,15 @@ class TripDetailsBody extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 24),
-        const Text(
-          'Lộ trình chuyến đi',
-          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+        Text(
+          LocaleKeys.trip_route.tr(),
+          style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: 12),
         Surface(
           child: Column(
             children: [
-              stop('Điểm lấy', t.pickup, blue),
+              stop(LocaleKeys.trip_pickup.tr(), t.pickup, blue),
               const Padding(
                 padding: EdgeInsets.only(left: 5),
                 child: Align(
@@ -254,17 +268,22 @@ class TripDetailsBody extends StatelessWidget {
                   ),
                 ),
               ),
-              stop('Điểm đến', t.destination, ink),
+              stop(LocaleKeys.trip_destination.tr(), t.destination, ink),
               if (driver) ...[
                 const Divider(height: 28),
-                const Row(
+                Row(
                   children: [
-                    AssetIcon('ic_user', size: 18, color: muted),
-                    SizedBox(width: 8),
+                    const AssetIcon('ic_user', size: 18, color: muted),
+                    const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'Người nhận: Minh An · 090 123 4567',
-                        style: TextStyle(fontSize: 13, color: muted),
+                        LocaleKeys.trip_recipient.tr(
+                          namedArgs: const {
+                            'name': 'Minh An',
+                            'phone': '090 123 4567',
+                          },
+                        ),
+                        style: const TextStyle(fontSize: 13, color: muted),
                       ),
                     ),
                   ],
@@ -274,35 +293,39 @@ class TripDetailsBody extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 24),
-        const Text(
-          'Thông tin chuyến',
-          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+        Text(
+          LocaleKeys.trip_info.tr(),
+          style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: 12),
         Surface(
           child: Column(
             children: [
-              detailRow('Dịch vụ', t.service),
+              detailRow(LocaleKeys.trip_service.tr(), t.service),
               const Divider(height: 24),
               detailRow(
-                'Khoảng cách',
-                t.code == 'NS2408' ? '2,4 km · khoảng 18 phút' : '—',
+                LocaleKeys.trip_distance.tr(),
+                t.code == 'NS2408'
+                    ? LocaleKeys.trip_distance_estimate.tr()
+                    : '—',
               ),
               const Divider(height: 24),
               detailRow(
-                'Thanh toán',
+                LocaleKeys.trip_payment.tr(),
                 t.status == TripStatus.cancelled
-                    ? 'Không phát sinh'
+                    ? LocaleKeys.trip_no_charge.tr()
                     : t.paid
-                    ? 'Đã thanh toán'
-                    : 'Tiền mặt · chưa thu',
+                    ? LocaleKeys.trip_paid.tr()
+                    : LocaleKeys.trip_cash_uncollected.tr(),
               ),
               const Divider(height: 24),
               Row(
                 children: [
                   Expanded(
                     child: Text(
-                      driver ? 'Cước chuyến đi' : 'Tổng phí',
+                      driver
+                          ? LocaleKeys.trip_fare.tr()
+                          : LocaleKeys.trip_total_fee.tr(),
                       style: const TextStyle(fontWeight: FontWeight.w600),
                     ),
                   ),
@@ -321,9 +344,9 @@ class TripDetailsBody extends StatelessWidget {
         ),
         if (driver && t.active) ...[
           const SizedBox(height: 16),
-          const Text(
-            'Chỉ xác nhận sau khi đã lấy hàng hoặc giao hàng thành công.',
-            style: TextStyle(color: muted, fontSize: 12),
+          Text(
+            LocaleKeys.trip_confirm_warning.tr(),
+            style: const TextStyle(color: muted, fontSize: 12),
           ),
         ],
         const SizedBox(height: 24),
@@ -331,7 +354,9 @@ class TripDetailsBody extends StatelessWidget {
           FilledButton(
             onPressed: advance,
             child: Text(
-              stage == 0 ? 'Xác nhận đã lấy hàng' : 'Hoàn tất chuyến đi',
+              stage == 0
+                  ? LocaleKeys.trip_confirm_pickup.tr()
+                  : LocaleKeys.trip_finish.tr(),
             ),
           ),
         if (!driver && t.status == TripStatus.approaching)
@@ -341,15 +366,15 @@ class TripDetailsBody extends StatelessWidget {
               foregroundColor: red,
             ),
             onPressed: cancel,
-            child: const Text('Hủy chuyến'),
+            child: Text(LocaleKeys.trip_cancel.tr()),
           ),
         if (!driver && t.active)
           Padding(
             padding: const EdgeInsets.only(top: 14),
             child: Text(
               t.status == TripStatus.approaching
-                  ? 'Chuẩn bị hàng hóa. Thanh toán cho tài xế khi giao hàng hoàn tất.'
-                  : 'Tài xế đang giao hàng. Bạn có thể theo dõi trạng thái tại đây.',
+                  ? LocaleKeys.trip_prepare_items.tr()
+                  : LocaleKeys.trip_tracking_note.tr(),
               textAlign: TextAlign.center,
               style: const TextStyle(fontSize: 12, color: muted),
             ),
@@ -359,8 +384,10 @@ class TripDetailsBody extends StatelessWidget {
             onPressed: t.rating == null ? rate : null,
             child: Text(
               t.rating == null
-                  ? 'Đánh giá tài xế'
-                  : 'Bạn đã đánh giá ${t.rating} sao',
+                  ? LocaleKeys.trip_rate_driver.tr()
+                  : LocaleKeys.trip_rating_done.tr(
+                      namedArgs: {'stars': '${t.rating}'},
+                    ),
             ),
           ),
         if (driver && !t.active) statusBadge(t),
