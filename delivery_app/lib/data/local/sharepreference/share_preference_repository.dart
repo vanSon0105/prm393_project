@@ -5,10 +5,10 @@ enum SharePreferenceKey { isLogged, charlesIp }
 
 typedef SPKey = SharePreferenceKey;
 
-class SharePreference {
+class SharePreferenceRepository {
   final SharedPreferences _pref;
 
-  SharePreference(this._pref);
+  SharePreferenceRepository(this._pref);
 
   String getString(SPKey key, {String defaultValue = ''}) =>
       _pref.getString(key.name) ?? defaultValue;
@@ -31,7 +31,7 @@ class SharePreference {
   }
 }
 
-extension AppSharePreferences on SharePreference {
+extension AppSharePreferences on SharePreferenceRepository {
   bool get isLogged => getBool(SPKey.isLogged);
 
   String get charlesIp => getString(SPKey.charlesIp);
