@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
+import 'package:delivery_app/generated/locale_keys.g.dart';
 
 import '../../../../../core/theme/app_theme.dart';
+import '../../../../../gen/assets.gen.dart';
 
 class EarningsTimeFilter extends StatelessWidget {
   const EarningsTimeFilter({
@@ -31,7 +34,14 @@ class EarningsTimeFilter extends StatelessWidget {
                 child: ChoiceChip(
                   label: SizedBox(
                     width: double.infinity,
-                    child: Text(filter, textAlign: TextAlign.center),
+                    child: Text(
+                      switch (filter) {
+                        'Hôm nay' => LocaleKeys.earnings_today.tr(),
+                        '7 ngày' => LocaleKeys.earnings_seven_days.tr(),
+                        _ => LocaleKeys.earnings_thirty_days.tr(),
+                      },
+                      textAlign: TextAlign.center,
+                    ),
                   ),
                   selected: selected,
                   onSelected: (_) => onFilterChanged(filter),
@@ -42,7 +52,7 @@ class EarningsTimeFilter extends StatelessWidget {
                     color: selected ? AppColors.blue : AppColors.line,
                   ),
                   labelStyle: TextStyle(
-                    color: selected ? Colors.white : AppColors.text,
+                    color: selected ? AppColors.white : AppColors.text,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -50,12 +60,12 @@ class EarningsTimeFilter extends StatelessWidget {
             );
           }).toList(),
         ),
-        const SizedBox(height: 10),
+        SizedBox(height: 10),
         InkWell(
           onTap: onCustomRangeTap,
           borderRadius: BorderRadius.circular(AppRadius.control),
           child: Ink(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            padding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             decoration: BoxDecoration(
               color: selectedFilter == 'Tùy chọn'
                   ? AppColors.blueSoft
@@ -69,23 +79,30 @@ class EarningsTimeFilter extends StatelessWidget {
             ),
             child: Row(
               children: [
-                const Icon(Icons.date_range_outlined, color: AppColors.blue),
-                const SizedBox(width: 12),
+                Assets.images.icCalendar.svg(
+                  width: 24,
+                  height: 24,
+                  colorFilter: const ColorFilter.mode(
+                    AppColors.blue,
+                    BlendMode.srcIn,
+                  ),
+                ),
+                SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Tùy chọn thời gian',
+                      Text(
+                        LocaleKeys.earnings_custom_time.tr(),
                         style: TextStyle(
                           color: AppColors.text,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
-                      const SizedBox(height: 3),
+                      SizedBox(height: 3),
                       Text(
                         dateRangeText,
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: AppColors.textSoft,
                           fontSize: 12,
                         ),
@@ -93,10 +110,7 @@ class EarningsTimeFilter extends StatelessWidget {
                     ],
                   ),
                 ),
-                const Icon(
-                  Icons.chevron_right_rounded,
-                  color: AppColors.textFaint,
-                ),
+                Icon(Icons.chevron_right_rounded, color: AppColors.textFaint),
               ],
             ),
           ),

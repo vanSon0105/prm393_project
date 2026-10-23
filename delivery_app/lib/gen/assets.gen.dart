@@ -34,6 +34,10 @@ class $AssetsImagesGen {
   /// File path: assets/images/ic_back.svg
   SvgGenImage get icBack => const SvgGenImage('assets/images/ic_back.svg');
 
+  /// File path: assets/images/ic_calendar.svg
+  SvgGenImage get icCalendar =>
+      const SvgGenImage('assets/images/ic_calendar.svg');
+
   /// File path: assets/images/ic_car.svg
   SvgGenImage get icCar => const SvgGenImage('assets/images/ic_car.svg');
 
@@ -50,6 +54,9 @@ class $AssetsImagesGen {
   /// File path: assets/images/ic_driver_request.svg
   SvgGenImage get icDriverRequest =>
       const SvgGenImage('assets/images/ic_driver_request.svg');
+
+  /// File path: assets/images/ic_gift.svg
+  SvgGenImage get icGift => const SvgGenImage('assets/images/ic_gift.svg');
 
   /// File path: assets/images/ic_history.svg
   SvgGenImage get icHistory =>
@@ -86,12 +93,19 @@ class $AssetsImagesGen {
   SvgGenImage get icNavigation =>
       const SvgGenImage('assets/images/ic_navigation.svg');
 
+  /// File path: assets/images/ic_receipt.svg
+  SvgGenImage get icReceipt =>
+      const SvgGenImage('assets/images/ic_receipt.svg');
+
   /// File path: assets/images/ic_register.svg
   SvgGenImage get icRegister =>
       const SvgGenImage('assets/images/ic_register.svg');
 
   /// File path: assets/images/ic_route.svg
   SvgGenImage get icRoute => const SvgGenImage('assets/images/ic_route.svg');
+
+  /// File path: assets/images/ic_search.svg
+  SvgGenImage get icSearch => const SvgGenImage('assets/images/ic_search.svg');
 
   /// File path: assets/images/ic_settings.svg
   SvgGenImage get icSettings =>
@@ -119,6 +133,9 @@ class $AssetsImagesGen {
   SvgGenImage get icUsesGroup =>
       const SvgGenImage('assets/images/ic_uses-group.svg');
 
+  /// File path: assets/images/ic_wallet.svg
+  SvgGenImage get icWallet => const SvgGenImage('assets/images/ic_wallet.svg');
+
   /// File path: assets/images/loading.gif
   AssetGenImage get loading => const AssetGenImage('assets/images/loading.gif');
 
@@ -138,11 +155,13 @@ class $AssetsImagesGen {
     delivery,
     icAdmin,
     icBack,
+    icCalendar,
     icCar,
     icClose,
     icContinue,
     icDriver,
     icDriverRequest,
+    icGift,
     icHistory,
     icInfo,
     icLanguage,
@@ -153,8 +172,10 @@ class $AssetsImagesGen {
     icMapType,
     icMoto,
     icNavigation,
+    icReceipt,
     icRegister,
     icRoute,
+    icSearch,
     icSettings,
     icStar,
     icUser,
@@ -162,6 +183,7 @@ class $AssetsImagesGen {
     icUserEdit,
     icUserLock,
     icUsesGroup,
+    icWallet,
     loading,
     loading2,
     marker,

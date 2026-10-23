@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../gen/assets.gen.dart';
 
 class SettingOptionTile extends StatelessWidget {
   const SettingOptionTile({
@@ -12,7 +13,7 @@ class SettingOptionTile extends StatelessWidget {
     super.key,
   });
 
-  final IconData icon;
+  final SvgGenImage icon;
   final String title;
   final String subtitle;
   final Widget trailing;
@@ -32,7 +33,14 @@ class SettingOptionTile extends StatelessWidget {
                 color: AppColors.blueSoft,
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(icon, color: AppColors.blue, size: 21),
+              child: icon.svg(
+                width: 21,
+                height: 21,
+                colorFilter: const ColorFilter.mode(
+                  AppColors.blue,
+                  BlendMode.srcIn,
+                ),
+              ),
             ),
             const SizedBox(width: 12),
             Expanded(

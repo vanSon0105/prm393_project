@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
+import 'package:delivery_app/generated/locale_keys.g.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../gen/assets.gen.dart';
 import '../../../shared/widgets/initials_avatar.dart';
 
 class AccountSummaryCard extends StatelessWidget {
@@ -12,11 +15,11 @@ class AccountSummaryCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16),
         child: Row(
           children: [
-            const InitialsAvatar(label: 'TA', size: 54),
-            const SizedBox(width: 14),
+            InitialsAvatar(label: 'TA', size: 54),
+            SizedBox(width: 14),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -25,9 +28,9 @@ class AccountSummaryCard extends StatelessWidget {
                     'Trần Anh',
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
-                  const SizedBox(height: 4),
-                  const Text(
-                    'Tài khoản tài xế',
+                  SizedBox(height: 4),
+                  Text(
+                    LocaleKeys.settings_driver_account.tr(),
                     style: TextStyle(color: AppColors.textSoft, fontSize: 12),
                   ),
                 ],
@@ -35,7 +38,7 @@ class AccountSummaryCard extends StatelessWidget {
             ),
             IconButton(
               onPressed: onEditTap,
-              tooltip: 'Chỉnh sửa hồ sơ',
+              tooltip: LocaleKeys.settings_edit_profile.tr(),
               style: IconButton.styleFrom(
                 backgroundColor: AppColors.blueSoft,
                 foregroundColor: AppColors.blue,
@@ -43,7 +46,14 @@ class AccountSummaryCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(AppRadius.control),
                 ),
               ),
-              icon: const Icon(Icons.edit_outlined, size: 20),
+              icon: Assets.images.icUserEdit.svg(
+                width: 20,
+                height: 20,
+                colorFilter: const ColorFilter.mode(
+                  AppColors.blue,
+                  BlendMode.srcIn,
+                ),
+              ),
             ),
           ],
         ),

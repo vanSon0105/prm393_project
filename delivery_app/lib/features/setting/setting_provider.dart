@@ -2,8 +2,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class SettingUiState {
   const SettingUiState({
-    this.selectedLanguage = 'Tiếng Việt',
-    this.selectedMapType = 'Mặc định',
+    this.selectedLanguage = 'en-US',
+    this.selectedMapType = 'default',
   });
 
   final String selectedLanguage;

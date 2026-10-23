@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
+import 'package:delivery_app/generated/locale_keys.g.dart';
 
 import '../../../../core/theme/app_theme.dart';
 
@@ -22,7 +24,14 @@ class UserRoleFilter extends StatelessWidget {
       children: roles.map((role) {
         final selected = role == selectedRole;
         return ChoiceChip(
-          label: Text(role),
+          label: Text(
+            switch (role) {
+              'Tất cả' => LocaleKeys.users_role_all.tr(),
+              'Khách hàng' => LocaleKeys.users_role_customer.tr(),
+              'Tài xế' => LocaleKeys.users_role_driver.tr(),
+              _ => LocaleKeys.users_role_admin.tr(),
+            },
+          ),
           selected: selected,
           onSelected: (_) => onRoleChanged(role),
           showCheckmark: false,

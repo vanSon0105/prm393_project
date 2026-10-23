@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../../core/theme/app_theme.dart';
+import '../../../../../gen/assets.gen.dart';
 
 class EarningsStatisticsCard extends StatelessWidget {
   const EarningsStatisticsCard({
@@ -10,7 +11,7 @@ class EarningsStatisticsCard extends StatelessWidget {
     super.key,
   });
 
-  final IconData icon;
+  final SvgGenImage icon;
   final String label;
   final String value;
 
@@ -28,7 +29,14 @@ class EarningsStatisticsCard extends StatelessWidget {
                 color: AppColors.blueSoft,
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(icon, color: AppColors.blue, size: 21),
+              child: icon.svg(
+                width: 21,
+                height: 21,
+                colorFilter: const ColorFilter.mode(
+                  AppColors.blue,
+                  BlendMode.srcIn,
+                ),
+              ),
             ),
             const SizedBox(height: 14),
             Text(

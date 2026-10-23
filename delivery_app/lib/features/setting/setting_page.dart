@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
+import 'package:delivery_app/generated/locale_keys.g.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme/app_theme.dart';
+import '../../gen/assets.gen.dart';
 import '../../shared/widgets/app_screen_header.dart';
 import 'setting_provider.dart';
 import 'widgets/account_summary_card.dart';
@@ -22,64 +25,81 @@ class SettingPage extends ConsumerWidget {
         backgroundColor: AppColors.surface,
         body: SafeArea(
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+            padding: EdgeInsets.fromLTRB(20, 20, 20, 28),
             children: [
               AppScreenHeader(
-                eyebrow: 'Tài khoản',
-                title: 'Cài đặt',
+                eyebrow: LocaleKeys.settings_account.tr(),
+                title: LocaleKeys.settings_title.tr(),
                 actionIcon: Icons.close_rounded,
                 onActionPressed: () => Navigator.maybePop(context),
               ),
-              const SizedBox(height: 28),
+              SizedBox(height: 28),
               AccountSummaryCard(
-                onEditTap: () =>
-                    _showMessage(context, 'Chỉnh sửa hồ sơ (demo)'),
+                onEditTap: () => _showMessage(
+                  context,
+                  LocaleKeys.settings_edit_profile_demo.tr(),
+                ),
               ),
-              const SizedBox(height: 24),
+              SizedBox(height: 24),
               SettingSection(
-                title: 'Tùy chỉnh',
+                title: LocaleKeys.settings_customization.tr(),
                 children: [
                   SettingOptionTile(
-                    icon: Icons.translate_outlined,
-                    title: 'Ngôn ngữ',
-                    subtitle: 'Ngôn ngữ hiển thị',
+                    icon: Assets.images.icLanguage,
+                    title: LocaleKeys.settings_language.tr(),
+                    subtitle: LocaleKeys.settings_display_language.tr(),
                     trailing: _buildDropdown(
-                      value: setting.selectedLanguage,
-                      options: const ['Tiếng Việt', 'English'],
-                      onSelected: notifier.selectLanguage,
+                      value: context.locale.toLanguageTag(),
+                      options: {
+                        'en-US': LocaleKeys.settings_english.tr(),
+                        'ko-KR': LocaleKeys.settings_korean.tr(),
+                      },
+                      onSelected: (value) async {
+                        notifier.selectLanguage(value);
+                        await context.setLocale(
+                          value == 'ko-KR'
+                              ? const Locale('ko', 'KR')
+                              : const Locale('en', 'US'),
+                        );
+                      },
                     ),
                   ),
                   SettingOptionTile(
-                    icon: Icons.layers_outlined,
-                    title: 'Loại bản đồ',
-                    subtitle: 'Kiểu hiển thị đường đi',
+                    icon: Assets.images.icMapType,
+                    title: LocaleKeys.settings_map_type.tr(),
+                    subtitle: LocaleKeys.settings_route_style.tr(),
                     trailing: _buildDropdown(
                       value: setting.selectedMapType,
-                      options: const ['Mặc định', 'Vệ tinh'],
+                      options: {
+                        'default': LocaleKeys.settings_map_default.tr(),
+                        'satellite': LocaleKeys.settings_map_satellite.tr(),
+                      },
                       onSelected: notifier.selectMapType,
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 24),
+              SizedBox(height: 24),
               SettingSection(
-                title: 'Tài khoản và ứng dụng',
+                title: LocaleKeys.settings_account_app.tr(),
                 children: [
                   SettingOptionTile(
-                    icon: Icons.manage_accounts_outlined,
-                    title: 'Cập nhật thông tin',
-                    subtitle: 'Hồ sơ và địa chỉ',
-                    onTap: () =>
-                        _showMessage(context, 'Cập nhật thông tin (demo)'),
-                    trailing: const Icon(
+                    icon: Assets.images.icUserEdit,
+                    title: LocaleKeys.settings_update_info.tr(),
+                    subtitle: LocaleKeys.settings_profile_address.tr(),
+                    onTap: () => _showMessage(
+                      context,
+                      LocaleKeys.settings_update_demo.tr(),
+                    ),
+                    trailing: Icon(
                       Icons.chevron_right_rounded,
                       color: AppColors.textSoft,
                     ),
                   ),
-                  const SettingOptionTile(
-                    icon: Icons.info_outline,
-                    title: 'Phiên bản ứng dụng',
-                    subtitle: 'Bản demo hiện tại',
+                  SettingOptionTile(
+                    icon: Assets.images.icInfo,
+                    title: LocaleKeys.settings_app_version.tr(),
+                    subtitle: LocaleKeys.settings_current_demo.tr(),
                     trailing: Text(
                       '1.0.0',
                       style: TextStyle(
@@ -90,17 +110,17 @@ class SettingPage extends ConsumerWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 24),
+              SizedBox(height: 24),
               SizedBox(
                 width: double.infinity,
                 child: FilledButton.icon(
                   onPressed: () => _showLogoutDialog(context),
                   style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFFFBEAEC),
+                    backgroundColor: AppColors.dangerSoft,
                     foregroundColor: AppColors.danger,
                   ),
-                  icon: const Icon(Icons.logout),
-                  label: const Text('Đăng xuất'),
+                  icon: Assets.images.icLogout.svg(width: 20, height: 20),
+                  label: Text(LocaleKeys.settings_logout.tr()),
                 ),
               ),
             ],
@@ -112,20 +132,22 @@ class SettingPage extends ConsumerWidget {
 
   Widget _buildDropdown({
     required String value,
-    required List<String> options,
+    required Map<String, String> options,
     required ValueChanged<String> onSelected,
   }) {
     return PopupMenuButton<String>(
       initialValue: value,
       onSelected: onSelected,
-      itemBuilder: (context) => options
+      itemBuilder: (context) => options.entries
           .map(
-            (option) =>
-                PopupMenuItem<String>(value: option, child: Text(option)),
+            (option) => PopupMenuItem<String>(
+              value: option.key,
+              child: Text(option.value),
+            ),
           )
           .toList(),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        padding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(
           color: AppColors.blueSoft,
           borderRadius: BorderRadius.circular(10),
@@ -134,14 +156,14 @@ class SettingPage extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              value,
-              style: const TextStyle(
+              options[value] ?? value,
+              style: TextStyle(
                 color: AppColors.blue,
                 fontWeight: FontWeight.w600,
               ),
             ),
-            const SizedBox(width: 4),
-            const Icon(
+            SizedBox(width: 4),
+            Icon(
               Icons.keyboard_arrow_down_rounded,
               size: 18,
               color: AppColors.blue,
@@ -162,17 +184,17 @@ class SettingPage extends ConsumerWidget {
     return showDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Đăng xuất'),
-        content: const Text('Bạn có chắc muốn đăng xuất?'),
+        title: Text(LocaleKeys.settings_logout.tr()),
+        content: Text(LocaleKeys.settings_logout_confirm.tr()),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Hủy'),
+            child: Text(LocaleKeys.settings_cancel.tr()),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(dialogContext),
             style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
-            child: const Text('Đăng xuất'),
+            child: Text(LocaleKeys.settings_logout.tr()),
           ),
         ],
       ),

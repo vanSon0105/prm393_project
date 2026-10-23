@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
+import 'package:delivery_app/generated/locale_keys.g.dart';
 
 import '../../../../../core/theme/app_theme.dart';
 
@@ -13,20 +15,20 @@ class EarningsChart extends StatelessWidget {
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Thu nhập theo ngày',
+              LocaleKeys.earnings_daily.tr(),
               style: Theme.of(context).textTheme.titleMedium,
             ),
-            const SizedBox(height: 4),
-            const Text(
-              'Đơn vị: nghìn đồng',
+            SizedBox(height: 4),
+            Text(
+              LocaleKeys.earnings_unit.tr(),
               style: TextStyle(color: AppColors.textSoft, fontSize: 12),
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: 24),
             SizedBox(
               height: 174,
               child: Row(
@@ -35,31 +37,31 @@ class EarningsChart extends StatelessWidget {
                   final barHeight = entry.value / maxValue * 118;
                   return Expanded(
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      padding: EdgeInsets.symmetric(horizontal: 4),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [
                           Text(
                             '${entry.value ~/ 1000}k',
-                            style: const TextStyle(
+                            style: TextStyle(
                               color: AppColors.textSoft,
                               fontSize: 10,
                             ),
                           ),
-                          const SizedBox(height: 7),
+                          SizedBox(height: 7),
                           Container(
                             height: barHeight,
-                            decoration: const BoxDecoration(
+                            decoration: BoxDecoration(
                               color: AppColors.blue,
                               borderRadius: BorderRadius.vertical(
                                 top: Radius.circular(6),
                               ),
                             ),
                           ),
-                          const SizedBox(height: 8),
+                          SizedBox(height: 8),
                           Text(
                             entry.key,
-                            style: const TextStyle(
+                            style: TextStyle(
                               color: AppColors.textSoft,
                               fontSize: 12,
                               fontWeight: FontWeight.w600,

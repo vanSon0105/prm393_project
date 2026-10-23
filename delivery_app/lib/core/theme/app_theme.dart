@@ -1,23 +1,29 @@
 import 'package:flutter/material.dart';
 
+import '../../gen/colors.gen.dart';
+
 class AppColors {
   const AppColors._();
 
-  static const page = Color(0xFFDFE6EB);
-  static const surface = Color(0xFFF8FAFC);
-  static const surfaceStrong = Color(0xFFFFFFFF);
-  static const surfaceMuted = Color(0xFFEEF2F6);
-  static const line = Color(0xFFDDE3EA);
-  static const lineStrong = Color(0xFFCBD4DE);
-  static const text = Color(0xFF111B28);
-  static const textSoft = Color(0xFF607083);
-  static const textFaint = Color(0xFF8A98A8);
-  static const blue = Color(0xFF2F6EDB);
-  static const bluePressed = Color(0xFF245BB9);
-  static const blueSoft = Color(0xFFE4EEFF);
-  static const bluePale = Color(0xFFDCEBFF);
-  static const danger = Color(0xFFBD3D48);
-  static const success = Color(0xFF248A57);
+  static const white = ColorName.white;
+  static const whiteSoft = ColorName.whiteSoft;
+  static const page = ColorName.page;
+  static const surface = ColorName.surface;
+  static const surfaceStrong = ColorName.surfaceStrong;
+  static const surfaceMuted = ColorName.surfaceMuted;
+  static const line = ColorName.line;
+  static const lineStrong = ColorName.lineStrong;
+  static const text = ColorName.text;
+  static const textSoft = ColorName.textSoft;
+  static const textFaint = ColorName.textFaint;
+  static const blue = ColorName.blue;
+  static const bluePressed = ColorName.bluePressed;
+  static const blueSoft = ColorName.blueSoft;
+  static const bluePale = ColorName.bluePale;
+  static const danger = ColorName.danger;
+  static const success = ColorName.success;
+  static const dangerSoft = ColorName.dangerSoft;
+  static const ratingStar = ColorName.ratingStar;
 }
 
 class AppRadius {

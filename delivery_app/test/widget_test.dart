@@ -7,8 +7,16 @@ import 'package:delivery_app/routes/app_router.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:easy_localization/easy_localization.dart';
+import 'package:easy_localization_loader/easy_localization_loader.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  setUpAll(() async {
+    SharedPreferences.setMockInitialValues({});
+    await EasyLocalization.ensureInitialized();
+  });
   test('Admin data stays in sync with Riverpod state', () {
     final container = ProviderContainer();
     addTearDown(container.dispose);
@@ -34,8 +42,8 @@ void main() {
     final container = ProviderContainer();
     addTearDown(container.dispose);
 
-    container.read(settingUiProvider.notifier).selectLanguage('English');
-    expect(container.read(settingUiProvider).selectedLanguage, 'English');
+    container.read(settingUiProvider.notifier).selectLanguage('ko-KR');
+    expect(container.read(settingUiProvider).selectedLanguage, 'ko-KR');
 
     container.read(driverEarningsProvider.notifier).selectFilter('30 ngày');
     expect(container.read(driverEarningsProvider).selectedFilter, '30 ngày');
@@ -65,8 +73,26 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
 
     await tester.pumpWidget(
-      const ProviderScope(child: MaterialApp(home: AdminHomePage())),
+      EasyLocalization(
+        supportedLocales: const [Locale('en', 'US'), Locale('ko', 'KR')],
+        startLocale: const Locale('en', 'US'),
+        fallbackLocale: const Locale('en', 'US'),
+        path: 'resources/langs',
+        assetLoader: JsonAssetLoader(),
+        child: Builder(
+          builder: (context) => ProviderScope(
+            child: MaterialApp(
+              locale: context.locale,
+              supportedLocales: context.supportedLocales,
+              localizationsDelegates: context.localizationDelegates,
+              home: const AdminHomePage(),
+            ),
+          ),
+        ),
+      ),
     );
+    await tester.pump();
+    await tester.pumpAndSettle();
 
     expect(find.text('Vận hành'), findsOneWidget);
 
@@ -89,7 +115,7 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey('admin-nav-users')));
     await tester.pump();
-    expect(find.text('Quản lý người dùng'), findsOneWidget);
-    expect(find.text('6 người dùng'), findsOneWidget);
+    expect(find.text('User management'), findsOneWidget);
+    expect(find.text('6 users'), findsOneWidget);
   });
 }

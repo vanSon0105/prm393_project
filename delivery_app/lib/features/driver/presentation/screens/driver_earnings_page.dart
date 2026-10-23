@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
+import 'package:delivery_app/generated/locale_keys.g.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_theme.dart';
+import '../../../../gen/assets.gen.dart';
 import '../../../../shared/widgets/app_screen_header.dart';
 import '../providers/driver_earnings_provider.dart';
 import '../widgets/earnings/earnings_breakdown_section.dart';
@@ -35,16 +38,16 @@ class DriverEarningsPage extends ConsumerWidget {
       child: Scaffold(
         body: SafeArea(
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+            padding: EdgeInsets.fromLTRB(20, 20, 20, 28),
             children: [
               AppScreenHeader(
-                eyebrow: 'Thu nhập',
-                title: 'Tổng quan thu nhập',
+                eyebrow: LocaleKeys.earnings_label.tr(),
+                title: LocaleKeys.earnings_overview.tr(),
                 actionIcon: Icons.calendar_month_outlined,
                 onActionPressed: () =>
                     _selectDateRange(context, ref, earningsState),
               ),
-              const SizedBox(height: 28),
+              SizedBox(height: 28),
               EarningsTimeFilter(
                 selectedFilter: earningsState.selectedFilter,
                 dateRangeText: dateRangeText,
@@ -52,34 +55,36 @@ class DriverEarningsPage extends ConsumerWidget {
                 onCustomRangeTap: () =>
                     _selectDateRange(context, ref, earningsState),
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
               EarningsSummaryCard(
                 earnings: _formatCurrency(1250000),
                 dateRangeText: dateRangeText,
               ),
-              const SizedBox(height: 16),
-              const Row(
+              SizedBox(height: 16),
+              Row(
                 children: [
                   Expanded(
                     child: EarningsStatisticsCard(
-                      icon: Icons.route_outlined,
-                      label: 'Quãng đường',
+                      icon: Assets.images.icRoute,
+                      label: LocaleKeys.earnings_distance.tr(),
                       value: '186.5 km',
                     ),
                   ),
                   SizedBox(width: 14),
                   Expanded(
                     child: EarningsStatisticsCard(
-                      icon: Icons.local_taxi_outlined,
-                      label: 'Chuyến đi',
-                      value: '24 chuyến',
+                      icon: Assets.images.icCar,
+                      label: LocaleKeys.earnings_trips.tr(),
+                      value: LocaleKeys.earnings_trip_count.tr(
+                        namedArgs: const {'count': '24'},
+                      ),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
               const EarningsChart(data: _weeklyEarnings),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
               const EarningsBreakdownSection(),
             ],
           ),
@@ -100,13 +105,13 @@ class DriverEarningsPage extends ConsumerWidget {
       initialDateRange:
           state.selectedDateRange ??
           DateTimeRange(
-            start: _referenceDate.subtract(const Duration(days: 6)),
+            start: _referenceDate.subtract(Duration(days: 6)),
             end: _referenceDate,
           ),
-      helpText: 'Chọn khoảng thời gian',
-      cancelText: 'Hủy',
-      confirmText: 'Chọn',
-      saveText: 'Lưu',
+      helpText: LocaleKeys.earnings_select_range.tr(),
+      cancelText: LocaleKeys.settings_cancel.tr(),
+      confirmText: LocaleKeys.earnings_select.tr(),
+      saveText: LocaleKeys.earnings_save.tr(),
     );
 
     if (range != null) {

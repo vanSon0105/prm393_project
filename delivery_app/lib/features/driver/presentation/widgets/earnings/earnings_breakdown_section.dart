@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
+import 'package:delivery_app/generated/locale_keys.g.dart';
 
 import '../../../../../core/theme/app_theme.dart';
+import '../../../../../gen/assets.gen.dart';
 
 class EarningsBreakdownSection extends StatelessWidget {
   const EarningsBreakdownSection({super.key});
@@ -9,36 +12,40 @@ class EarningsBreakdownSection extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Chi tiết thu nhập',
+              LocaleKeys.earnings_breakdown.tr(),
               style: Theme.of(context).textTheme.titleMedium,
             ),
-            const SizedBox(height: 18),
+            SizedBox(height: 18),
             _row(
-              Icons.local_taxi_outlined,
-              'Thu nhập chuyến xe',
+              Assets.images.icCar,
+              LocaleKeys.earnings_trip_income.tr(),
               '1.100.000 ₫',
             ),
-            const SizedBox(height: 14),
-            _row(Icons.card_giftcard_outlined, 'Thưởng', '200.000 ₫'),
-            const SizedBox(height: 14),
+            SizedBox(height: 14),
             _row(
-              Icons.receipt_long_outlined,
-              'Phí nền tảng',
+              Assets.images.icGift,
+              LocaleKeys.earnings_bonus.tr(),
+              '200.000 ₫',
+            ),
+            SizedBox(height: 14),
+            _row(
+              Assets.images.icReceipt,
+              LocaleKeys.earnings_platform_fee.tr(),
               '-50.000 ₫',
               valueColor: AppColors.danger,
             ),
-            const Padding(
+            Padding(
               padding: EdgeInsets.symmetric(vertical: 16),
               child: Divider(height: 1),
             ),
             _row(
-              Icons.account_balance_wallet_outlined,
-              'Tổng cộng',
+              Assets.images.icWallet,
+              LocaleKeys.earnings_total.tr(),
               '1.250.000 ₫',
               isTotal: true,
             ),
@@ -49,7 +56,7 @@ class EarningsBreakdownSection extends StatelessWidget {
   }
 
   Widget _row(
-    IconData icon,
+    SvgGenImage icon,
     String label,
     String value, {
     Color? valueColor,
@@ -58,14 +65,21 @@ class EarningsBreakdownSection extends StatelessWidget {
     return Row(
       children: [
         Container(
-          padding: const EdgeInsets.all(8),
+          padding: EdgeInsets.all(8),
           decoration: BoxDecoration(
             color: AppColors.blueSoft,
             borderRadius: BorderRadius.circular(10),
           ),
-          child: Icon(icon, size: 19, color: AppColors.blue),
+          child: icon.svg(
+            width: 19,
+            height: 19,
+            colorFilter: const ColorFilter.mode(
+              AppColors.blue,
+              BlendMode.srcIn,
+            ),
+          ),
         ),
-        const SizedBox(width: 12),
+        SizedBox(width: 12),
         Expanded(
           child: Text(
             label,
@@ -75,7 +89,7 @@ class EarningsBreakdownSection extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(width: 8),
+        SizedBox(width: 8),
         Text(
           value,
           style: TextStyle(
