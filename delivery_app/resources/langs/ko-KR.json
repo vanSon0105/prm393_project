@@ -3,6 +3,10 @@
   "loading_txt": "로딩 중",
   "login_customer_txt": "Customer",
   "login_driver_txt": "Driver",
+  "login_admin_txt": "Admin"
+  "loading_txt": "로딩 중",
+  "login_customer_txt": "Customer",
+  "login_driver_txt": "Driver",
   "login_admin_txt": "Admin",
   "rating_safe_driving": "안전 운전",
   "rating_friendly": "친절함",

@@ -3,6 +3,10 @@
   "loading_txt": "Loading",
   "login_customer_txt": "Customer",
   "login_driver_txt": "Driver",
+  "login_admin_txt": "Admin"
+  "loading_txt": "Loading",
+  "login_customer_txt": "Customer",
+  "login_driver_txt": "Driver",
   "login_admin_txt": "Admin",
   "rating_safe_driving": "Safe driving",
   "rating_friendly": "Friendly",

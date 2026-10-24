@@ -7,6 +7,10 @@
     <color name="background_default_color">#F1F5F9</color>
     <color name="text_color">#0F172A</color>
     <color name="text_color_sub">#64748B</color>
+    <color name="primary">#0F172A</color>
+    <color name="background_default_color">#F1F5F9</color>
+    <color name="text_color">#0F172A</color>
+    <color name="text_color_sub">#64748B</color>
     <color name="page">#DFE6EB</color>
     <color name="surface">#F8FAFC</color>
     <color name="surfaceStrong">#FFFFFF</color>
