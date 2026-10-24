@@ -3,7 +3,7 @@
   "loading_txt": "로딩 중",
   "login_customer_txt": "Customer",
   "login_driver_txt": "Driver",
-  "login_admin_txt": "Admin"
+  "login_admin_txt": "Admin",
   "loading_txt": "로딩 중",
   "login_customer_txt": "Customer",
   "login_driver_txt": "Driver",
@@ -51,7 +51,7 @@
   "profile_customer": "고객",
   "profile_driver": "기사",
   "payment_trip_code": "여행 코드: {code}",
-  "rating_driver_vehicle": "기사 • Honda Wave • 29A-12345"
+  "rating_driver_vehicle": "기사 • Honda Wave • 29A-12345",
   "loading_txt": "로딩 중",
   "login_customer_txt": "Customer",
   "login_driver_txt": "Driver",

@@ -3,7 +3,7 @@
   "loading_txt": "Loading",
   "login_customer_txt": "Customer",
   "login_driver_txt": "Driver",
-  "login_admin_txt": "Admin"
+  "login_admin_txt": "Admin",
   "loading_txt": "Loading",
   "login_customer_txt": "Customer",
   "login_driver_txt": "Driver",
@@ -51,7 +51,7 @@
   "profile_customer": "Customer",
   "profile_driver": "Driver",
   "payment_trip_code": "Trip code: {code}",
-  "rating_driver_vehicle": "Driver • Honda Wave • 29A-12345"
+  "rating_driver_vehicle": "Driver • Honda Wave • 29A-12345",
   "loading_txt": "Loading",
   "login_customer_txt": "Customer",
   "login_driver_txt": "Driver",
