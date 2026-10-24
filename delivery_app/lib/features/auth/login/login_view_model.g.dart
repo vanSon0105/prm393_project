@@ -18,7 +18,7 @@ final class LoginViewModelProvider
     : super(
         from: null,
         argument: null,
-        retry: null,
+        retry: disableRetry,
         name: r'loginViewModelProvider',
         isAutoDispose: true,
         dependencies: null,
@@ -33,7 +33,7 @@ final class LoginViewModelProvider
   LoginViewModel create() => LoginViewModel();
 }
 
-String _$loginViewModelHash() => r'8eae888e2d8406b753ede06048b046a8cd9c099a';
+String _$loginViewModelHash() => r'c376a72d398f32dbf9244f97dfbb7bfa669834d9';
 
 abstract class _$LoginViewModel extends $AsyncNotifier<PostResponse> {
   FutureOr<PostResponse> build();

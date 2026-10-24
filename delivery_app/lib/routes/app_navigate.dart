@@ -28,6 +28,18 @@ class AppNavigate extends Navigate {
     await add<void>(route: AppRoute.driverEarnings);
   }
 
+  Future<void> gotoDriverRating() async {
+    await add<void>(route: AppRoute.driverRating);
+  }
+
+  Future<void> gotoTripPayment() async {
+    await add<void>(route: AppRoute.tripPayment);
+  }
+
+  Future<void> gotoEditProfile() async {
+    await add<void>(route: AppRoute.editProfile);
+  }
+
   Future<void> gotoMap() async {
     return replaceAndClearBackStack(route: AppRoute.map);
   }

@@ -50,6 +50,54 @@ final class ApiRepositoryProvider
 
 String _$apiRepositoryHash() => r'46f7a54f9dcb12ce6b788e95af2f8dc412a19a77';
 
+@ProviderFor(authenticationRepository)
+final authenticationRepositoryProvider = AuthenticationRepositoryProvider._();
+
+final class AuthenticationRepositoryProvider
+    extends
+        $FunctionalProvider<
+          AuthenticationRepository,
+          AuthenticationRepository,
+          AuthenticationRepository
+        >
+    with $Provider<AuthenticationRepository> {
+  AuthenticationRepositoryProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'authenticationRepositoryProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$authenticationRepositoryHash();
+
+  @$internal
+  @override
+  $ProviderElement<AuthenticationRepository> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  AuthenticationRepository create(Ref ref) {
+    return authenticationRepository(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(AuthenticationRepository value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<AuthenticationRepository>(value),
+    );
+  }
+}
+
+String _$authenticationRepositoryHash() =>
+    r'188229402afc1365225e8a54b32ae3b89cb20646';
+
 @ProviderFor(appSharePreferences)
 final appSharePreferencesProvider = AppSharePreferencesProvider._();
 
