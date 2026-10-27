@@ -3,6 +3,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:easy_localization_loader/easy_localization_loader.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'config/environment.dart';
@@ -15,6 +16,9 @@ void main() async {
   final prefs = await SharedPreferences.getInstance();
   SharePreferenceRepository sharePreferencesUtils = SharePreferenceRepository(
     prefs,
+  );
+  MapboxOptions.setAccessToken(
+    'pk.eyJ1Ijoia2hpY29ubGluaCIsImEiOiJjbXZxdjRkajcwM2U4MzRxOHl0cWJrcWY5In0.YXbv0d2EYt8nOKCtbhIcqw',
   );
   runApp(
     EasyLocalization(

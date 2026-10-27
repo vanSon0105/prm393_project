@@ -1,4 +1,5 @@
 import 'package:delivery_app/features/admin/presentation/screens/admin_home_page.dart';
+import 'package:delivery_app/features/auth/register/register_screen.dart';
 import 'package:delivery_app/features/detail_delivery/detail_delivery_page.dart';
 import 'package:delivery_app/features/driver/presentation/screens/driver_earnings_page.dart';
 import 'package:delivery_app/features/driver_rating/driver_rating_screen.dart';
@@ -16,6 +17,7 @@ import '../features/splash/splash_page.dart';
 enum AppRoute {
   splash(rawValue: '/splash'),
   login(rawValue: '/login'),
+  register(rawValue: '/register'),
   admin(rawValue: '/admin'),
   driverEarnings(rawValue: '/driver-earnings'),
   driverRating(rawValue: '/driver-rating'),
@@ -44,6 +46,12 @@ GoRouter createAppRouter({String? initialLocation}) => GoRouter(
       path: AppRoute.login.rawValue,
       name: AppRoute.login.rawValue,
       builder: (context, state) => const LoginPage(),
+    ),
+
+    GoRoute(
+      path: AppRoute.register.rawValue,
+      name: AppRoute.register.rawValue,
+      builder: (context, state) => const RegisterScreen(),
     ),
 
     GoRoute(

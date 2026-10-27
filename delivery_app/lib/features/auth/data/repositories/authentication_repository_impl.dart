@@ -1,6 +1,8 @@
 import 'package:delivery_app/data/network/base/provider.dart';
 import 'package:delivery_app/features/auth/domain/repositories/authentication_repository.dart';
 
+import '../../domain/entities/role.dart';
+
 class AuthenticationRepositoryImpl extends AuthenticationRepository {
   final ApiProvider apiProvider;
 
@@ -15,6 +17,11 @@ class AuthenticationRepositoryImpl extends AuthenticationRepository {
   @override
   Future<void> registerAccount() {
     // TODO: implement registerAccount
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<Role> getRoles() async {
     throw UnimplementedError();
   }
 }

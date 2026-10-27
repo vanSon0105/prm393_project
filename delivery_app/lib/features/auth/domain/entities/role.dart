@@ -4,11 +4,11 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/cupertino.dart';
 
 enum Role {
-  admin(value: 1),
-  driver(value: 2),
-  customer(value: 3);
+  admin(value: 'ADMIN'),
+  driver(value: 'DRIVER'),
+  customer(value: 'CUSTOMER');
 
-  final int value;
+  final String value;
 
   const Role({required this.value});
 }

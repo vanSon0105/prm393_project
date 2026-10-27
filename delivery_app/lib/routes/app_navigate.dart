@@ -20,6 +20,10 @@ class AppNavigate extends Navigate {
     return replaceAndClearBackStack(route: AppRoute.login);
   }
 
+  Future<dynamic> gotoRegister() async {
+    return add(route: AppRoute.register);
+  }
+
   Future<void> gotoAdmin() async {
     return replaceAndClearBackStack(route: AppRoute.admin);
   }

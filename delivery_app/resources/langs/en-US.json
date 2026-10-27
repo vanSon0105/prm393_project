@@ -4,6 +4,14 @@
   "login_customer_txt": "Customer",
   "login_driver_txt": "Driver",
   "login_admin_txt": "Admin",
+  "users_role_admin": "Admin",
+  "login_title_welcome": "Hello",
+  "login_sub_title_role": "Choose a role to continue.",
+  "login_phone_label": "Phone number",
+  "login_password_label": "Password",
+  "login_btn_login": "Sign in",
+  "login_no_account_txt": "Don't have an account? ",
+  "login_btn_register": "Register",
   "rating_safe_driving": "Safe driving",
   "rating_friendly": "Friendly",
   "rating_punctual": "On time",
@@ -186,6 +194,5 @@
   "earnings_trip_count": "{count} trips",
   "users_role_all": "All",
   "users_role_customer": "Customer",
-  "users_role_driver": "Driver",
-  "users_role_admin": "Admin"
+  "users_role_driver": "Driver"
 }

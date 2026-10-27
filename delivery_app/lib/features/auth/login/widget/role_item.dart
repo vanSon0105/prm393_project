@@ -1,4 +1,4 @@
-import 'package:delivery_app/features/auth/domain/entities/role_model.dart';
+import 'package:delivery_app/features/auth/domain/entities/role.dart';
 import 'package:delivery_app/gen/colors.gen.dart';
 import 'package:flutter/material.dart';
 

@@ -15,7 +15,7 @@ part 'provider.g.dart';
 Dio dioClient(Ref ref) {
   final dio = Dio(
     BaseOptions(
-      baseUrl: 'https://example.com',
+      baseUrl: 'http://192.168.2.14:8080',
       connectTimeout: const Duration(seconds: 10),
       receiveTimeout: const Duration(seconds: 10),
       headers: {

@@ -5,9 +5,16 @@
 abstract class  LocaleKeys {
   static const login_btn = 'login_btn';
   static const loading_txt = 'loading_txt';
+  static const login_title_welcome = 'login_title_welcome';
+  static const login_sub_title_role = 'login_sub_title_role';
   static const login_customer_txt = 'login_customer_txt';
   static const login_driver_txt = 'login_driver_txt';
   static const login_admin_txt = 'login_admin_txt';
+  static const login_phone_label = 'login_phone_label';
+  static const login_password_label = 'login_password_label';
+  static const login_btn_login = 'login_btn_login';
+  static const login_no_account_txt = 'login_no_account_txt';
+  static const login_btn_register = 'login_btn_register';
   static const rating_safe_driving = 'rating_safe_driving';
   static const rating_friendly = 'rating_friendly';
   static const rating_punctual = 'rating_punctual';
