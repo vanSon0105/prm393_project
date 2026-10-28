@@ -1,3 +1,4 @@
+import 'package:delivery_app/routes/app_navigate.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_theme.dart';
@@ -41,7 +42,11 @@ class AdminOverviewHeader extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 18),
-          const _SettingsButton(),
+          _SettingsButton(
+            onPressed: () {
+              AppNavigate.instance.gotoLogin();
+            },
+          ),
         ],
       ),
     );
@@ -66,7 +71,7 @@ class _SettingsButton extends StatelessWidget {
         child: IconButton(
           padding: EdgeInsets.zero,
           onPressed: onPressed,
-          icon: Assets.images.icSettings.svg(
+          icon: Assets.images.icLogout.svg(
             width: 24,
             height: 24,
             colorFilter: const ColorFilter.mode(

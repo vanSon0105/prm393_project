@@ -1,9 +1,12 @@
+import 'package:delivery_app/features/auth/domain/entities/role.dart';
 import 'package:flutter/material.dart';
 
 import '../base/widget/base/base_navigate.dart';
 import 'app_router.dart';
 
 class AppNavigate extends Navigate {
+  Role role = Role.customer;
+
   static final applicationKey = GlobalKey<NavigatorState>();
   static final AppNavigate instance = AppNavigate._internal();
 

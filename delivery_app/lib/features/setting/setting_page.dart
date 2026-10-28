@@ -36,10 +36,9 @@ class SettingPage extends ConsumerWidget {
               ),
               SizedBox(height: 28),
               AccountSummaryCard(
-                onEditTap: () => _showMessage(
-                  context,
-                  LocaleKeys.settings_edit_profile_demo.tr(),
-                ),
+                onEditTap: () {
+                  AppNavigate.instance.gotoEditProfile();
+                },
               ),
               SizedBox(height: 24),
               SettingSection(
@@ -88,10 +87,9 @@ class SettingPage extends ConsumerWidget {
                     icon: Assets.images.icUserEdit,
                     title: LocaleKeys.settings_update_info.tr(),
                     subtitle: LocaleKeys.settings_profile_address.tr(),
-                    onTap: () => _showMessage(
-                      context,
-                      LocaleKeys.settings_update_demo.tr(),
-                    ),
+                    onTap: () {
+                      AppNavigate.instance.gotoEditProfile();
+                    },
                     trailing: Icon(
                       Icons.chevron_right_rounded,
                       color: AppColors.textSoft,

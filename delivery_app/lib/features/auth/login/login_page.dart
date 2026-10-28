@@ -1,12 +1,20 @@
 import 'package:delivery_app/base/widget/app_scaffold.dart';
+import 'package:delivery_app/features/auth/domain/entities/role.dart';
 import 'package:delivery_app/gen/colors.gen.dart';
 import 'package:delivery_app/generated/locale_keys.g.dart';
 import 'package:delivery_app/routes/app_navigate.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 
-class LoginPage extends StatelessWidget {
+class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
+
+  @override
+  State<LoginPage> createState() => _LoginPageState();
+}
+
+class _LoginPageState extends State<LoginPage> {
+  int selectedIndex = 0;
 
   @override
   Widget build(BuildContext context) {
@@ -108,7 +116,17 @@ class LoginPage extends StatelessWidget {
                 height: 52,
                 child: ElevatedButton(
                   onPressed: () {
-                    AppNavigate.instance.gotoMap();
+                    switch (selectedIndex) {
+                      case 0:
+                        AppNavigate.instance.role = Role.customer;
+                        AppNavigate.instance.gotoMap();
+                      case 1:
+                        AppNavigate.instance.role = Role.driver;
+                        AppNavigate.instance.gotoMap();
+                      case 2:
+                        AppNavigate.instance.role = Role.admin;
+                        AppNavigate.instance.gotoAdmin();
+                    }
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: ColorName.blue,
@@ -162,14 +180,18 @@ class LoginPage extends StatelessWidget {
 
   Widget _buildRoleButton(int index, IconData icon, String label) {
     return GestureDetector(
-      onTap: () {},
+      onTap: () {
+        setState(() {
+          selectedIndex = index;
+        });
+      },
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 16),
         decoration: BoxDecoration(
           color: const Color(0xFFF3F4F6),
           borderRadius: BorderRadius.circular(12),
           border: false ? Border.all(color: Colors.black12, width: 1) : null,
-          boxShadow: false
+          boxShadow: selectedIndex == index
               ? [
                   BoxShadow(
                     color: Colors.black.withOpacity(0.05),
@@ -183,7 +205,9 @@ class LoginPage extends StatelessWidget {
           children: [
             Icon(
               icon,
-              color: false ? const Color(0xFF2F76DB) : Colors.grey,
+              color: selectedIndex == index
+                  ? const Color(0xFF2F76DB)
+                  : Colors.grey,
               size: 24,
             ),
             const SizedBox(height: 8),
@@ -191,8 +215,10 @@ class LoginPage extends StatelessWidget {
               label,
               style: TextStyle(
                 fontSize: 12,
-                fontWeight: false ? FontWeight.bold : FontWeight.normal,
-                color: false ? Colors.black87 : Colors.grey,
+                fontWeight: selectedIndex == index
+                    ? FontWeight.bold
+                    : FontWeight.normal,
+                color: selectedIndex == index ? Colors.black87 : Colors.grey,
               ),
             ),
           ],
