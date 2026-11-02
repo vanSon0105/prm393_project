@@ -1,35 +1,140 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../routes/app_navigate.dart';
 import '../../../shared/theme/app_theme.dart';
 import '../../../shared/widgets/common.dart';
 import '../../../shared/widgets/responsive_auth_layout.dart';
+import 'driver_documents_field.dart';
+import 'driver_terms_provider.dart';
 
 enum AccountType { customer, driver }
 
-class RegisterScreen extends StatefulWidget {
-  const RegisterScreen({super.key});
+enum _DriverDateField { birth, cccdExpiry, insuranceExpiry }
+
+class RegisterScreen extends ConsumerStatefulWidget {
+  const RegisterScreen({super.key, this.initialType = AccountType.customer});
+
+  final AccountType initialType;
 
   @override
-  State<RegisterScreen> createState() => _RegisterScreenState();
+  ConsumerState<RegisterScreen> createState() => _RegisterScreenState();
 }
 
-class _RegisterScreenState extends State<RegisterScreen> {
+class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
   final _addressCtrl = TextEditingController();
   final _plateCtrl = TextEditingController();
+  final _birthDateCtrl = TextEditingController();
+  final _cccdCtrl = TextEditingController();
+  final _cccdExpiryCtrl = TextEditingController();
+  final _licenseNumberCtrl = TextEditingController();
+  final _insuranceExpiryCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
   final _confirmCtrl = TextEditingController();
 
   AccountType _type = AccountType.customer;
-  String _vehicle = 'Xe máy';
+  DateTime? _birthDate;
+  DateTime? _cccdExpiry;
+  DateTime? _insuranceExpiry;
+  String? _licenseClass;
   bool _obscure = true;
   bool _agree = true;
 
-  static const _vehicles = ['Xe máy', 'Ô tô 4 chỗ', 'Xe tải nhỏ'];
-
   bool get _isDriver => _type == AccountType.driver;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialType == AccountType.driver &&
+        ref.read(driverTermsConsentProvider)) {
+      _type = AccountType.driver;
+    }
+  }
+
+  Future<void> _selectType(AccountType type) async {
+    if (type == AccountType.driver && !ref.read(driverTermsConsentProvider)) {
+      final accepted = await AppNavigate.instance.gotoDriverTerms();
+      if (!mounted || accepted != true) return;
+    }
+    setState(() => _type = type);
+  }
+
+  Future<void> _selectDate(_DriverDateField field) async {
+    final today = DateUtils.dateOnly(DateTime.now());
+    final isBirth = field == _DriverDateField.birth;
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: isBirth
+          ? DateTime(today.year - 25, today.month, today.day)
+          : DateTime(today.year + 1, today.month, today.day),
+      firstDate: isBirth ? DateTime(1900) : today.add(const Duration(days: 1)),
+      lastDate: isBirth ? today : DateTime(today.year + 20),
+      helpText: isBirth ? 'Chọn ngày sinh' : 'Chọn ngày hết hạn',
+    );
+    if (!mounted || picked == null) return;
+
+    final formatted =
+        '${picked.day.toString().padLeft(2, '0')}/'
+        '${picked.month.toString().padLeft(2, '0')}/'
+        '${picked.year}';
+    setState(() {
+      switch (field) {
+        case _DriverDateField.birth:
+          _birthDate = picked;
+          _birthDateCtrl.text = formatted;
+        case _DriverDateField.cccdExpiry:
+          _cccdExpiry = picked;
+          _cccdExpiryCtrl.text = formatted;
+        case _DriverDateField.insuranceExpiry:
+          _insuranceExpiry = picked;
+          _insuranceExpiryCtrl.text = formatted;
+      }
+    });
+  }
+
+  String? _validateDriverDate(_DriverDateField field) {
+    final today = DateUtils.dateOnly(DateTime.now());
+    if (field == _DriverDateField.birth) {
+      final birth = _birthDate;
+      if (birth == null) return 'Vui lòng chọn ngày sinh.';
+      var age = today.year - birth.year;
+      if (today.month < birth.month ||
+          (today.month == birth.month && today.day < birth.day)) {
+        age--;
+      }
+      return age < 18 || age > 60 ? 'Tài xế cần từ 18 đến 60 tuổi.' : null;
+    }
+    final expiry = field == _DriverDateField.cccdExpiry
+        ? _cccdExpiry
+        : _insuranceExpiry;
+    if (expiry == null) return 'Vui lòng chọn ngày hết hạn.';
+    return expiry.isAfter(today) ? null : 'Giấy tờ cần còn hiệu lực.';
+  }
+
+  Widget _dateInput({
+    required String label,
+    required TextEditingController controller,
+    required _DriverDateField field,
+  }) {
+    return LabeledField(
+      label: label,
+      child: TextFormField(
+        controller: controller,
+        readOnly: true,
+        onTap: () => _selectDate(field),
+        decoration: const InputDecoration(
+          hintText: 'dd/MM/yyyy',
+          prefixIcon: Icon(Icons.calendar_today_outlined),
+          suffixIcon: Icon(Icons.arrow_drop_down_rounded),
+        ),
+        validator: (_) => _validateDriverDate(field),
+      ),
+    );
+  }
 
   @override
   void dispose() {
@@ -38,6 +143,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
       _phoneCtrl,
       _addressCtrl,
       _plateCtrl,
+      _birthDateCtrl,
+      _cccdCtrl,
+      _cccdExpiryCtrl,
+      _licenseNumberCtrl,
+      _insuranceExpiryCtrl,
       _passCtrl,
       _confirmCtrl,
     ]) {
@@ -47,13 +157,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   void _submit() {
+    if (_isDriver && !ref.read(driverTermsConsentProvider)) {
+      _toast('Vui lòng đọc và đồng ý với điều khoản tài xế trước.');
+      return;
+    }
     if (!_formKey.currentState!.validate()) return;
-    if (!_agree) {
+    if (!_isDriver && !_agree) {
       _toast('Vui lòng đồng ý với điều khoản sử dụng.');
       return;
     }
     if (_isDriver) {
-      _toast('Đã gửi yêu cầu mở tài khoản tài xế. Vui lòng chờ admin duyệt.');
+      _toast('Thông tin hợp lệ. Chức năng gửi hồ sơ tài xế chưa khả dụng.');
     } else {
       _toast('Đăng ký thành công! Mời bạn đăng nhập.');
       Navigator.maybePop(context);
@@ -104,7 +218,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             ),
 
             // Tab Khách hàng / Tài xế
-            _Segment(value: _type, onChanged: (t) => setState(() => _type = t)),
+            _Segment(value: _type, onChanged: _selectType),
             const SizedBox(height: 22),
 
             LabeledField(
@@ -159,10 +273,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         size,
                         LabeledField(
                           label: 'Loại xe',
-                          child: _VehiclePicker(
-                            value: _vehicle,
-                            options: _vehicles,
-                            onChanged: (v) => setState(() => _vehicle = v),
+                          child: const InputDecorator(
+                            decoration: InputDecoration(
+                              prefixIcon: Icon(Icons.two_wheeler_rounded),
+                            ),
+                            child: Text(
+                              'Xe máy',
+                              style: TextStyle(fontSize: 16),
+                            ),
                           ),
                         ),
                         LabeledField(
@@ -187,6 +305,99 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   : const SizedBox(width: double.infinity),
             ),
             const SizedBox(height: 16),
+
+            if (_isDriver) ...[
+              const Divider(height: 32),
+              const Text(
+                'Hồ sơ và giấy tờ tài xế',
+                style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'Điền thông tin trên giấy tờ và chọn ảnh rõ nét để hoàn thiện hồ sơ.',
+                style: TextStyle(color: AppColors.muted),
+              ),
+              const SizedBox(height: 20),
+              _pair(
+                size,
+                _dateInput(
+                  label: 'Ngày sinh *',
+                  controller: _birthDateCtrl,
+                  field: _DriverDateField.birth,
+                ),
+                LabeledField(
+                  label: 'Số CCCD *',
+                  child: TextFormField(
+                    controller: _cccdCtrl,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly,
+                      LengthLimitingTextInputFormatter(12),
+                    ],
+                    decoration: const InputDecoration(
+                      hintText: '12 chữ số',
+                      prefixIcon: Icon(Icons.badge_outlined),
+                    ),
+                    validator: (value) =>
+                        RegExp(r'^\d{12}$').hasMatch(value?.trim() ?? '')
+                        ? null
+                        : 'CCCD cần có đúng 12 chữ số.',
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              _pair(
+                size,
+                _dateInput(
+                  label: 'Ngày hết hạn CCCD *',
+                  controller: _cccdExpiryCtrl,
+                  field: _DriverDateField.cccdExpiry,
+                ),
+                LabeledField(
+                  label: 'Số giấy phép lái xe *',
+                  child: TextFormField(
+                    controller: _licenseNumberCtrl,
+                    decoration: const InputDecoration(
+                      hintText: 'Nhập số giấy phép',
+                      prefixIcon: Icon(Icons.credit_card_outlined),
+                    ),
+                    validator: (value) => Validators.notEmpty(
+                      value,
+                      'Vui lòng nhập số giấy phép lái xe.',
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              _pair(
+                size,
+                LabeledField(
+                  label: 'Hạng giấy phép lái xe *',
+                  child: DropdownButtonFormField<String>(
+                    initialValue: _licenseClass,
+                    decoration: const InputDecoration(
+                      prefixIcon: Icon(Icons.two_wheeler_outlined),
+                    ),
+                    hint: const Text('Chọn hạng'),
+                    items: const [
+                      DropdownMenuItem(value: 'A1', child: Text('A1')),
+                      DropdownMenuItem(value: 'A2', child: Text('A2')),
+                    ],
+                    onChanged: (value) => setState(() => _licenseClass = value),
+                    validator: (value) =>
+                        value == null ? 'Vui lòng chọn hạng giấy phép.' : null,
+                  ),
+                ),
+                _dateInput(
+                  label: 'Ngày hết hạn bảo hiểm xe *',
+                  controller: _insuranceExpiryCtrl,
+                  field: _DriverDateField.insuranceExpiry,
+                ),
+              ),
+              const SizedBox(height: 22),
+              DriverDocumentsField(),
+              const SizedBox(height: 16),
+            ],
 
             _pair(
               size,
@@ -227,31 +438,46 @@ class _RegisterScreenState extends State<RegisterScreen> {
             ),
             const SizedBox(height: 8),
 
-            Row(
-              children: [
-                Checkbox(
-                  value: _agree,
-                  activeColor: AppColors.primary,
-                  onChanged: (v) => setState(() => _agree = v ?? false),
+            if (_isDriver)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 12),
+                child: Row(
+                  children: [
+                    Icon(Icons.verified_rounded, color: AppColors.primary),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text('Đã đồng ý với điều khoản dành cho tài xế'),
+                    ),
+                  ],
                 ),
-                const Expanded(
-                  child: Text(
-                    'Tôi đồng ý với điều khoản sử dụng',
-                    style: TextStyle(color: AppColors.muted),
+              )
+            else
+              Row(
+                children: [
+                  Checkbox(
+                    value: _agree,
+                    activeColor: AppColors.primary,
+                    onChanged: (v) => setState(() => _agree = v ?? false),
                   ),
-                ),
-              ],
-            ),
+                  const Expanded(
+                    child: Text(
+                      'Tôi đồng ý với điều khoản sử dụng',
+                      style: TextStyle(color: AppColors.muted),
+                    ),
+                  ),
+                ],
+              ),
             const SizedBox(height: 16),
 
             ElevatedButton(
               onPressed: _submit,
-              child: const Text('Gửi đăng ký'),
+              child: Text(_isDriver ? 'Kiểm tra thông tin' : 'Gửi đăng ký'),
             ),
             const SizedBox(height: 12),
 
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+            Wrap(
+              alignment: WrapAlignment.center,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 const Text(
                   'Đã có tài khoản?',
@@ -326,35 +552,6 @@ class _Segment extends StatelessWidget {
           tab(AccountType.customer, 'Khách hàng'),
           tab(AccountType.driver, 'Tài xế'),
         ],
-      ),
-    );
-  }
-}
-
-/// Chọn loại xe
-class _VehiclePicker extends StatelessWidget {
-  const _VehiclePicker({
-    required this.value,
-    required this.options,
-    required this.onChanged,
-  });
-  final String value;
-  final List<String> options;
-  final ValueChanged<String> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return PopupMenuButton<String>(
-      onSelected: onChanged,
-      itemBuilder: (_) => [
-        for (final o in options) PopupMenuItem(value: o, child: Text(o)),
-      ],
-      child: InputDecorator(
-        decoration: const InputDecoration(
-          prefixIcon: Icon(Icons.two_wheeler_rounded),
-          suffixIcon: Icon(Icons.expand_more_rounded),
-        ),
-        child: Text(value, style: const TextStyle(fontSize: 16)),
       ),
     );
   }

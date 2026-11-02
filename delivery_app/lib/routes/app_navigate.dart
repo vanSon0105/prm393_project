@@ -1,5 +1,6 @@
 import 'package:delivery_app/features/auth/domain/entities/role.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../base/widget/base/base_navigate.dart';
 import 'app_router.dart';
@@ -23,12 +24,15 @@ class AppNavigate extends Navigate {
     return replaceAndClearBackStack(route: AppRoute.login);
   }
 
-  Future<void> gotoScreenBy({required AppRoute screen}) {
-    return replaceAndClearBackStack(route: screen);
+  Future<dynamic> gotoRegister({bool asDriver = false}) async {
+    if (asDriver) {
+      return currentContext.push('${AppRoute.register.rawValue}?type=driver');
+    }
+    return add(route: AppRoute.register);
   }
 
-  Future<dynamic> gotoRegister() async {
-    return add(route: AppRoute.register);
+  Future<bool?> gotoDriverTerms() async {
+    return add<bool>(route: AppRoute.driverTerms);
   }
 
   Future<void> gotoAdmin() async {
