@@ -23,10 +23,10 @@
 
    Run the Flutter command from `delivery_app`. The phone and computer must be on the same Wi-Fi. For an Android emulator, use `http://10.0.2.2:8080` instead of a Wi-Fi IP.
 
-`GET /api/admin/drivers` returns an array of approved drivers (`active = 1`). Each item has `driver_id`, `full_name`, `phone_number`, `address`, `avatar_url`, and document image URLs. The endpoint currently has no authentication middleware and does not provide a vehicle plate, rating, or online status.
+`GET /api/admin/drivers` returns approved drivers (`active = 1`). `GET /api/admin/drivers/requests` returns pending drivers and excludes rejected applications. Each item has `driver_id`, `full_name`, `phone_number`, `address`, `avatar_url`, and document image URLs. `POST /api/admin/drivers/{id}/approve` takes `driver_id` and `status`; `reason` is required only when `status` is `false`. The endpoint currently has no authentication middleware and does not provide a vehicle plate, rating, or online status.
 
 Set `PUBLIC_BASE_URL` when the API is behind a container or proxy so returned image URLs point to the address the phone can reach.
 
 Flutter web served from `localhost` or `127.0.0.1` is allowed to call the API. For another web origin, add its full origin to the comma-separated `CORS_ALLOWED_ORIGINS` environment variable.
 
-The Flutter Admin Drivers tab calls this endpoint. Other Admin widgets still use sample data.
+The Flutter Admin Drivers and Requests tabs call these endpoints. The Admin dashboard and other widgets still use sample data.

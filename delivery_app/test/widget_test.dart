@@ -3,6 +3,8 @@ import 'package:delivery_app/features/admin/presentation/providers/admin_users_p
 import 'package:delivery_app/features/driver/presentation/providers/driver_earnings_provider.dart';
 import 'package:delivery_app/features/driver/presentation/providers/driver_provider.dart';
 import 'package:delivery_app/features/driver/domain/entities/admin_driver.dart';
+import 'package:delivery_app/features/driver/domain/entities/admin_driver_request.dart';
+import 'package:delivery_app/features/driver/domain/repositories/admin_driver_repository.dart';
 import 'package:delivery_app/features/setting/setting_provider.dart';
 import 'package:delivery_app/routes/app_router.dart';
 import 'package:flutter/material.dart';
@@ -68,6 +70,7 @@ void main() {
   });
 
   testWidgets('Admin can switch between the four screens', (tester) async {
+    final adminRepository = _TestAdminDriverRepository();
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -83,6 +86,7 @@ void main() {
         child: Builder(
           builder: (context) => ProviderScope(
             overrides: [
+              adminDriverRepositoryProvider.overrideWithValue(adminRepository),
               adminDriversProvider.overrideWith(
                 (ref) async => const [
                   AdminDriver(
@@ -127,11 +131,13 @@ void main() {
     expect(find.text('Lê Hoàng'), findsNothing);
 
     await tester.tap(find.byKey(const ValueKey('admin-nav-requests')));
-    await tester.pump();
+    await tester.pumpAndSettle();
     expect(find.text('Yêu cầu mở\ntài khoản'), findsOneWidget);
 
     await tester.tap(find.text('Duyệt').first);
-    await tester.pump();
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Duyệt').last);
+    await tester.pumpAndSettle();
     expect(find.text('Đỗ Quang Huy'), findsNothing);
 
     await tester.tap(find.byKey(const ValueKey('admin-nav-users')));
@@ -139,4 +145,35 @@ void main() {
     expect(find.text('User management'), findsOneWidget);
     expect(find.text('6 users'), findsOneWidget);
   });
+}
+
+class _TestAdminDriverRepository implements AdminDriverRepository {
+  final requests = <AdminDriverRequest>[
+    const AdminDriverRequest(
+      id: 8,
+      name: 'Đỗ Quang Huy',
+      phone: '0907712244',
+      address: 'Quận 1',
+      avatarUrl: '',
+      licenseFrontUrl: '',
+      licenseBackUrl: '',
+      identityFrontUrl: '',
+      identityBackUrl: '',
+    ),
+  ];
+
+  @override
+  Future<List<AdminDriver>> getDrivers() async => [];
+
+  @override
+  Future<List<AdminDriverRequest>> getRequests() async => [...requests];
+
+  @override
+  Future<void> reviewRequest({
+    required int driverId,
+    required bool approved,
+    String reason = '',
+  }) async {
+    requests.removeWhere((request) => request.id == driverId);
+  }
 }

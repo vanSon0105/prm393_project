@@ -32,7 +32,10 @@ class AdminHomePage extends ConsumerWidget {
                 DriverListPage(onBack: () => navigation.select(0))
               else
                 const SizedBox.shrink(),
-              DriverRequestsPage(onBack: () => navigation.select(0)),
+              if (selectedIndex == 2)
+                DriverRequestsPage(onBack: () => navigation.select(0))
+              else
+                const SizedBox.shrink(),
               const UserManagementPage(),
             ],
           ),

@@ -6,6 +6,7 @@ import '../../data/datasources/driver_remote_datasource.dart';
 import '../../data/repositories/admin_driver_repository_impl.dart';
 import '../../data/repositories/driver_repository_impl.dart';
 import '../../domain/entities/admin_driver.dart';
+import '../../domain/entities/admin_driver_request.dart';
 import '../../domain/entities/driver.dart';
 import '../../domain/repositories/admin_driver_repository.dart';
 import '../../domain/repositories/driver_repository.dart';
@@ -44,6 +45,44 @@ final adminDriverRepositoryProvider = Provider<AdminDriverRepository>((ref) {
 final adminDriversProvider = FutureProvider<List<AdminDriver>>((ref) {
   return ref.watch(adminDriverRepositoryProvider).getDrivers();
 });
+
+final adminDriverRequestsProvider = FutureProvider<List<AdminDriverRequest>>((
+  ref,
+) {
+  return ref.watch(adminDriverRepositoryProvider).getRequests();
+});
+
+class AdminDriverReviewNotifier extends Notifier<Set<int>> {
+  @override
+  Set<int> build() => {};
+
+  Future<void> review({
+    required int driverId,
+    required bool approved,
+    String reason = '',
+  }) async {
+    if (state.contains(driverId)) return;
+    state = {...state, driverId};
+    try {
+      await ref
+          .read(adminDriverRepositoryProvider)
+          .reviewRequest(
+            driverId: driverId,
+            approved: approved,
+            reason: reason,
+          );
+      ref.invalidate(adminDriverRequestsProvider);
+      if (approved) ref.invalidate(adminDriversProvider);
+    } finally {
+      state = {...state}..remove(driverId);
+    }
+  }
+}
+
+final adminDriverReviewProvider =
+    NotifierProvider<AdminDriverReviewNotifier, Set<int>>(
+      AdminDriverReviewNotifier.new,
+    );
 
 final filteredAdminDriversProvider = Provider<AsyncValue<List<AdminDriver>>>((
   ref,
