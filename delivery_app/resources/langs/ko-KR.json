@@ -6,7 +6,7 @@
   "login_customer_txt": "고객",
   "login_driver_txt": "운전기사",
   "login_admin_txt": "관리자",
-  "login_phone_label": "전화번호",
+  "login_phone_label": "사용자 이름",
   "login_password_label": "비밀번호",
   "login_btn_login": "로그인",
   "login_no_account_txt": "계정이 없으신가요? ",

@@ -16,8 +16,16 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  final userController = TextEditingController(text: 'Customer');
-  final passController = TextEditingController(text: 'qwer1212!');
+  final userController = TextEditingController();
+  final passController = TextEditingController();
+
+  @override
+  void dispose() {
+    userController.dispose();
+    passController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
@@ -115,7 +123,7 @@ class _LoginPageState extends State<LoginPage> {
               ),
               const SizedBox(height: 8),
               _buildTextField(
-                hintText: '090 123 4567',
+                hintText: 'driver, customer, admin',
                 icon: Icons.account_circle_outlined,
                 controller: userController,
               ),
@@ -174,7 +182,7 @@ class _LoginPageState extends State<LoginPage> {
               const SizedBox(height: 24),
               Consumer(
                 builder: (context, ref, child) {
-                  final loginState = ref.read(loginViewModelProvider);
+                  final loginState = ref.watch(loginViewModelProvider);
                   return Center(
                     child: InkWell(
                       onTap: () async {
