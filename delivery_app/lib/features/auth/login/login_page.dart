@@ -172,38 +172,45 @@ class _LoginPageState extends State<LoginPage> {
                 ),
               ),
               const SizedBox(height: 24),
-              Center(
-                child: InkWell(
-                  onTap: () async {
-                    if (selectedIndex == 1) {
-                      final accepted = await AppNavigate.instance
-                          .gotoDriverTerms();
-                      if (accepted == true && context.mounted) {
-                        await AppNavigate.instance.gotoRegister(asDriver: true);
-                      }
-                    } else {
-                      await AppNavigate.instance.gotoRegister();
-                    }
-                  },
-                  child: RichText(
-                    text: TextSpan(
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: ColorName.black,
-                      ),
-                      children: [
-                        TextSpan(text: LocaleKeys.login_no_account_txt.tr()),
-                        TextSpan(
-                          text: LocaleKeys.login_btn_register.tr(),
+              Consumer(
+                builder: (context, ref, child) {
+                  final loginState = ref.read(loginViewModelProvider);
+                  return Center(
+                    child: InkWell(
+                      onTap: () async {
+                        if (loginState.currentRole == Role.driver) {
+                          final accepted = await AppNavigate.instance
+                              .gotoDriverTerms();
+                          if (accepted == true && context.mounted) {
+                            AppNavigate.instance.gotoRegister(asDriver: true);
+                          }
+                        } else {
+                          AppNavigate.instance.gotoRegister();
+                        }
+                      },
+                      child: RichText(
+                        text: TextSpan(
                           style: const TextStyle(
-                            color: ColorName.blue,
-                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                            color: ColorName.black,
                           ),
+                          children: [
+                            TextSpan(
+                              text: LocaleKeys.login_no_account_txt.tr(),
+                            ),
+                            TextSpan(
+                              text: LocaleKeys.login_btn_register.tr(),
+                              style: const TextStyle(
+                                color: ColorName.blue,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
-                  ),
-                ),
+                  );
+                },
               ),
             ],
           ),
