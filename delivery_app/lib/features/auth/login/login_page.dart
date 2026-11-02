@@ -174,7 +174,7 @@ class _LoginPageState extends State<LoginPage> {
               const SizedBox(height: 24),
               Consumer(
                 builder: (context, ref, child) {
-                  final loginState = ref.read(loginViewModelProvider);
+                  final loginState = ref.watch(loginViewModelProvider);
                   return Center(
                     child: InkWell(
                       onTap: () async {

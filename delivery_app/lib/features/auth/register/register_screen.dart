@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../routes/app_navigate.dart';
@@ -26,21 +25,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
-  final _addressCtrl = TextEditingController();
   final _plateCtrl = TextEditingController();
-  final _birthDateCtrl = TextEditingController();
-  final _cccdCtrl = TextEditingController();
-  final _cccdExpiryCtrl = TextEditingController();
-  final _licenseNumberCtrl = TextEditingController();
-  final _insuranceExpiryCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
   final _confirmCtrl = TextEditingController();
 
   AccountType _type = AccountType.customer;
-  DateTime? _birthDate;
-  DateTime? _cccdExpiry;
-  DateTime? _insuranceExpiry;
-  String? _licenseClass;
   bool _obscure = true;
   bool _agree = true;
 
@@ -63,91 +52,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     setState(() => _type = type);
   }
 
-  Future<void> _selectDate(_DriverDateField field) async {
-    final today = DateUtils.dateOnly(DateTime.now());
-    final isBirth = field == _DriverDateField.birth;
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: isBirth
-          ? DateTime(today.year - 25, today.month, today.day)
-          : DateTime(today.year + 1, today.month, today.day),
-      firstDate: isBirth ? DateTime(1900) : today.add(const Duration(days: 1)),
-      lastDate: isBirth ? today : DateTime(today.year + 20),
-      helpText: isBirth ? 'Chọn ngày sinh' : 'Chọn ngày hết hạn',
-    );
-    if (!mounted || picked == null) return;
-
-    final formatted =
-        '${picked.day.toString().padLeft(2, '0')}/'
-        '${picked.month.toString().padLeft(2, '0')}/'
-        '${picked.year}';
-    setState(() {
-      switch (field) {
-        case _DriverDateField.birth:
-          _birthDate = picked;
-          _birthDateCtrl.text = formatted;
-        case _DriverDateField.cccdExpiry:
-          _cccdExpiry = picked;
-          _cccdExpiryCtrl.text = formatted;
-        case _DriverDateField.insuranceExpiry:
-          _insuranceExpiry = picked;
-          _insuranceExpiryCtrl.text = formatted;
-      }
-    });
-  }
-
-  String? _validateDriverDate(_DriverDateField field) {
-    final today = DateUtils.dateOnly(DateTime.now());
-    if (field == _DriverDateField.birth) {
-      final birth = _birthDate;
-      if (birth == null) return 'Vui lòng chọn ngày sinh.';
-      var age = today.year - birth.year;
-      if (today.month < birth.month ||
-          (today.month == birth.month && today.day < birth.day)) {
-        age--;
-      }
-      return age < 18 || age > 60 ? 'Tài xế cần từ 18 đến 60 tuổi.' : null;
-    }
-    final expiry = field == _DriverDateField.cccdExpiry
-        ? _cccdExpiry
-        : _insuranceExpiry;
-    if (expiry == null) return 'Vui lòng chọn ngày hết hạn.';
-    return expiry.isAfter(today) ? null : 'Giấy tờ cần còn hiệu lực.';
-  }
-
-  Widget _dateInput({
-    required String label,
-    required TextEditingController controller,
-    required _DriverDateField field,
-  }) {
-    return LabeledField(
-      label: label,
-      child: TextFormField(
-        controller: controller,
-        readOnly: true,
-        onTap: () => _selectDate(field),
-        decoration: const InputDecoration(
-          hintText: 'dd/MM/yyyy',
-          prefixIcon: Icon(Icons.calendar_today_outlined),
-          suffixIcon: Icon(Icons.arrow_drop_down_rounded),
-        ),
-        validator: (_) => _validateDriverDate(field),
-      ),
-    );
-  }
-
   @override
   void dispose() {
     for (final c in [
       _nameCtrl,
       _phoneCtrl,
-      _addressCtrl,
       _plateCtrl,
-      _birthDateCtrl,
-      _cccdCtrl,
-      _cccdExpiryCtrl,
-      _licenseNumberCtrl,
-      _insuranceExpiryCtrl,
       _passCtrl,
       _confirmCtrl,
     ]) {
@@ -250,19 +160,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               ),
             ),
             const SizedBox(height: 16),
-
-            LabeledField(
-              label: 'Địa chỉ thường dùng',
-              child: TextFormField(
-                controller: _addressCtrl,
-                textInputAction: TextInputAction.next,
-                decoration: const InputDecoration(
-                  hintText: '12 Nguyễn Huệ, Quận 1',
-                  prefixIcon: Icon(Icons.location_on_outlined),
-                ),
-              ),
-            ),
-
             // Chỉ hiện khi chọn Tài xế
             AnimatedSize(
               duration: const Duration(milliseconds: 200),
@@ -318,83 +215,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 style: TextStyle(color: AppColors.muted),
               ),
               const SizedBox(height: 20),
-              _pair(
-                size,
-                _dateInput(
-                  label: 'Ngày sinh *',
-                  controller: _birthDateCtrl,
-                  field: _DriverDateField.birth,
-                ),
-                LabeledField(
-                  label: 'Số CCCD *',
-                  child: TextFormField(
-                    controller: _cccdCtrl,
-                    keyboardType: TextInputType.number,
-                    inputFormatters: [
-                      FilteringTextInputFormatter.digitsOnly,
-                      LengthLimitingTextInputFormatter(12),
-                    ],
-                    decoration: const InputDecoration(
-                      hintText: '12 chữ số',
-                      prefixIcon: Icon(Icons.badge_outlined),
-                    ),
-                    validator: (value) =>
-                        RegExp(r'^\d{12}$').hasMatch(value?.trim() ?? '')
-                        ? null
-                        : 'CCCD cần có đúng 12 chữ số.',
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              _pair(
-                size,
-                _dateInput(
-                  label: 'Ngày hết hạn CCCD *',
-                  controller: _cccdExpiryCtrl,
-                  field: _DriverDateField.cccdExpiry,
-                ),
-                LabeledField(
-                  label: 'Số giấy phép lái xe *',
-                  child: TextFormField(
-                    controller: _licenseNumberCtrl,
-                    decoration: const InputDecoration(
-                      hintText: 'Nhập số giấy phép',
-                      prefixIcon: Icon(Icons.credit_card_outlined),
-                    ),
-                    validator: (value) => Validators.notEmpty(
-                      value,
-                      'Vui lòng nhập số giấy phép lái xe.',
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              _pair(
-                size,
-                LabeledField(
-                  label: 'Hạng giấy phép lái xe *',
-                  child: DropdownButtonFormField<String>(
-                    initialValue: _licenseClass,
-                    decoration: const InputDecoration(
-                      prefixIcon: Icon(Icons.two_wheeler_outlined),
-                    ),
-                    hint: const Text('Chọn hạng'),
-                    items: const [
-                      DropdownMenuItem(value: 'A1', child: Text('A1')),
-                      DropdownMenuItem(value: 'A2', child: Text('A2')),
-                    ],
-                    onChanged: (value) => setState(() => _licenseClass = value),
-                    validator: (value) =>
-                        value == null ? 'Vui lòng chọn hạng giấy phép.' : null,
-                  ),
-                ),
-                _dateInput(
-                  label: 'Ngày hết hạn bảo hiểm xe *',
-                  controller: _insuranceExpiryCtrl,
-                  field: _DriverDateField.insuranceExpiry,
-                ),
-              ),
-              const SizedBox(height: 22),
               DriverDocumentsField(),
               const SizedBox(height: 16),
             ],

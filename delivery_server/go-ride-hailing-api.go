@@ -787,11 +787,10 @@ func loginUser(w http.ResponseWriter, r *http.Request) {
 	`
 	err = db.QueryRow(queryProfile, req.UserName).Scan(&profileID, &dbPassword, &dbRoleValue)
 
-	// Định nghĩa một thông báo lỗi chung duy nhất để tránh lộ thông tin tài khoản tồn tại
 	invalidCredentialsError := map[string]string{"error": "Tài khoản hoặc mật khẩu không chính xác"}
 
 	if err == sql.ErrNoRows {
-		w.WriteHeader(http.StatusUnauthorized) // Đổi từ 404 sang 411 để đồng nhất
+		w.WriteHeader(http.StatusUnauthorized)
 		json.NewEncoder(w).Encode(invalidCredentialsError)
 		return
 	} else if err != nil {
@@ -800,9 +799,8 @@ func loginUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// SỬA ĐỔI: Kiểm tra mật khẩu VÀ quyền truy cập cùng một lúc trước khi trả về lỗi
 	if dbPassword != req.Password || req.Role != dbRoleValue {
-		w.WriteHeader(http.StatusUnauthorized) // Trả về mã 411 Unauthorized cho cả 2 trường hợp sai mật khẩu hoặc sai role
+		w.WriteHeader(http.StatusUnauthorized)
 		json.NewEncoder(w).Encode(invalidCredentialsError)
 		return
 	}
@@ -858,6 +856,16 @@ func loginUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func registerUser(w http.ResponseWriter, r *http.Request) {
+	type RegisterRequest struct {
+		UserName                   string `json:"user_name"`
+		Password                   string `json:"password"`
+		Role                       string `json:"role"`
+		DrivingLicenseFrontSide    string `json:"driving_license_front_side,omitempty"`
+		DrivingLicenseBackSide     string `json:"driving_license_back_side,omitempty"`
+		FrontSideOfTheIdentityCard string `json:"front_side_of_the_identity_card,omitempty"`
+		TheBackOfTheIdentityCard   string `json:"the_back_of_the_identity_card,omitempty"`
+	}
+
 	type RegisterResponseDetail struct {
 		ProfileID int    `json:"profile_id"`
 		UserName  string `json:"user_name"`
@@ -883,11 +891,10 @@ func registerUser(w http.ResponseWriter, r *http.Request) {
 	userName := r.FormValue("user_name")
 	password := r.FormValue("password")
 	role := r.FormValue("role")
-	phoneNumber := r.FormValue("phone_number") // Lấy thêm số điện thoại từ request gửi lên
 
-	if userName == "" || password == "" || role == "" || phoneNumber == "" {
+	if userName == "" || password == "" || role == "" {
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Vui lòng nhập đầy đủ user_name, password, role và phone_number"})
+		json.NewEncoder(w).Encode(map[string]string{"error": "Vui lòng nhập đầy đủ user_name, password và role"})
 		return
 	}
 
@@ -903,31 +910,17 @@ func registerUser(w http.ResponseWriter, r *http.Request) {
 	}
 	defer tx.Rollback()
 
-	var userExists int
+	var exists int
 	checkUserQuery := "SELECT COUNT(*) FROM Profile WHERE user_name = ?"
-	err = tx.QueryRowContext(ctx, checkUserQuery, userName).Scan(&userExists)
+	err = tx.QueryRowContext(ctx, checkUserQuery, userName).Scan(&exists)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Lỗi hệ thống khi kiểm tra tài khoản"})
+		json.NewEncoder(w).Encode(map[string]string{"error": "Lỗi kiểm tra tài khoản"})
 		return
 	}
-	if userExists > 0 {
+	if exists > 0 {
 		w.WriteHeader(http.StatusConflict)
 		json.NewEncoder(w).Encode(map[string]string{"error": "Tên tài khoản (userName) này đã tồn tại trên hệ thống"})
-		return
-	}
-
-	var phoneExists int
-	checkPhoneQuery := "SELECT COUNT(*) FROM Profile WHERE phone_number = ?"
-	err = tx.QueryRowContext(ctx, checkPhoneQuery, phoneNumber).Scan(&phoneExists)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Lỗi hệ thống khi kiểm tra số điện thoại"})
-		return
-	}
-	if phoneExists > 0 {
-		w.WriteHeader(http.StatusConflict)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Số điện thoại này đã được đăng ký bởi một tài khoản khác"})
 		return
 	}
 
@@ -940,11 +933,11 @@ func registerUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	profileQuery := "INSERT INTO Profile (user_name, password, phone_number, role_id) VALUES (?, ?, ?, ?)"
-	res, err := tx.ExecContext(ctx, profileQuery, userName, password, phoneNumber, roleID)
+	profileQuery := "INSERT INTO Profile (user_name, password, role_id) VALUES (?, ?, ?)"
+	res, err := tx.ExecContext(ctx, profileQuery, userName, password, roleID)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Lỗi khi lưu hồ sơ người dùng vào cơ sở dữ liệu"})
+		json.NewEncoder(w).Encode(map[string]string{"error": "Lỗi ghi nhận hồ sơ người dùng"})
 		return
 	}
 
@@ -1034,11 +1027,10 @@ func registerUser(w http.ResponseWriter, r *http.Request) {
 		Data map[string]interface{} `json:"data"`
 	}{
 		Data: map[string]interface{}{
-			"profile_id":   newID,
-			"user_name":    userName,
-			"phone_number": phoneNumber,
-			"role":         role,
-			"message":      msg,
+			"profile_id": newID,
+			"user_name":  userName,
+			"role":       role,
+			"message":    msg,
 		},
 	}
 
