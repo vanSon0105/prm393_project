@@ -121,8 +121,9 @@ func main() {
 	fileServer := http.FileServer(http.Dir("./image"))
 	r.PathPrefix("/image/").Handler(http.StripPrefix("/image/", fileServer))
 
-	//Role apis
+	//Role, VehicleType apis
 	r.HandleFunc("/api/getRoles", getRole).Methods("GET")
+	r.HandleFunc("/api/getVehicleType", getVehicleType).Methods("GET")
 
 	// Admin APIs
 	r.HandleFunc("/api/admin/drivers/requests", getDriverRequests).Methods("GET")
@@ -277,8 +278,46 @@ func getRole(w http.ResponseWriter, r *http.Request) {
 	w.Write(jsonData)
 }
 
-// --- Admin Handlers ---
+func getVehicleType(w http.ResponseWriter, r *http.Request) {
+	type VehicleTypeResponse struct {
+		ID   int    `json:"id"`
+		Name string `json:"name"`
+	}
+	rows, _ := db.Query("SELECT id, type FROM VehicleType")
+	var vehicleTypes []VehicleTypeResponse
 
+	for rows.Next() {
+		var id int
+		var typeName string
+		err := rows.Scan(&id, &typeName)
+		if err != nil {
+			continue
+		}
+		vehicleTypes = append(vehicleTypes, VehicleTypeResponse{
+			ID:   id,
+			Name: typeName,
+		})
+	}
+
+	if err := rows.Err(); err != nil {
+		http.Error(w, "Lỗi xử lý luồng dữ liệu cơ sở dữ liệu", http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	w.Header().Set("Content-Type", "application/json")
+	apiResponse := struct {
+		Data []VehicleTypeResponse `json:"data"`
+	}{
+		Data: vehicleTypes,
+	}
+
+	jsonData, _ := json.Marshal(apiResponse)
+	w.WriteHeader(http.StatusOK)
+	w.Write(jsonData)
+}
+
+// --- Admin Handlers ---
 func getDriverRequests(w http.ResponseWriter, r *http.Request) {
 	baseImgURL := fmt.Sprintf("http://%s:8080/image/", getLocalIP())
 	query := `
@@ -860,6 +899,9 @@ func registerUser(w http.ResponseWriter, r *http.Request) {
 		UserName                   string `json:"user_name"`
 		Password                   string `json:"password"`
 		Role                       string `json:"role"`
+		PhoneNumber                string `json:"phone_number"`
+		VehicleID                  string `json:"vehicle_id,omitempty"`
+		LicensePlate               string `json:"license_plate,omitempty"`
 		DrivingLicenseFrontSide    string `json:"driving_license_front_side,omitempty"`
 		DrivingLicenseBackSide     string `json:"driving_license_back_side,omitempty"`
 		FrontSideOfTheIdentityCard string `json:"front_side_of_the_identity_card,omitempty"`
@@ -891,10 +933,11 @@ func registerUser(w http.ResponseWriter, r *http.Request) {
 	userName := r.FormValue("user_name")
 	password := r.FormValue("password")
 	role := r.FormValue("role")
+	phoneNumber := r.FormValue("phone_number")
 
-	if userName == "" || password == "" || role == "" {
+	if userName == "" || password == "" || role == "" || phoneNumber == "" {
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Vui lòng nhập đầy đủ user_name, password và role"})
+		json.NewEncoder(w).Encode(map[string]string{"error": "Vui lòng nhập đầy đủ user_name, password, role và phone_number"})
 		return
 	}
 
@@ -910,17 +953,31 @@ func registerUser(w http.ResponseWriter, r *http.Request) {
 	}
 	defer tx.Rollback()
 
-	var exists int
+	var userExists int
 	checkUserQuery := "SELECT COUNT(*) FROM Profile WHERE user_name = ?"
-	err = tx.QueryRowContext(ctx, checkUserQuery, userName).Scan(&exists)
+	err = tx.QueryRowContext(ctx, checkUserQuery, userName).Scan(&userExists)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(map[string]string{"error": "Lỗi kiểm tra tài khoản"})
 		return
 	}
-	if exists > 0 {
+	if userExists > 0 {
 		w.WriteHeader(http.StatusConflict)
 		json.NewEncoder(w).Encode(map[string]string{"error": "Tên tài khoản (userName) này đã tồn tại trên hệ thống"})
+		return
+	}
+
+	var phoneExists int
+	checkPhoneQuery := "SELECT COUNT(*) FROM Profile WHERE phone_number = ?"
+	err = tx.QueryRowContext(ctx, checkPhoneQuery, phoneNumber).Scan(&phoneExists)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Lỗi kiểm tra số điện thoại"})
+		return
+	}
+	if phoneExists > 0 {
+		w.WriteHeader(http.StatusConflict)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Số điện thoại này đã được đăng ký trên hệ thống"})
 		return
 	}
 
@@ -933,8 +990,8 @@ func registerUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	profileQuery := "INSERT INTO Profile (user_name, password, role_id) VALUES (?, ?, ?)"
-	res, err := tx.ExecContext(ctx, profileQuery, userName, password, roleID)
+	profileQuery := "INSERT INTO Profile (user_name, password, phone_number, role_id) VALUES (?, ?, ?, ?)"
+	res, err := tx.ExecContext(ctx, profileQuery, userName, password, phoneNumber, roleID)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(map[string]string{"error": "Lỗi ghi nhận hồ sơ người dùng"})
@@ -958,6 +1015,15 @@ func registerUser(w http.ResponseWriter, r *http.Request) {
 		msg = "Đăng ký tài khoản Khách hàng thành công!"
 
 	case "DRIVER":
+		vehicleID := r.FormValue("vehicle_id")
+		licensePlate := r.FormValue("license_plate")
+
+		if vehicleID == "" || licensePlate == "" {
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(map[string]string{"error": "Tài xế bắt buộc phải nhập vehicle_id và license_plate"})
+			return
+		}
+
 		saveFormFile := func(formKey, targetName string) error {
 			file, _, err := r.FormFile(formKey)
 			if err != nil {
@@ -1004,14 +1070,15 @@ func registerUser(w http.ResponseWriter, r *http.Request) {
 
 		driverQuery := `
 			INSERT INTO Driver (
-				driver_id, driving_license_front_side, driving_license_back_side, 
-				front_side_of_the_identity_card, the_back_of_the_identity_card, active
-			) VALUES (?, ?, ?, ?, ?, 0)
+				driver_id, vehicle_id, license_plate, driving_license_front_side, 
+				driving_license_back_side, front_side_of_the_identity_card, 
+				the_back_of_the_identity_card, active
+			) VALUES (?, ?, ?, ?, ?, ?, ?, 0)
 		`
-		_, err = tx.ExecContext(ctx, driverQuery, newID, licenseFrontName, licenseBackName, idFrontName, idBackName)
+		_, err = tx.ExecContext(ctx, driverQuery, newID, vehicleID, licensePlate, licenseFrontName, licenseBackName, idFrontName, idBackName)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(map[string]string{"error": "Lỗi lưu hồ sơ tài xế vào cơ sở dữ liệu"})
+			json.NewEncoder(w).Encode(map[string]string{"error": "Lỗi lưu hồ sơ tài xế và phương tiện vào cơ sở dữ liệu"})
 			return
 		}
 		msg = "Đăng ký tài khoản Tài xế và tải lên hồ sơ ảnh thành công! Vui lòng chờ phê duyệt."

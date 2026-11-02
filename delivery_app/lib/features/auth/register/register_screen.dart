@@ -1,21 +1,19 @@
+import 'package:delivery_app/features/auth/domain/entities/role.dart';
+import 'package:delivery_app/features/auth/register/register_state.dart';
+import 'package:delivery_app/features/auth/register/register_view_model.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../routes/app_navigate.dart';
 import '../../../shared/theme/app_theme.dart';
 import '../../../shared/widgets/common.dart';
 import '../../../shared/widgets/responsive_auth_layout.dart';
 import 'driver_documents_field.dart';
-import 'driver_terms_provider.dart';
-
-enum AccountType { customer, driver }
-
-enum _DriverDateField { birth, cccdExpiry, insuranceExpiry }
 
 class RegisterScreen extends ConsumerStatefulWidget {
-  const RegisterScreen({super.key, this.initialType = AccountType.customer});
+  const RegisterScreen({super.key, required this.role});
 
-  final AccountType initialType;
+  final Role role;
 
   @override
   ConsumerState<RegisterScreen> createState() => _RegisterScreenState();
@@ -28,28 +26,19 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _plateCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
   final _confirmCtrl = TextEditingController();
+  final documentsFieldKey =
+      GlobalKey<FormFieldState<Map<DriverDocumentType, PlatformFile>>>();
 
-  AccountType _type = AccountType.customer;
   bool _obscure = true;
   bool _agree = true;
 
-  bool get _isDriver => _type == AccountType.driver;
-
+  RegisterViewModel get viewModel => ref.read(
+    registerViewModelProvider(RegisterState(currentRole: widget.role)).notifier,
+  );
   @override
   void initState() {
     super.initState();
-    if (widget.initialType == AccountType.driver &&
-        ref.read(driverTermsConsentProvider)) {
-      _type = AccountType.driver;
-    }
-  }
-
-  Future<void> _selectType(AccountType type) async {
-    if (type == AccountType.driver && !ref.read(driverTermsConsentProvider)) {
-      final accepted = await AppNavigate.instance.gotoDriverTerms();
-      if (!mounted || accepted != true) return;
-    }
-    setState(() => _type = type);
+    viewModel.getVehicleType();
   }
 
   @override
@@ -64,24 +53,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       c.dispose();
     }
     super.dispose();
-  }
-
-  void _submit() {
-    if (_isDriver && !ref.read(driverTermsConsentProvider)) {
-      _toast('Vui lòng đọc và đồng ý với điều khoản tài xế trước.');
-      return;
-    }
-    if (!_formKey.currentState!.validate()) return;
-    if (!_isDriver && !_agree) {
-      _toast('Vui lòng đồng ý với điều khoản sử dụng.');
-      return;
-    }
-    if (_isDriver) {
-      _toast('Thông tin hợp lệ. Chức năng gửi hồ sơ tài xế chưa khả dụng.');
-    } else {
-      _toast('Đăng ký thành công! Mời bạn đăng nhập.');
-      Navigator.maybePop(context);
-    }
   }
 
   void _toast(String msg) =>
@@ -107,6 +78,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final registerState = ref.watch(
+      registerViewModelProvider(RegisterState(currentRole: widget.role)),
+    );
+
     return ResponsiveAuthLayout(
       cardMaxWidth: 560,
       brandTitle: 'Tham gia Nối\nchỉ trong 1 phút.',
@@ -128,7 +103,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             ),
 
             // Tab Khách hàng / Tài xế
-            _Segment(value: _type, onChanged: _selectType),
+            _Segment(value: registerState.currentRole, onChanged: (role) {}),
             const SizedBox(height: 22),
 
             LabeledField(
@@ -163,7 +138,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             // Chỉ hiện khi chọn Tài xế
             AnimatedSize(
               duration: const Duration(milliseconds: 200),
-              child: _isDriver
+              child: registerState.isDriver
                   ? Padding(
                       padding: const EdgeInsets.only(top: 16),
                       child: _pair(
@@ -189,7 +164,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                               hintText: '59A1 234.56',
                               prefixIcon: Icon(Icons.credit_card_outlined),
                             ),
-                            validator: (v) => _isDriver
+                            validator: (v) => registerState.isDriver
                                 ? Validators.notEmpty(
                                     v,
                                     'Vui lòng nhập biển số xe.',
@@ -203,7 +178,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             ),
             const SizedBox(height: 16),
 
-            if (_isDriver) ...[
+            if (registerState.isDriver) ...[
               const Divider(height: 32),
               const Text(
                 'Hồ sơ và giấy tờ tài xế',
@@ -258,7 +233,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             ),
             const SizedBox(height: 8),
 
-            if (_isDriver)
+            if (registerState.isDriver)
               const Padding(
                 padding: EdgeInsets.symmetric(vertical: 12),
                 child: Row(
@@ -290,8 +265,27 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             const SizedBox(height: 16),
 
             ElevatedButton(
-              onPressed: _submit,
-              child: Text(_isDriver ? 'Kiểm tra thông tin' : 'Gửi đăng ký'),
+              onPressed: () {
+                final isValid =
+                    documentsFieldKey.currentState?.validate() ?? false;
+                if (isValid) {
+                  final Map<DriverDocumentType, PlatformFile>? selectedFiles =
+                      documentsFieldKey.currentState?.value;
+                  if (selectedFiles != null) {
+                    final cccdFrontFile =
+                        selectedFiles[DriverDocumentType.cccdFront];
+                    final cccdBackFile =
+                        selectedFiles[DriverDocumentType.cccdBack];
+                    final licenseFront =
+                        selectedFiles[DriverDocumentType.drivingLicenseFront];
+                    final licenseBack =
+                        selectedFiles[DriverDocumentType.drivingLicenseBack];
+                  }
+                }
+              },
+              child: Text(
+                registerState.isDriver ? 'Kiểm tra thông tin' : 'Gửi đăng ký',
+              ),
             ),
             const SizedBox(height: 12),
 
@@ -322,12 +316,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 /// Tab Khách hàng / Tài xế
 class _Segment extends StatelessWidget {
   const _Segment({required this.value, required this.onChanged});
-  final AccountType value;
-  final ValueChanged<AccountType> onChanged;
+
+  final Role value;
+  final ValueChanged<Role> onChanged;
 
   @override
   Widget build(BuildContext context) {
-    Widget tab(AccountType t, String label) {
+    Widget tab(Role t, String label) {
       final selected = t == value;
       return Expanded(
         child: GestureDetector(
@@ -369,8 +364,8 @@ class _Segment extends StatelessWidget {
       ),
       child: Row(
         children: [
-          tab(AccountType.customer, 'Khách hàng'),
-          tab(AccountType.driver, 'Tài xế'),
+          tab(Role.customer, Role.customer.title),
+          tab(Role.driver, Role.driver.title),
         ],
       ),
     );
