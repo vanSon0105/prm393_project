@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:delivery_app/data/network/base/interceptor.dart';
 import 'package:delivery_app/data/network/base/param.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
@@ -24,7 +25,7 @@ Dio dioClient(Ref ref) {
       },
     ),
   );
-  dio.interceptors.add(LogInterceptor(responseBody: true, requestBody: true));
+  dio.interceptors.add(CustomInterceptor());
 
   return dio;
 }

@@ -1,6 +1,10 @@
-import 'package:delivery_app/data/network/api_posts_sample/post_response.dart';
 import 'package:delivery_app/di/repository_module.dart';
-import 'package:flutter/cupertino.dart';
+import 'package:delivery_app/features/auth/data/repositories/login_param.dart';
+import 'package:delivery_app/features/auth/domain/entities/login_status.dart';
+import 'package:delivery_app/features/auth/domain/entities/role.dart';
+import 'package:delivery_app/features/auth/login/login_state.dart';
+import 'package:delivery_app/routes/app_navigate.dart';
+import 'package:delivery_app/widget/app_loading.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'login_view_model.g.dart';
@@ -10,13 +14,38 @@ Duration? disableRetry(int retryCount, Object error) => null;
 @Riverpod(retry: disableRetry)
 class LoginViewModel extends _$LoginViewModel {
   @override
-  Future<PostResponse> build() async {
-    debugPrint('--------- init login viewmodel');
-    // AppLoading.instance.show();
-    final api = ref.read(apiRepositoryProvider);
-    await Future.delayed(const Duration(seconds: 5));
-    final data = await api.getPostResponse();
-    // AppLoading.instance.dismiss();
-    return data;
+  LoginState build() {
+    return LoginState(Role.customer);
+  }
+
+  void changeRole(Role role) {
+    state = LoginState(role);
+  }
+
+  Future<void> login({
+    required String userName,
+    required String password,
+    required Role role,
+  }) async {
+    try {
+      AppLoading.instance.show();
+      final api = ref.read(authenticationRepositoryProvider);
+      final response = await api.login(
+        param: LoginParam(userName: userName, password: password, role: role),
+      );
+      final status = LoginStatus.valueOf(response.data?.status ?? '');
+      switch (status) {
+        case LoginStatus.approved:
+          AppNavigate.instance.gotoScreenBy(screen: role.screen);
+        case LoginStatus.pending:
+        case LoginStatus.reject:
+          AppNavigate.instance.showAppDialog(
+            message: response.data?.message ?? '',
+          );
+      }
+    } catch (_) {
+    } finally {
+      AppLoading.instance.dismiss();
+    }
   }
 }

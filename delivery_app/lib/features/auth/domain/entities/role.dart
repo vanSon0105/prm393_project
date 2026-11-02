@@ -1,5 +1,6 @@
 import 'package:delivery_app/gen/assets.gen.dart';
 import 'package:delivery_app/generated/locale_keys.g.dart';
+import 'package:delivery_app/routes/app_router.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/cupertino.dart';
 
@@ -33,6 +34,17 @@ extension RoleEx on Role {
         return LocaleKeys.login_driver_txt.tr();
       case Role.customer:
         return LocaleKeys.login_customer_txt.tr();
+    }
+  }
+
+  AppRoute get screen {
+    switch (this) {
+      case Role.admin:
+        return AppRoute.admin;
+      case Role.driver:
+        return AppRoute.map;
+      case Role.customer:
+        return AppRoute.map;
     }
   }
 }

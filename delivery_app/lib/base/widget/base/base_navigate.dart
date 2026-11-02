@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'package:delivery_app/generated/locale_keys.g.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -50,10 +52,10 @@ abstract class Navigate {
   }
 
   void showAppDialog({
-    String title = '',
+    String? title,
     String message = '',
-    String positiveText = '',
-    String negativeText = '',
+    String? positiveText,
+    String? negativeText,
     Function()? onPositiveClicked,
     Function()? onNegativeClicked,
   }) {
@@ -61,10 +63,10 @@ abstract class Navigate {
       context: currentContext,
       builder: (BuildContext context) {
         return ConfirmationDialog(
-          title: title,
+          title: title ?? LocaleKeys.warning_title.tr(),
           message: message,
-          positive: positiveText,
-          negative: negativeText,
+          positive: positiveText ?? LocaleKeys.btn_OK.tr(),
+          negative: negativeText ?? LocaleKeys.btn_cancel.tr(),
           onNegative: onNegativeClicked,
           onPositive: onPositiveClicked,
         );

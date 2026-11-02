@@ -1,10 +1,12 @@
 import 'package:delivery_app/base/widget/app_scaffold.dart';
 import 'package:delivery_app/features/auth/domain/entities/role.dart';
+import 'package:delivery_app/features/auth/login/login_view_model.dart';
 import 'package:delivery_app/gen/colors.gen.dart';
 import 'package:delivery_app/generated/locale_keys.g.dart';
 import 'package:delivery_app/routes/app_navigate.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -14,8 +16,8 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  int selectedIndex = 0;
-
+  final userController = TextEditingController(text: 'Customer');
+  final passController = TextEditingController(text: 'qwer1212!');
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
@@ -56,32 +58,52 @@ class _LoginPageState extends State<LoginPage> {
                 style: const TextStyle(fontSize: 16, color: Colors.grey),
               ),
               const SizedBox(height: 24),
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildRoleButton(
-                      0,
-                      Icons.account_circle_outlined,
-                      LocaleKeys.login_customer_txt.tr(),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _buildRoleButton(
-                      1,
-                      Icons.local_shipping_outlined,
-                      LocaleKeys.login_driver_txt.tr(),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _buildRoleButton(
-                      2,
-                      Icons.settings_outlined,
-                      LocaleKeys.login_admin_txt.tr(),
-                    ),
-                  ),
-                ],
+              Consumer(
+                builder: (context, ref, child) {
+                  final loginState = ref.watch(loginViewModelProvider);
+                  final loginViewModel = ref.read(
+                    loginViewModelProvider.notifier,
+                  );
+                  return Row(
+                    children: [
+                      Expanded(
+                        child: _buildRoleButton(
+                          Role.customer,
+                          loginState.currentRole,
+                          Icons.account_circle_outlined,
+                          LocaleKeys.login_customer_txt.tr(),
+                          () {
+                            loginViewModel.changeRole(Role.customer);
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildRoleButton(
+                          Role.driver,
+                          loginState.currentRole,
+                          Icons.local_shipping_outlined,
+                          LocaleKeys.login_driver_txt.tr(),
+                          () {
+                            loginViewModel.changeRole(Role.driver);
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildRoleButton(
+                          Role.admin,
+                          loginState.currentRole,
+                          Icons.settings_outlined,
+                          LocaleKeys.login_admin_txt.tr(),
+                          () {
+                            loginViewModel.changeRole(Role.admin);
+                          },
+                        ),
+                      ),
+                    ],
+                  );
+                },
               ),
               const SizedBox(height: 32),
               Text(
@@ -95,6 +117,7 @@ class _LoginPageState extends State<LoginPage> {
               _buildTextField(
                 hintText: '090 123 4567',
                 icon: Icons.account_circle_outlined,
+                controller: userController,
               ),
               const SizedBox(height: 24),
               Text(
@@ -107,6 +130,7 @@ class _LoginPageState extends State<LoginPage> {
               const SizedBox(height: 8),
               _buildTextField(
                 hintText: '********',
+                controller: passController,
                 icon: Icons.lock_person_outlined,
                 obscureText: true,
               ),
@@ -114,70 +138,79 @@ class _LoginPageState extends State<LoginPage> {
               SizedBox(
                 width: double.infinity,
                 height: 52,
-                child: ElevatedButton(
-                  onPressed: () {
-                    switch (selectedIndex) {
-                      case 0:
-                        AppNavigate.instance.role = Role.customer;
-                        AppNavigate.instance.gotoMap();
-                      case 1:
-                        AppNavigate.instance.role = Role.driver;
-                        AppNavigate.instance.gotoMap();
-                      case 2:
-                        AppNavigate.instance.role = Role.admin;
-                        AppNavigate.instance.gotoAdmin();
-                    }
+                child: Consumer(
+                  builder: (context, ref, child) {
+                    final loginViewModel = ref.read(
+                      loginViewModelProvider.notifier,
+                    );
+                    final state = ref.read(loginViewModelProvider);
+                    return ElevatedButton(
+                      onPressed: () {
+                        loginViewModel.login(
+                          userName: userController.text,
+                          password: passController.text,
+                          role: state.currentRole,
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: ColorName.blue,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: Text(
+                        LocaleKeys.login_btn_login.tr(),
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    );
                   },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: ColorName.blue,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    elevation: 0,
-                  ),
-                  child: Text(
-                    LocaleKeys.login_btn_login.tr(),
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
                 ),
               ),
               const SizedBox(height: 24),
-              Center(
-                child: InkWell(
-                  onTap: () async {
-                    if (selectedIndex == 1) {
-                      final accepted = await AppNavigate.instance
-                          .gotoDriverTerms();
-                      if (accepted == true && context.mounted) {
-                        await AppNavigate.instance.gotoRegister(asDriver: true);
-                      }
-                    } else {
-                      await AppNavigate.instance.gotoRegister();
-                    }
-                  },
-                  child: RichText(
-                    text: TextSpan(
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: ColorName.black,
-                      ),
-                      children: [
-                        TextSpan(text: LocaleKeys.login_no_account_txt.tr()),
-                        TextSpan(
-                          text: LocaleKeys.login_btn_register.tr(),
+              Consumer(
+                builder: (context, ref, child) {
+                  final loginState = ref.read(loginViewModelProvider);
+                  return Center(
+                    child: InkWell(
+                      onTap: () async {
+                        if (loginState.currentRole == Role.driver) {
+                          final accepted = await AppNavigate.instance
+                              .gotoDriverTerms();
+                          if (accepted == true && context.mounted) {
+                            AppNavigate.instance.gotoRegister(asDriver: true);
+                          }
+                        } else {
+                          AppNavigate.instance.gotoRegister();
+                        }
+                      },
+                      child: RichText(
+                        text: TextSpan(
                           style: const TextStyle(
-                            color: ColorName.blue,
-                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                            color: ColorName.black,
                           ),
+                          children: [
+                            TextSpan(
+                              text: LocaleKeys.login_no_account_txt.tr(),
+                            ),
+                            TextSpan(
+                              text: LocaleKeys.login_btn_register.tr(),
+                              style: const TextStyle(
+                                color: ColorName.blue,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
-                  ),
-                ),
+                  );
+                },
               ),
             ],
           ),
@@ -186,20 +219,24 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  Widget _buildRoleButton(int index, IconData icon, String label) {
+  Widget _buildRoleButton(
+    Role role,
+    Role currentRole,
+    IconData icon,
+    String label,
+    void Function() onTap,
+  ) {
     return GestureDetector(
-      onTap: () {
-        setState(() {
-          selectedIndex = index;
-        });
-      },
+      onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 16),
         decoration: BoxDecoration(
           color: const Color(0xFFF3F4F6),
           borderRadius: BorderRadius.circular(12),
-          border: false ? Border.all(color: Colors.black12, width: 1) : null,
-          boxShadow: selectedIndex == index
+          border: currentRole == role
+              ? Border.all(color: Colors.black12, width: 1)
+              : null,
+          boxShadow: currentRole == role
               ? [
                   BoxShadow(
                     color: Colors.black.withOpacity(0.05),
@@ -213,7 +250,7 @@ class _LoginPageState extends State<LoginPage> {
           children: [
             Icon(
               icon,
-              color: selectedIndex == index
+              color: currentRole == role
                   ? const Color(0xFF2F76DB)
                   : Colors.grey,
               size: 24,
@@ -223,10 +260,10 @@ class _LoginPageState extends State<LoginPage> {
               label,
               style: TextStyle(
                 fontSize: 12,
-                fontWeight: selectedIndex == index
+                fontWeight: currentRole == role
                     ? FontWeight.bold
                     : FontWeight.normal,
-                color: selectedIndex == index ? Colors.black87 : Colors.grey,
+                color: currentRole == role ? Colors.black87 : Colors.grey,
               ),
             ),
           ],
@@ -238,10 +275,12 @@ class _LoginPageState extends State<LoginPage> {
   Widget _buildTextField({
     required String hintText,
     required IconData icon,
+    required TextEditingController controller,
     bool obscureText = false,
   }) {
     return TextField(
       obscureText: obscureText,
+      controller: controller,
       decoration: InputDecoration(
         hintText: hintText,
         hintStyle: const TextStyle(

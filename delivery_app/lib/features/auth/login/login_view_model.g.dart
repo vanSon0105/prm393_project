@@ -13,7 +13,7 @@ part of 'login_view_model.dart';
 final loginViewModelProvider = LoginViewModelProvider._();
 
 final class LoginViewModelProvider
-    extends $AsyncNotifierProvider<LoginViewModel, PostResponse> {
+    extends $NotifierProvider<LoginViewModel, LoginState> {
   LoginViewModelProvider._()
     : super(
         from: null,
@@ -31,21 +31,29 @@ final class LoginViewModelProvider
   @$internal
   @override
   LoginViewModel create() => LoginViewModel();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(LoginState value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<LoginState>(value),
+    );
+  }
 }
 
-String _$loginViewModelHash() => r'c376a72d398f32dbf9244f97dfbb7bfa669834d9';
+String _$loginViewModelHash() => r'c5204fabea40eac006dad1af11b649d9c9e16376';
 
-abstract class _$LoginViewModel extends $AsyncNotifier<PostResponse> {
-  FutureOr<PostResponse> build();
+abstract class _$LoginViewModel extends $Notifier<LoginState> {
+  LoginState build();
   @$mustCallSuper
   @override
   void runBuild() {
-    final ref = this.ref as $Ref<AsyncValue<PostResponse>, PostResponse>;
+    final ref = this.ref as $Ref<LoginState, LoginState>;
     final element =
         ref.element
             as $ClassProviderElement<
-              AnyNotifier<AsyncValue<PostResponse>, PostResponse>,
-              AsyncValue<PostResponse>,
+              AnyNotifier<LoginState, LoginState>,
+              LoginState,
               Object?,
               Object?
             >;
