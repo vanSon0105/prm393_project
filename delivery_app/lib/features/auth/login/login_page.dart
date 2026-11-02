@@ -148,8 +148,16 @@ class _LoginPageState extends State<LoginPage> {
               const SizedBox(height: 24),
               Center(
                 child: InkWell(
-                  onTap: () {
-                    AppNavigate.instance.gotoRegister();
+                  onTap: () async {
+                    if (selectedIndex == 1) {
+                      final accepted = await AppNavigate.instance
+                          .gotoDriverTerms();
+                      if (accepted == true && context.mounted) {
+                        await AppNavigate.instance.gotoRegister(asDriver: true);
+                      }
+                    } else {
+                      await AppNavigate.instance.gotoRegister();
+                    }
                   },
                   child: RichText(
                     text: TextSpan(
