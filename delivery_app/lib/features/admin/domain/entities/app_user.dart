@@ -6,7 +6,6 @@ class AppUser {
     required this.role,
     required this.isActive,
     this.driverId,
-    this.address = '',
   });
 
   final String name;
@@ -15,7 +14,6 @@ class AppUser {
   final String role;
   final bool isActive;
   final int? driverId;
-  final String address;
 
   String get initials {
     final parts = name.trim().split(RegExp(r'\s+'));
@@ -31,7 +29,6 @@ class AppUser {
       role: role,
       isActive: isActive ?? this.isActive,
       driverId: driverId,
-      address: address,
     );
   }
 }

@@ -49,11 +49,11 @@ class UserDetailsSheet extends StatelessWidget {
               if (user.email.isNotEmpty)
                 _detailRow(context, LocaleKeys.profile_email.tr(), user.email),
               _detailRow(context, LocaleKeys.profile_phone.tr(), user.phone),
-              if (user.address.isNotEmpty)
+              if (driver != null && driver!.address.isNotEmpty)
                 _detailRow(
                   context,
                   LocaleKeys.profile_address.tr(),
-                  user.address,
+                  driver!.address,
                 ),
               _detailRow(context, LocaleKeys.profile_role.tr(), _roleLabel()),
               _detailRow(

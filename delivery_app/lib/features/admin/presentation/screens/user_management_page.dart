@@ -33,7 +33,6 @@ class UserManagementPage extends ConsumerWidget {
           role: 'Tài xế',
           isActive: true,
           driverId: driver.id,
-          address: driver.address,
         ),
     ];
     final users = state
