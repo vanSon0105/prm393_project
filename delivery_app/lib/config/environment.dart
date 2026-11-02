@@ -34,7 +34,12 @@ extension Environment on FlavorValue {
   Map<String, String> get _variables {
     switch (this) {
       case FlavorValue.dev:
-        return {_baseUrl: 'http://192.168.2.14:8080'};
+        return {
+          _baseUrl: const String.fromEnvironment(
+            'API_BASE_URL',
+            defaultValue: 'http://192.168.2.14:8080',
+          ),
+        };
       case FlavorValue.prod:
         return {_baseUrl: 'https:prod'};
     }

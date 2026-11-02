@@ -2,6 +2,7 @@ import 'package:delivery_app/features/admin/presentation/screens/admin_home_page
 import 'package:delivery_app/features/admin/presentation/providers/admin_users_provider.dart';
 import 'package:delivery_app/features/driver/presentation/providers/driver_earnings_provider.dart';
 import 'package:delivery_app/features/driver/presentation/providers/driver_provider.dart';
+import 'package:delivery_app/features/driver/domain/entities/admin_driver.dart';
 import 'package:delivery_app/features/setting/setting_provider.dart';
 import 'package:delivery_app/routes/app_router.dart';
 import 'package:flutter/material.dart';
@@ -81,6 +82,26 @@ void main() {
         assetLoader: JsonAssetLoader(),
         child: Builder(
           builder: (context) => ProviderScope(
+            overrides: [
+              adminDriversProvider.overrideWith(
+                (ref) async => const [
+                  AdminDriver(
+                    id: 1,
+                    name: 'Trần Anh',
+                    phone: '0901234567',
+                    address: 'Quận 1',
+                    avatarUrl: '',
+                  ),
+                  AdminDriver(
+                    id: 2,
+                    name: 'Lê Hoàng',
+                    phone: '0918821204',
+                    address: 'Quận 3',
+                    avatarUrl: '',
+                  ),
+                ],
+              ),
+            ],
             child: MaterialApp(
               locale: context.locale,
               supportedLocales: context.supportedLocales,
@@ -97,10 +118,10 @@ void main() {
     expect(find.text('Vận hành'), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey('admin-nav-drivers')));
-    await tester.pump();
+    await tester.pumpAndSettle();
     expect(find.text('Danh sách tài xế'), findsOneWidget);
 
-    await tester.enterText(find.byType(TextField), '59A1');
+    await tester.enterText(find.byType(TextField), '0901');
     await tester.pump();
     expect(find.text('Trần Anh'), findsOneWidget);
     expect(find.text('Lê Hoàng'), findsNothing);

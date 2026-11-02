@@ -15,7 +15,7 @@ class DriverSearchField extends StatelessWidget {
       child: TextField(
         textAlignVertical: TextAlignVertical.center,
         decoration: InputDecoration(
-          hintText: 'Tìm tên hoặc biển số',
+          hintText: 'Tìm tên, số điện thoại hoặc địa chỉ',
           prefixIcon: Padding(
             padding: const EdgeInsets.all(14),
             child: Assets.images.icMoto.svg(
