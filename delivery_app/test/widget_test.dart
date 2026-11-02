@@ -52,21 +52,21 @@ void main() {
     container.read(driverEarningsProvider.notifier).selectFilter('30 ngày');
     expect(container.read(driverEarningsProvider).selectedFilter, '30 ngày');
 
-    container.read(adminUsersProvider.notifier).selectRole('Tài xế');
-    expect(container.read(adminUsersProvider).filteredUsers.length, 2);
+    container.read(adminUsersProvider.notifier).selectRole('Khách hàng');
+    expect(container.read(adminUsersProvider).filteredUsers.length, 3);
 
-    container.read(adminUsersProvider.notifier).updateSearch('lehoang');
+    container.read(adminUsersProvider.notifier).updateSearch('phammai');
     expect(
       container.read(adminUsersProvider).filteredUsers.single.name,
-      'Lê Hoàng',
+      'Phạm Mai',
     );
 
     container
         .read(adminUsersProvider.notifier)
-        .toggleStatus('lehoang@gmail.com');
+        .toggleStatus('phammai@gmail.com');
     expect(
       container.read(adminUsersProvider).filteredUsers.single.isActive,
-      isTrue,
+      isFalse,
     );
   });
 
@@ -96,6 +96,12 @@ void main() {
                     phone: '0901234567',
                     address: 'Quận 1',
                     avatarUrl: '',
+                    documents: DriverDocuments(
+                      licenseFrontUrl: '',
+                      licenseBackUrl: '',
+                      identityFrontUrl: '',
+                      identityBackUrl: '',
+                    ),
                   ),
                   AdminDriver(
                     id: 2,
@@ -156,6 +162,20 @@ void main() {
     expect(find.text('Account role'), findsOneWidget);
     expect(find.text('Account status'), findsOneWidget);
     expect(find.text('Active'), findsWidgets);
+
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(ChoiceChip).at(2));
+    await tester.pumpAndSettle();
+    expect(find.text('2 users'), findsOneWidget);
+    await tester.tap(find.byType(UserCard).first);
+    await tester.pumpAndSettle();
+    expect(find.text('Lock account'), findsNothing);
+    await tester.tap(find.text('View information'));
+    await tester.pumpAndSettle();
+    expect(find.text('Driver documents'), findsOneWidget);
+    expect(find.text('Driving license - front'), findsOneWidget);
+    expect(find.text('No image available'), findsWidgets);
   });
 }
 

@@ -40,7 +40,7 @@ class UserCard extends StatelessWidget {
                         ),
                         SizedBox(height: 4),
                         Text(
-                          user.email,
+                          user.email.isNotEmpty ? user.email : user.phone,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(

@@ -167,6 +167,13 @@ abstract class  LocaleKeys {
   static const users_none = 'users_none';
   static const users_view_info = 'users_view_info';
   static const users_account_status = 'users_account_status';
+  static const users_driver_documents = 'users_driver_documents';
+  static const users_license_front = 'users_license_front';
+  static const users_license_back = 'users_license_back';
+  static const users_identity_front = 'users_identity_front';
+  static const users_identity_back = 'users_identity_back';
+  static const users_document_missing = 'users_document_missing';
+  static const users_document_load_error = 'users_document_load_error';
   static const users_lock_account = 'users_lock_account';
   static const users_unlock_account = 'users_unlock_account';
   static const earnings_label = 'earnings_label';

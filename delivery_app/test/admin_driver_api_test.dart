@@ -35,6 +35,14 @@ void main() {
                     'phone_number': '0901234567',
                     'address': 'Quận 1',
                     'avatar_url': 'http://localhost:8080/image/8.jpg',
+                    'driving_license_front_url':
+                        'http://localhost:8080/image/license-front.jpg',
+                    'driving_license_back_url':
+                        'http://localhost:8080/image/license-back.jpg',
+                    'identity_card_front_url':
+                        'http://localhost:8080/image/id-front.jpg',
+                    'identity_card_back_url':
+                        'http://localhost:8080/image/id-back.jpg',
                   },
                 ],
               ),
@@ -52,6 +60,14 @@ void main() {
     expect(drivers.single.id, 8);
     expect(drivers.single.name, 'Nguyễn Văn A');
     expect(drivers.single.phone, '0901234567');
+    expect(
+      drivers.single.documents?.licenseFrontUrl,
+      endsWith('/image/license-front.jpg'),
+    );
+    expect(
+      drivers.single.documents?.identityBackUrl,
+      endsWith('/image/id-back.jpg'),
+    );
   });
 
   testWidgets('admin Drivers tab shows API data and filters by phone', (
