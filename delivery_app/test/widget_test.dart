@@ -1,5 +1,6 @@
 import 'package:delivery_app/features/admin/presentation/screens/admin_home_page.dart';
 import 'package:delivery_app/features/admin/presentation/providers/admin_users_provider.dart';
+import 'package:delivery_app/features/admin/presentation/widgets/user_card.dart';
 import 'package:delivery_app/features/driver/presentation/providers/driver_earnings_provider.dart';
 import 'package:delivery_app/features/driver/presentation/providers/driver_provider.dart';
 import 'package:delivery_app/features/driver/domain/entities/admin_driver.dart';
@@ -144,6 +145,17 @@ void main() {
     await tester.pump();
     expect(find.text('User management'), findsOneWidget);
     expect(find.text('6 users'), findsOneWidget);
+
+    await tester.tap(find.byType(UserCard).first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('View information'));
+    await tester.pumpAndSettle();
+    expect(find.text('Full name'), findsOneWidget);
+    expect(find.text('trananh@gmail.com'), findsWidgets);
+    expect(find.text('0912345678'), findsOneWidget);
+    expect(find.text('Account role'), findsOneWidget);
+    expect(find.text('Account status'), findsOneWidget);
+    expect(find.text('Active'), findsWidgets);
   });
 }
 

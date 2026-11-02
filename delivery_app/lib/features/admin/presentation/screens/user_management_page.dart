@@ -10,6 +10,7 @@ import '../../../../shared/widgets/initials_avatar.dart';
 import '../../domain/entities/app_user.dart';
 import '../providers/admin_users_provider.dart';
 import '../widgets/user_card.dart';
+import '../widgets/user_details_sheet.dart';
 import '../widgets/user_role_filter.dart';
 import '../widgets/user_search_field.dart';
 
@@ -95,8 +96,12 @@ class UserManagementPage extends ConsumerWidget {
     );
   }
 
-  void _showUserActions(BuildContext context, WidgetRef ref, AppUser user) {
-    showModalBottomSheet<void>(
+  Future<void> _showUserActions(
+    BuildContext context,
+    WidgetRef ref,
+    AppUser user,
+  ) async {
+    final showDetails = await showModalBottomSheet<bool>(
       context: context,
       showDragHandle: true,
       backgroundColor: AppColors.surfaceStrong,
@@ -143,8 +148,7 @@ class UserManagementPage extends ConsumerWidget {
                 title: Text(LocaleKeys.users_view_info.tr()),
                 trailing: Icon(Icons.chevron_right_rounded),
                 onTap: () {
-                  Navigator.pop(sheetContext);
-                  _showMessage(context, '${user.name} • ${user.phone}');
+                  Navigator.pop(sheetContext, true);
                 },
               ),
               ListTile(
@@ -185,6 +189,18 @@ class UserManagementPage extends ConsumerWidget {
           ),
         ),
       ),
+    );
+
+    if (showDetails != true || !context.mounted) return;
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      backgroundColor: AppColors.surfaceStrong,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (_) => UserDetailsSheet(user: user),
     );
   }
 

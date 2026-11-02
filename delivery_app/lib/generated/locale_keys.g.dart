@@ -166,6 +166,7 @@ abstract class  LocaleKeys {
   static const users_admin_options_demo = 'users_admin_options_demo';
   static const users_none = 'users_none';
   static const users_view_info = 'users_view_info';
+  static const users_account_status = 'users_account_status';
   static const users_lock_account = 'users_lock_account';
   static const users_unlock_account = 'users_unlock_account';
   static const earnings_label = 'earnings_label';
