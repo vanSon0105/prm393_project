@@ -34,7 +34,7 @@ extension Environment on FlavorValue {
   Map<String, String> get _variables {
     switch (this) {
       case FlavorValue.dev:
-        return {_baseUrl: 'http://192.168.2.14:8080'};
+        return {_baseUrl: 'http://192.168.2.104:8080'};
       case FlavorValue.prod:
         return {_baseUrl: 'https:prod'};
     }
