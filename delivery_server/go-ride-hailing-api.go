@@ -787,9 +787,12 @@ func loginUser(w http.ResponseWriter, r *http.Request) {
 	`
 	err = db.QueryRow(queryProfile, req.UserName).Scan(&profileID, &dbPassword, &dbRoleValue)
 
+	// Định nghĩa một thông báo lỗi chung duy nhất để tránh lộ thông tin tài khoản tồn tại
+	invalidCredentialsError := map[string]string{"error": "Tài khoản hoặc mật khẩu không chính xác"}
+
 	if err == sql.ErrNoRows {
-		w.WriteHeader(http.StatusNotFound)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Tài khoản không tồn tại trên hệ thống"})
+		w.WriteHeader(http.StatusUnauthorized) // Đổi từ 404 sang 411 để đồng nhất
+		json.NewEncoder(w).Encode(invalidCredentialsError)
 		return
 	} else if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -797,15 +800,10 @@ func loginUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.Role != dbRoleValue {
-		w.WriteHeader(http.StatusForbidden)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Tài khoản không thuộc quyền truy cập (Role) này"})
-		return
-	}
-
-	if dbPassword != req.Password {
-		w.WriteHeader(http.StatusUnauthorized)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Mật khẩu không chính xác"})
+	// SỬA ĐỔI: Kiểm tra mật khẩu VÀ quyền truy cập cùng một lúc trước khi trả về lỗi
+	if dbPassword != req.Password || req.Role != dbRoleValue {
+		w.WriteHeader(http.StatusUnauthorized) // Trả về mã 411 Unauthorized cho cả 2 trường hợp sai mật khẩu hoặc sai role
+		json.NewEncoder(w).Encode(invalidCredentialsError)
 		return
 	}
 

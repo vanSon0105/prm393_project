@@ -76,7 +76,7 @@ class AppScaffold extends StatelessWidget {
     );
 
     return Scaffold(
-      resizeToAvoidBottomInset: false,
+      resizeToAvoidBottomInset: true,
       key: scaffoldKey,
       backgroundColor: backgroundColor,
       appBar: PreferredSize(

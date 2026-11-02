@@ -5,6 +5,7 @@ import 'package:delivery_app/features/auth/domain/entities/role.dart';
 import 'package:delivery_app/features/auth/login/login_state.dart';
 import 'package:delivery_app/routes/app_navigate.dart';
 import 'package:delivery_app/widget/app_loading.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'login_view_model.g.dart';
@@ -27,6 +28,7 @@ class LoginViewModel extends _$LoginViewModel {
     required String password,
     required Role role,
   }) async {
+    debugPrint('------- Login role: $role');
     try {
       AppLoading.instance.show();
       final api = ref.read(authenticationRepositoryProvider);

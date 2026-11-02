@@ -143,7 +143,7 @@ class _LoginPageState extends State<LoginPage> {
                     final loginViewModel = ref.read(
                       loginViewModelProvider.notifier,
                     );
-                    final state = ref.read(loginViewModelProvider);
+                    final state = ref.watch(loginViewModelProvider);
                     return ElevatedButton(
                       onPressed: () {
                         loginViewModel.login(
