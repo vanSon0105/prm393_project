@@ -1,4 +1,8 @@
+import 'package:delivery_app/gen/assets.gen.dart';
+import 'package:delivery_app/routes/app_navigate.dart';
 import 'package:flutter/material.dart';
+
+import '../../../gen/colors.gen.dart';
 
 class ConfirmationDialog extends StatelessWidget {
   const ConfirmationDialog({
@@ -36,29 +40,88 @@ class ConfirmationDialog extends StatelessWidget {
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (title.isNotEmpty) ...[
-                    Text(title, textAlign: TextAlign.center),
-                    const SizedBox(height: 25),
-                  ],
+                  Row(
+                    children: [
+                      Assets.images.icInfo.svg(
+                        colorFilter: ColorFilter.mode(
+                          ColorName.danger,
+                          BlendMode.srcIn,
+                        ),
+                      ),
+                      const SizedBox(width: 5),
+                      if (title.isNotEmpty) ...[
+                        Text(
+                          title,
+                          style: const TextStyle(
+                            fontSize: 20,
+                            color: ColorName.danger,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 15),
                   if (message.isNotEmpty) ...[
                     Text(message, textAlign: TextAlign.center),
                     const SizedBox(height: 25),
                   ],
-                  if (positive.isNotEmpty) ...[
-                    const SizedBox(height: 15),
-                    ElevatedButton(
-                      onPressed: onPositive,
-                      child: Text(positive),
-                    ),
-                  ],
-                  if (negative.isNotEmpty) ...[
-                    const SizedBox(height: 15),
-                    ElevatedButton(
-                      onPressed: onNegative,
-                      child: Text(negative),
-                    ),
-                  ],
+                  Row(
+                    children: [
+                      if (positive.isNotEmpty) ...[
+                        Expanded(
+                          flex: 1,
+                          child: ElevatedButton(
+                            onPressed: () {
+                              AppNavigate.instance.back();
+                              onPositive?.call();
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: ColorName.blue,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              elevation: 0,
+                            ),
+                            child: Text(
+                              positive,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: ColorName.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                      const SizedBox(width: 20),
+                      if (negative.isNotEmpty) ...[
+                        Expanded(
+                          flex: 1,
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: ColorName.surfaceMuted,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              elevation: 0,
+                            ),
+                            onPressed: () {
+                              AppNavigate.instance.back();
+                              onNegative?.call();
+                            },
+                            child: Text(
+                              negative,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Colors.black,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
                 ],
               ),
             ),

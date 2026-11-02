@@ -1,4 +1,6 @@
 import 'package:delivery_app/data/network/base/provider.dart';
+import 'package:delivery_app/features/auth/data/models/login_model.dart';
+import 'package:delivery_app/features/auth/data/repositories/login_param.dart';
 import 'package:delivery_app/features/auth/domain/repositories/authentication_repository.dart';
 
 import '../../domain/entities/role.dart';
@@ -9,9 +11,9 @@ class AuthenticationRepositoryImpl extends AuthenticationRepository {
   AuthenticationRepositoryImpl(this.apiProvider);
 
   @override
-  Future<void> login() {
-    // TODO: implement login
-    throw UnimplementedError();
+  Future<LoginModel> login({required LoginParam param}) async {
+    final response = await apiProvider.requestApi(param: param);
+    return LoginModel.fromJson(response);
   }
 
   @override

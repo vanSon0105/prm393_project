@@ -194,5 +194,8 @@
   "users_role_all": "전체",
   "users_role_customer": "고객",
   "users_role_driver": "기사",
-  "users_role_admin": "관리자"
+  "users_role_admin": "관리자",
+  "btn_OK": "확인",
+  "btn_cancel": "취소",
+  "warning_title": "경고"
 }

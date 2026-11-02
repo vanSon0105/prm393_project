@@ -194,5 +194,8 @@
   "earnings_trip_count": "{count} trips",
   "users_role_all": "All",
   "users_role_customer": "Customer",
-  "users_role_driver": "Driver"
+  "users_role_driver": "Driver",
+  "btn_OK": "OK",
+  "btn_cancel": "Cancel",
+  "warning_title": "Warning"
 }

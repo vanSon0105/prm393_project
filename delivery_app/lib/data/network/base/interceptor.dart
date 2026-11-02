@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:delivery_app/routes/app_navigate.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 
@@ -29,6 +30,10 @@ class CustomInterceptor extends Interceptor {
     debugPrint(
       'ERROR[${err.response?.statusCode}] => PATH: ${err.requestOptions.uri}, RESPONSE: ${err.response}',
     );
+    final messageError = err.response?.data['error']?.toString() ?? '';
+    if (messageError.isNotEmpty) {
+      AppNavigate.instance.showAppDialog(message: messageError);
+    }
     super.onError(err, handler);
   }
 }

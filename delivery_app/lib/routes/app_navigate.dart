@@ -23,6 +23,10 @@ class AppNavigate extends Navigate {
     return replaceAndClearBackStack(route: AppRoute.login);
   }
 
+  Future<void> gotoScreenBy({required AppRoute screen}) {
+    return replaceAndClearBackStack(route: screen);
+  }
+
   Future<dynamic> gotoRegister() async {
     return add(route: AppRoute.register);
   }

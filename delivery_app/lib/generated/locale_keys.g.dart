@@ -199,5 +199,8 @@ abstract class  LocaleKeys {
   static const users_role_customer = 'users_role_customer';
   static const users_role_driver = 'users_role_driver';
   static const users_role_admin = 'users_role_admin';
+  static const btn_OK = 'btn_OK';
+  static const btn_cancel = 'btn_cancel';
+  static const warning_title = 'warning_title';
 
 }
