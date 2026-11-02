@@ -7,7 +7,6 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-import '../../../config/environment.dart';
 import 'exception.dart';
 import 'options.dart';
 
@@ -17,7 +16,7 @@ part 'provider.g.dart';
 Dio dioClient(Ref ref) {
   final dio = Dio(
     BaseOptions(
-      baseUrl: Environment.baseUrl,
+      baseUrl: 'http://192.168.2.14:8080',
       connectTimeout: const Duration(seconds: 10),
       receiveTimeout: const Duration(seconds: 10),
       headers: {

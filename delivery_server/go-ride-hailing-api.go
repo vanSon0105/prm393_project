@@ -12,7 +12,6 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"sync"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -96,13 +95,6 @@ func getLocalIP() string {
 	return "127.0.0.1"
 }
 
-func getPublicBaseURL() string {
-	if value := strings.TrimRight(os.Getenv("PUBLIC_BASE_URL"), "/"); value != "" {
-		return value
-	}
-	return fmt.Sprintf("http://%s:8080", getLocalIP())
-}
-
 func parseNullString(ns sql.NullString) string {
 	if !ns.Valid || ns.String == "" {
 		return ""
@@ -112,10 +104,7 @@ func parseNullString(ns sql.NullString) string {
 
 func main() {
 	var err error
-	dsn := os.Getenv("DB_DSN")
-	if dsn == "" {
-		dsn = "root:root@tcp(127.0.0.1:3306)/mydb"
-	}
+	dsn := "root:root@tcp(127.0.0.1:3306)/mydb"
 	db, err = sql.Open("mysql", dsn)
 	if err != nil {
 		log.Fatal(err)
@@ -159,8 +148,10 @@ func main() {
 	// Driver push location to server realtime
 	r.HandleFunc("/ws/driver/location", handleDriverLocationStream)
 
+	localIP := getLocalIP()
+	port := ":8080"
 	fmt.Printf("🚀 Server đang chạy trên mạng Wi-Fi!\n")
-	fmt.Printf("📱 Địa chỉ để nhập vào App: %s\n", getPublicBaseURL())
+	fmt.Printf("📱 Địa chỉ để nhập vào App: http://%s%s\n", localIP, port)
 	log.Fatal(http.ListenAndServe("0.0.0.0:8080", r))
 
 }
@@ -289,7 +280,7 @@ func getRole(w http.ResponseWriter, r *http.Request) {
 // --- Admin Handlers ---
 
 func getDriverRequests(w http.ResponseWriter, r *http.Request) {
-	baseImgURL := getPublicBaseURL() + "/image/"
+	baseImgURL := fmt.Sprintf("http://%s:8080/image/", getLocalIP())
 	query := `
 		SELECT 
 			p.profile_id, p.full_name, p.phone_number, p.address, p.image,
@@ -343,7 +334,7 @@ func getDriverRequests(w http.ResponseWriter, r *http.Request) {
 }
 
 func getAllDrivers(w http.ResponseWriter, r *http.Request) {
-	baseImgURL := getPublicBaseURL() + "/image/"
+	baseImgURL := fmt.Sprintf("http://%s:8080/image/", getLocalIP())
 	query := `
 		SELECT 
 			p.profile_id, p.full_name, p.phone_number, p.address, p.image,
