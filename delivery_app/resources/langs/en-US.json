@@ -7,7 +7,7 @@
   "users_role_admin": "Admin",
   "login_title_welcome": "Hello",
   "login_sub_title_role": "Choose a role to continue.",
-  "login_phone_label": "Phone number",
+  "login_phone_label": "Username",
   "login_password_label": "Password",
   "login_btn_login": "Sign in",
   "login_no_account_txt": "Don't have an account? ",
