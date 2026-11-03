@@ -16,7 +16,7 @@ final class RegisterViewModelProvider
     extends $NotifierProvider<RegisterViewModel, RegisterState> {
   RegisterViewModelProvider._({
     required RegisterViewModelFamily super.from,
-    required RegisterState super.argument,
+    required Role super.argument,
   }) : super(
          retry: disableRetry,
          name: r'registerViewModelProvider',
@@ -58,7 +58,7 @@ final class RegisterViewModelProvider
   }
 }
 
-String _$registerViewModelHash() => r'8907ff38a3f208ad817f15ad41fdf2628fcc4843';
+String _$registerViewModelHash() => r'21868d9e0066535287abb09e5a49f4ba39c4902f';
 
 final class RegisterViewModelFamily extends $Family
     with
@@ -67,7 +67,7 @@ final class RegisterViewModelFamily extends $Family
           RegisterState,
           RegisterState,
           RegisterState,
-          RegisterState
+          Role
         > {
   RegisterViewModelFamily._()
     : super(
@@ -78,18 +78,18 @@ final class RegisterViewModelFamily extends $Family
         isAutoDispose: true,
       );
 
-  RegisterViewModelProvider call(RegisterState state) =>
-      RegisterViewModelProvider._(argument: state, from: this);
+  RegisterViewModelProvider call(Role role) =>
+      RegisterViewModelProvider._(argument: role, from: this);
 
   @override
   String toString() => r'registerViewModelProvider';
 }
 
 abstract class _$RegisterViewModel extends $Notifier<RegisterState> {
-  late final _$args = ref.$arg as RegisterState;
-  RegisterState get state => _$args;
+  late final _$args = ref.$arg as Role;
+  Role get role => _$args;
 
-  RegisterState build(RegisterState state);
+  RegisterState build(Role role);
   @$mustCallSuper
   @override
   void runBuild() {

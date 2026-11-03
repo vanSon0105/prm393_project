@@ -1,7 +1,10 @@
 import 'package:delivery_app/data/network/base/provider.dart';
 import 'package:delivery_app/features/auth/data/models/login_model.dart';
+import 'package:delivery_app/features/auth/data/models/register_model.dart';
 import 'package:delivery_app/features/auth/data/models/vehicle_type_model.dart';
 import 'package:delivery_app/features/auth/data/repositories/login_param.dart';
+import 'package:delivery_app/features/auth/data/repositories/register_driver_param.dart';
+import 'package:delivery_app/features/auth/data/repositories/register_user_param.dart';
 import 'package:delivery_app/features/auth/data/repositories/vehicle_param.dart';
 import 'package:delivery_app/features/auth/domain/repositories/authentication_repository.dart';
 
@@ -25,9 +28,15 @@ class AuthenticationRepositoryImpl extends AuthenticationRepository {
   }
 
   @override
-  Future<void> registerAccount() {
-    // TODO: implement registerAccount
-    throw UnimplementedError();
+  Future<RegisterModel> registerCustomerAccount(RegisterUserParam param) async {
+    final response = await apiProvider.requestApi(param: param);
+    return RegisterModel.fromJson(response);
+  }
+
+  @override
+  Future<RegisterModel> registerDriverAccount(RegisterDriverParam param) async {
+    final response = await apiProvider.requestApi(param: param);
+    return RegisterModel.fromJson(response);
   }
 
   @override

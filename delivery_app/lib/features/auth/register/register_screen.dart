@@ -1,5 +1,5 @@
+import 'package:delivery_app/features/auth/data/models/vehicle_type_model.dart';
 import 'package:delivery_app/features/auth/domain/entities/role.dart';
-import 'package:delivery_app/features/auth/register/register_state.dart';
 import 'package:delivery_app/features/auth/register/register_view_model.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -21,7 +21,7 @@ class RegisterScreen extends ConsumerStatefulWidget {
 
 class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _nameCtrl = TextEditingController();
+  final _userNameCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
   final _plateCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
@@ -31,20 +31,16 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   bool _obscure = true;
   bool _agree = true;
-
-  RegisterViewModel get viewModel => ref.read(
-    registerViewModelProvider(RegisterState(currentRole: widget.role)).notifier,
-  );
   @override
   void initState() {
     super.initState();
-    viewModel.getVehicleType();
+    ref.read(registerViewModelProvider(widget.role).notifier).getVehicleType();
   }
 
   @override
   void dispose() {
     for (final c in [
-      _nameCtrl,
+      _userNameCtrl,
       _phoneCtrl,
       _plateCtrl,
       _passCtrl,
@@ -54,9 +50,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     }
     super.dispose();
   }
-
-  void _toast(String msg) =>
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
 
   /// RESPONSIVE
   Widget _pair(ScreenSize size, Widget a, Widget b) {
@@ -78,8 +71,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final registerState = ref.watch(
-      registerViewModelProvider(RegisterState(currentRole: widget.role)),
+    final registerState = ref.watch(registerViewModelProvider(widget.role));
+    final viewModel = ref.watch(
+      registerViewModelProvider(widget.role).notifier,
     );
 
     return ResponsiveAuthLayout(
@@ -103,13 +97,18 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             ),
 
             // Tab Khách hàng / Tài xế
-            _Segment(value: registerState.currentRole, onChanged: (role) {}),
+            _Segment(
+              value: registerState.currentRole,
+              onChanged: (role) {
+                viewModel.changeRole(role);
+              },
+            ),
             const SizedBox(height: 22),
 
             LabeledField(
-              label: 'Họ và tên',
+              label: 'Tài khoản',
               child: TextFormField(
-                controller: _nameCtrl,
+                controller: _userNameCtrl,
                 textInputAction: TextInputAction.next,
                 decoration: const InputDecoration(
                   hintText: 'Nguyễn Văn A',
@@ -145,14 +144,49 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         size,
                         LabeledField(
                           label: 'Loại xe',
-                          child: const InputDecorator(
-                            decoration: InputDecoration(
-                              prefixIcon: Icon(Icons.two_wheeler_rounded),
+                          child: DropdownButtonFormField<VehicleTypeData>(
+                            initialValue: registerState.vehicleTypeDataSelected,
+                            hint: const Text('Chọn loại xe của bạn'),
+                            isExpanded: true,
+                            icon: const Icon(
+                              Icons.keyboard_arrow_down_rounded,
+                              color: AppColors.muted,
                             ),
-                            child: Text(
-                              'Xe máy',
-                              style: TextStyle(fontSize: 16),
-                            ),
+                            items: registerState.vehicles.map((
+                              VehicleTypeData vehicle,
+                            ) {
+                              return DropdownMenuItem<VehicleTypeData>(
+                                value: vehicle,
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      vehicle.id == 1
+                                          ? Icons.two_wheeler_rounded
+                                          : Icons.directions_car_rounded,
+                                      color: AppColors.ink,
+                                      size: 22,
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Text(
+                                      vehicle.name ?? '',
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }).toList(),
+
+                            onChanged: (VehicleTypeData? newValue) {
+                              viewModel.changeVehicle(newValue);
+                            },
+
+                            // Kiểm tra tính hợp lệ khi bấm nút Đăng ký
+                            validator: (value) => value == null
+                                ? 'Vui lòng chọn loại xe phương tiện.'
+                                : null,
                           ),
                         ),
                         LabeledField(
@@ -190,7 +224,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 style: TextStyle(color: AppColors.muted),
               ),
               const SizedBox(height: 20),
-              DriverDocumentsField(),
+              DriverDocumentsField(key: documentsFieldKey),
               const SizedBox(height: 16),
             ],
 
@@ -266,21 +300,29 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
             ElevatedButton(
               onPressed: () {
-                final isValid =
-                    documentsFieldKey.currentState?.validate() ?? false;
-                if (isValid) {
-                  final Map<DriverDocumentType, PlatformFile>? selectedFiles =
-                      documentsFieldKey.currentState?.value;
-                  if (selectedFiles != null) {
-                    final cccdFrontFile =
-                        selectedFiles[DriverDocumentType.cccdFront];
-                    final cccdBackFile =
-                        selectedFiles[DriverDocumentType.cccdBack];
-                    final licenseFront =
-                        selectedFiles[DriverDocumentType.drivingLicenseFront];
-                    final licenseBack =
-                        selectedFiles[DriverDocumentType.drivingLicenseBack];
-                  }
+                final Map<DriverDocumentType, PlatformFile>? selectedFiles =
+                    documentsFieldKey.currentState?.value;
+                debugPrint('-------- $selectedFiles');
+                if (selectedFiles != null) {
+                  final cccdFrontFile =
+                      selectedFiles[DriverDocumentType.cccdFront];
+                  final cccdBackFile =
+                      selectedFiles[DriverDocumentType.cccdBack];
+                  final licenseFront =
+                      selectedFiles[DriverDocumentType.drivingLicenseFront];
+                  final licenseBack =
+                      selectedFiles[DriverDocumentType.drivingLicenseBack];
+                  viewModel.registerAccount(
+                    userName: _userNameCtrl.text.trim(),
+                    password: _passCtrl.text.trim(),
+                    phoneNumber: _phoneCtrl.text.trim(),
+                    vehicleId: registerState.vehicleTypeDataSelected?.id,
+                    licensePlate: _plateCtrl.text.trim(),
+                    drivingLicenseFrontSide: licenseFront?.xFile.path ?? '',
+                    drivingLicenseBackSide: licenseBack?.xFile.path ?? '',
+                    frontSideOfTheIdentityCard: cccdFrontFile?.xFile.path ?? '',
+                    backSideOfTheIdentityCard: cccdBackFile?.xFile.path ?? '',
+                  );
                 }
               },
               child: Text(
@@ -328,7 +370,7 @@ class _Segment extends StatelessWidget {
         child: GestureDetector(
           onTap: () => onChanged(t),
           child: AnimatedContainer(
-            duration: const Duration(milliseconds: 150),
+            duration: const Duration(milliseconds: 0),
             padding: const EdgeInsets.symmetric(vertical: 10),
             decoration: BoxDecoration(
               color: selected ? AppColors.surface : Colors.transparent,

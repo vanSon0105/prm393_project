@@ -52,7 +52,7 @@ class ApiProvider {
     try {
       final response = await _dio.request<dynamic>(
         url,
-        data: bodyRequest,
+        data: param.useMultipart ? (await param.formData) : bodyRequest,
         queryParameters: param.queryParameters
           ..removeWhere((k, v) => v == null),
         options: param.options,

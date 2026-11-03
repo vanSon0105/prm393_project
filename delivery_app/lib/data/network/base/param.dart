@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'package:dio/dio.dart';
 
 import '../../../config/environment.dart';
 
@@ -7,8 +7,6 @@ abstract class ApiParam {
 
   String get path;
 
-  List<int> get validateStatus => [HttpStatus.ok];
-
   String get contentType => HeaderContentType.applicationJson;
 
   String get url => Environment.baseUrl;
@@ -16,6 +14,12 @@ abstract class ApiParam {
   Map<String, dynamic> get queryParameters => {};
 
   Map<String, dynamic> get bodyParams => {};
+
+  bool get useMultipart => false;
+
+  Future<FormData> get formData async {
+    return FormData();
+  }
 }
 
 final class HeaderContentType {

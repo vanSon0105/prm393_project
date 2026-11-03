@@ -1,4 +1,5 @@
 import 'package:delivery_app/di/repository_module.dart';
+import 'package:delivery_app/features/app_view_model.dart';
 import 'package:delivery_app/features/auth/data/repositories/login_param.dart';
 import 'package:delivery_app/features/auth/domain/entities/login_status.dart';
 import 'package:delivery_app/features/auth/domain/entities/role.dart';
@@ -39,6 +40,7 @@ class LoginViewModel extends _$LoginViewModel {
       switch (status) {
         case LoginStatus.approved:
           AppNavigate.instance.gotoScreenBy(screen: role.screen);
+          ref.read(appViewModelProvider.notifier).updateAppData(role);
         case LoginStatus.pending:
         case LoginStatus.reject:
           AppNavigate.instance.showAppDialog(

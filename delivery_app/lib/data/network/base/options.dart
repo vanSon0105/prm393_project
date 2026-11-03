@@ -4,7 +4,10 @@ import 'package:dio/dio.dart';
 extension ApiParamExt on ApiParam {
   Options get options => Options(
     method: method,
-    validateStatus: (status) => validateStatus.contains(status),
+    validateStatus: (status) {
+      if (status == null) return false;
+      return status >= 200 && status < 300;
+    },
     headers: headers,
   );
 

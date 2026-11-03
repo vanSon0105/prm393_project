@@ -1,16 +1,20 @@
+import 'package:delivery_app/features/app_view_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart' as flMap;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart' as mb;
 
-class MapPage extends StatefulWidget {
+class MapPage extends ConsumerStatefulWidget {
   const MapPage({super.key});
 
   @override
-  State<MapPage> createState() => _MapPageState();
+  ConsumerState<ConsumerStatefulWidget> createState() {
+    return _MapPageState();
+  }
 }
 
-class _MapPageState extends State<MapPage> {
+class _MapPageState extends ConsumerState<MapPage> {
   final flMap.MapController _mapController = flMap.MapController();
 
   final LatLng _initialPosition = const LatLng(21.0167, 105.7839);
@@ -32,6 +36,7 @@ class _MapPageState extends State<MapPage> {
 
   @override
   Widget build(BuildContext context) {
+    debugPrint('-------- Role: ${ref.read(appViewModelProvider).role}');
     return Scaffold(
       body: Stack(
         children: [

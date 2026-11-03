@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime/debug"
 	"strconv"
 	"sync"
 
@@ -1070,7 +1071,7 @@ func registerUser(w http.ResponseWriter, r *http.Request) {
 
 		driverQuery := `
 			INSERT INTO Driver (
-				driver_id, vehicle_id, license_plate, driving_license_front_side, 
+				driver_id, vehicleType_id, licensePlate, driving_license_front_side, 
 				driving_license_back_side, front_side_of_the_identity_card, 
 				the_back_of_the_identity_card, active
 			) VALUES (?, ?, ?, ?, ?, ?, ?, 0)
