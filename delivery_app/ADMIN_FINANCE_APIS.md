@@ -13,7 +13,7 @@ The Admin overview and Users tab still include sample/local user and metric data
 ## Needed for the new Admin screens
 
 These endpoints **do not exist yet**. The Flutter screens are wired to this contract and show an error/retry state until the backend implements it.
-Flutter web also needs `PUT` in the server's CORS preflight response for bank account updates.
+Flutter web needs server CORS support for the app origin and `GET`, `POST`, and `PUT` requests. This PR leaves the Go server unchanged; the backend team can add CORS alongside the finance endpoints.
 
 | Screen | Method and path | Request | Response |
 | --- | --- | --- | --- |

@@ -9,11 +9,9 @@ import (
 	"log"
 	"net"
 	"net/http"
-	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"sync"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -106,10 +104,7 @@ func parseNullString(ns sql.NullString) string {
 
 func main() {
 	var err error
-	dsn := os.Getenv("DB_DSN")
-	if dsn == "" {
-		dsn = "root:root@tcp(127.0.0.1:3306)/mydb"
-	}
+	dsn := "root:root@tcp(127.0.0.1:3306)/mydb"
 	db, err = sql.Open("mysql", dsn)
 	if err != nil {
 		log.Fatal(err)
@@ -158,7 +153,7 @@ func main() {
 	port := ":8080"
 	fmt.Printf("🚀 Server đang chạy trên mạng Wi-Fi!\n")
 	fmt.Printf("📱 Địa chỉ để nhập vào App: http://%s%s\n", localIP, port)
-	log.Fatal(http.ListenAndServe("0.0.0.0:8080", withWebCORS(r)))
+	log.Fatal(http.ListenAndServe("0.0.0.0:8080", r))
 
 }
 
@@ -324,18 +319,15 @@ func getVehicleType(w http.ResponseWriter, r *http.Request) {
 
 // --- Admin Handlers ---
 func getDriverRequests(w http.ResponseWriter, r *http.Request) {
-	baseImgURL := getPublicBaseURL() + "/image/"
+	baseImgURL := fmt.Sprintf("http://%s:8080/image/", getLocalIP())
 	query := `
-		SELECT
+		SELECT 
 			p.profile_id, p.full_name, p.phone_number, p.address, p.image,
-			d.driving_license_front_side, d.driving_license_back_side,
+			d.driving_license_front_side, d.driving_license_back_side, 
 			d.front_side_of_the_identity_card, d.the_back_of_the_identity_card
 		FROM Profile p
 		INNER JOIN Driver d ON p.profile_id = d.driver_id
 		WHERE d.active = 0
-		  AND NOT EXISTS (
-			SELECT 1 FROM ReasonReject rr WHERE rr.driver_id = d.driver_id
-		  )
 	`
 	rows, err := db.Query(query)
 	if err != nil {
@@ -345,7 +337,7 @@ func getDriverRequests(w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 
-	drivers := make([]DriverResponse, 0)
+	var drivers []DriverResponse
 	log.Print("Request get all request drivers")
 
 	for rows.Next() {
@@ -381,11 +373,11 @@ func getDriverRequests(w http.ResponseWriter, r *http.Request) {
 }
 
 func getAllDrivers(w http.ResponseWriter, r *http.Request) {
-	baseImgURL := getPublicBaseURL() + "/image/"
+	baseImgURL := fmt.Sprintf("http://%s:8080/image/", getLocalIP())
 	query := `
-		SELECT
+		SELECT 
 			p.profile_id, p.full_name, p.phone_number, p.address, p.image,
-			d.driving_license_front_side, d.driving_license_back_side,
+			d.driving_license_front_side, d.driving_license_back_side, 
 			d.front_side_of_the_identity_card, d.the_back_of_the_identity_card
 		FROM Profile p
 		INNER JOIN Driver d ON p.profile_id = d.driver_id
@@ -399,7 +391,7 @@ func getAllDrivers(w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 
-	drivers := make([]DriverResponse, 0)
+	var drivers []DriverResponse
 	log.Print("Request get all drivers")
 
 	for rows.Next() {
@@ -457,13 +449,6 @@ func approveDriver(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	routeID, err := strconv.Atoi(mux.Vars(r)["id"])
-	if err != nil || routeID <= 0 || routeID != req.DriverID {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]string{"error": "driver_id không khớp với URL"})
-		return
-	}
-	req.Reason = strings.TrimSpace(req.Reason)
 	if !req.Status && req.Reason == "" {
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(struct {
@@ -483,33 +468,27 @@ func approveDriver(w http.ResponseWriter, r *http.Request) {
 	}
 	defer tx.Rollback()
 
-	var existingID int
-	err = tx.QueryRowContext(ctx,
-		"SELECT driver_id FROM Driver WHERE driver_id = ? FOR UPDATE", req.DriverID,
-	).Scan(&existingID)
-	if err == sql.ErrNoRows {
-		w.WriteHeader(http.StatusNotFound)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Không tìm thấy tài xế"})
-		return
-	}
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Không thể kiểm tra tài xế"})
-		return
-	}
-
 	activeValue := 0
 	if req.Status {
 		activeValue = 1
 	}
 
 	updateQuery := "UPDATE Driver SET active = ? WHERE driver_id = ?"
-	_, err = tx.ExecContext(ctx, updateQuery, activeValue, req.DriverID)
+	result, err := tx.ExecContext(ctx, updateQuery, activeValue, req.DriverID)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(struct {
 			Error string `json:"error"`
 		}{Error: "Lỗi hệ thống khi cập nhật trạng thái tài xế"})
+		return
+	}
+
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected == 0 {
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(struct {
+			Error string `json:"error"`
+		}{Error: "Không tìm thấy tài xế với driver_id đã cung cấp"})
 		return
 	}
 
@@ -840,7 +819,7 @@ func loginUser(w http.ResponseWriter, r *http.Request) {
 	var dbPassword, dbRoleValue string
 
 	queryProfile := `
-		SELECT p.profile_id, p.password, r.role_value
+		SELECT p.profile_id, p.password, r.role_value 
 		FROM Profile p
 		INNER JOIN Role r ON p.role_id = r.role_id
 		WHERE p.user_name = ?
@@ -1091,8 +1070,8 @@ func registerUser(w http.ResponseWriter, r *http.Request) {
 
 		driverQuery := `
 			INSERT INTO Driver (
-				driver_id, vehicle_id, license_plate, driving_license_front_side,
-				driving_license_back_side, front_side_of_the_identity_card,
+				driver_id, vehicle_id, license_plate, driving_license_front_side, 
+				driving_license_back_side, front_side_of_the_identity_card, 
 				the_back_of_the_identity_card, active
 			) VALUES (?, ?, ?, ?, ?, ?, ?, 0)
 		`
@@ -1125,53 +1104,4 @@ func registerUser(w http.ResponseWriter, r *http.Request) {
 	jsonData, _ := json.Marshal(apiResponse)
 	w.WriteHeader(http.StatusCreated)
 	w.Write(jsonData)
-}
-
-func getPublicBaseURL() string {
-	if value := strings.TrimRight(os.Getenv("PUBLIC_BASE_URL"), "/"); value != "" {
-		return value
-	}
-	return fmt.Sprintf("http://%s:8080", getLocalIP())
-}
-
-func withWebCORS(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		origin := r.Header.Get("Origin")
-		allowed := isAllowedWebOrigin(origin)
-		if allowed {
-			w.Header().Set("Access-Control-Allow-Origin", origin)
-			w.Header().Add("Vary", "Origin")
-			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-			w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
-		}
-
-		if r.Method == http.MethodOptions {
-			if origin != "" && !allowed {
-				http.Error(w, "Origin not allowed", http.StatusForbidden)
-				return
-			}
-			w.WriteHeader(http.StatusNoContent)
-			return
-		}
-		next.ServeHTTP(w, r)
-	})
-}
-
-func isAllowedWebOrigin(origin string) bool {
-	if origin == "" {
-		return false
-	}
-	u, err := url.Parse(origin)
-	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
-		return false
-	}
-	if u.Hostname() == "localhost" || u.Hostname() == "127.0.0.1" {
-		return true
-	}
-	for _, allowed := range strings.Split(os.Getenv("CORS_ALLOWED_ORIGINS"), ",") {
-		if strings.TrimSpace(allowed) == origin {
-			return true
-		}
-	}
-	return false
 }
