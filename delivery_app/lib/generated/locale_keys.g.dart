@@ -253,5 +253,36 @@ abstract class  LocaleKeys {
   static const admin_vehicle_motorcycle = 'admin_vehicle_motorcycle';
   static const admin_vehicle_car = 'admin_vehicle_car';
   static const admin_users_driver_load_error = 'admin_users_driver_load_error';
+  static const admin_finance_section = 'admin_finance_section';
+  static const admin_bank_title = 'admin_bank_title';
+  static const admin_bank_shortcut = 'admin_bank_shortcut';
+  static const admin_bank_description = 'admin_bank_description';
+  static const admin_bank_name = 'admin_bank_name';
+  static const admin_account_number = 'admin_account_number';
+  static const admin_account_holder = 'admin_account_holder';
+  static const admin_transfer_note = 'admin_transfer_note';
+  static const admin_field_required = 'admin_field_required';
+  static const admin_account_number_invalid = 'admin_account_number_invalid';
+  static const admin_save_bank = 'admin_save_bank';
+  static const admin_saving = 'admin_saving';
+  static const admin_bank_saved = 'admin_bank_saved';
+  static const admin_finance_load_error = 'admin_finance_load_error';
+  static const admin_finance_api_unavailable = 'admin_finance_api_unavailable';
+  static const admin_finance_save_error = 'admin_finance_save_error';
+  static const admin_top_up_title = 'admin_top_up_title';
+  static const admin_top_up_shortcut = 'admin_top_up_shortcut';
+  static const admin_no_top_up_requests = 'admin_no_top_up_requests';
+  static const admin_top_up_driver_id = 'admin_top_up_driver_id';
+  static const admin_top_up_submitted = 'admin_top_up_submitted';
+  static const admin_transfer_reference = 'admin_transfer_reference';
+  static const admin_not_provided = 'admin_not_provided';
+  static const admin_view_transfer_proof = 'admin_view_transfer_proof';
+  static const admin_no_transfer_proof = 'admin_no_transfer_proof';
+  static const admin_top_up_approve_title = 'admin_top_up_approve_title';
+  static const admin_top_up_approve_message = 'admin_top_up_approve_message';
+  static const admin_top_up_reject_title = 'admin_top_up_reject_title';
+  static const admin_top_up_approved = 'admin_top_up_approved';
+  static const admin_top_up_rejected = 'admin_top_up_rejected';
+  static const admin_finance_review_error = 'admin_finance_review_error';
 
 }

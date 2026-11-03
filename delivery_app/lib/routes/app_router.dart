@@ -1,4 +1,6 @@
 import 'package:delivery_app/features/admin/presentation/screens/admin_home_page.dart';
+import 'package:delivery_app/features/admin/presentation/screens/admin_bank_account_page.dart';
+import 'package:delivery_app/features/admin/presentation/screens/admin_top_up_requests_page.dart';
 import 'package:delivery_app/features/auth/domain/entities/role.dart';
 import 'package:delivery_app/features/auth/register/driver_terms_screen.dart';
 import 'package:delivery_app/features/auth/register/register_screen.dart';
@@ -22,6 +24,8 @@ enum AppRoute {
   register(rawValue: '/register'),
   driverTerms(rawValue: '/driver-terms'),
   admin(rawValue: '/admin'),
+  adminBankAccount(rawValue: '/admin/bank-account'),
+  adminTopUpRequests(rawValue: '/admin/top-up-requests'),
   driverEarnings(rawValue: '/driver-earnings'),
   driverRating(rawValue: '/driver-rating'),
   tripPayment(rawValue: '/trip-payment'),
@@ -69,6 +73,16 @@ GoRouter createAppRouter({String? initialLocation}) => GoRouter(
       path: AppRoute.admin.rawValue,
       name: AppRoute.admin.rawValue,
       builder: (context, state) => const AdminHomePage(),
+    ),
+    GoRoute(
+      path: AppRoute.adminBankAccount.rawValue,
+      name: AppRoute.adminBankAccount.rawValue,
+      builder: (context, state) => const AdminBankAccountPage(),
+    ),
+    GoRoute(
+      path: AppRoute.adminTopUpRequests.rawValue,
+      name: AppRoute.adminTopUpRequests.rawValue,
+      builder: (context, state) => const AdminTopUpRequestsPage(),
     ),
     GoRoute(
       path: AppRoute.driverRating.rawValue,
