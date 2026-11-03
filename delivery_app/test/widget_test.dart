@@ -1,7 +1,11 @@
 import 'package:delivery_app/features/admin/presentation/screens/admin_home_page.dart';
 import 'package:delivery_app/features/admin/presentation/providers/admin_users_provider.dart';
+import 'package:delivery_app/features/admin/presentation/widgets/user_card.dart';
 import 'package:delivery_app/features/driver/presentation/providers/driver_earnings_provider.dart';
 import 'package:delivery_app/features/driver/presentation/providers/driver_provider.dart';
+import 'package:delivery_app/features/driver/domain/entities/admin_driver.dart';
+import 'package:delivery_app/features/driver/domain/entities/admin_driver_request.dart';
+import 'package:delivery_app/features/driver/domain/repositories/admin_driver_repository.dart';
 import 'package:delivery_app/features/setting/setting_provider.dart';
 import 'package:delivery_app/routes/app_router.dart';
 import 'package:flutter/material.dart';
@@ -48,25 +52,26 @@ void main() {
     container.read(driverEarningsProvider.notifier).selectFilter('30 ngày');
     expect(container.read(driverEarningsProvider).selectedFilter, '30 ngày');
 
-    container.read(adminUsersProvider.notifier).selectRole('Tài xế');
-    expect(container.read(adminUsersProvider).filteredUsers.length, 2);
+    container.read(adminUsersProvider.notifier).selectRole('Khách hàng');
+    expect(container.read(adminUsersProvider).filteredUsers.length, 3);
 
-    container.read(adminUsersProvider.notifier).updateSearch('lehoang');
+    container.read(adminUsersProvider.notifier).updateSearch('phammai');
     expect(
       container.read(adminUsersProvider).filteredUsers.single.name,
-      'Lê Hoàng',
+      'Phạm Mai',
     );
 
     container
         .read(adminUsersProvider.notifier)
-        .toggleStatus('lehoang@gmail.com');
+        .toggleStatus('phammai@gmail.com');
     expect(
       container.read(adminUsersProvider).filteredUsers.single.isActive,
-      isTrue,
+      isFalse,
     );
   });
 
   testWidgets('Admin can switch between the four screens', (tester) async {
+    final adminRepository = _TestAdminDriverRepository();
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -81,6 +86,33 @@ void main() {
         assetLoader: JsonAssetLoader(),
         child: Builder(
           builder: (context) => ProviderScope(
+            overrides: [
+              adminDriverRepositoryProvider.overrideWithValue(adminRepository),
+              adminDriversProvider.overrideWith(
+                (ref) async => const [
+                  AdminDriver(
+                    id: 1,
+                    name: 'Trần Anh',
+                    phone: '0901234567',
+                    address: 'Quận 1',
+                    avatarUrl: '',
+                    documents: DriverDocuments(
+                      licenseFrontUrl: '',
+                      licenseBackUrl: '',
+                      identityFrontUrl: '',
+                      identityBackUrl: '',
+                    ),
+                  ),
+                  AdminDriver(
+                    id: 2,
+                    name: 'Lê Hoàng',
+                    phone: '0918821204',
+                    address: 'Quận 3',
+                    avatarUrl: '',
+                  ),
+                ],
+              ),
+            ],
             child: MaterialApp(
               locale: context.locale,
               supportedLocales: context.supportedLocales,
@@ -94,28 +126,86 @@ void main() {
     await tester.pump();
     await tester.pumpAndSettle();
 
-    expect(find.text('Vận hành'), findsOneWidget);
+    expect(find.text('Operations'), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey('admin-nav-drivers')));
-    await tester.pump();
-    expect(find.text('Danh sách tài xế'), findsOneWidget);
+    await tester.pumpAndSettle();
+    expect(find.text('Driver list'), findsOneWidget);
 
-    await tester.enterText(find.byType(TextField), '59A1');
+    await tester.enterText(find.byType(TextField), '0901');
     await tester.pump();
     expect(find.text('Trần Anh'), findsOneWidget);
     expect(find.text('Lê Hoàng'), findsNothing);
 
     await tester.tap(find.byKey(const ValueKey('admin-nav-requests')));
-    await tester.pump();
-    expect(find.text('Yêu cầu mở\ntài khoản'), findsOneWidget);
+    await tester.pumpAndSettle();
+    expect(find.text('Account opening\nrequests'), findsOneWidget);
 
-    await tester.tap(find.text('Duyệt').first);
-    await tester.pump();
+    await tester.tap(find.text('Approve').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Approve').last);
+    await tester.pumpAndSettle();
     expect(find.text('Đỗ Quang Huy'), findsNothing);
 
     await tester.tap(find.byKey(const ValueKey('admin-nav-users')));
     await tester.pump();
     expect(find.text('User management'), findsOneWidget);
     expect(find.text('6 users'), findsOneWidget);
+
+    await tester.tap(find.byType(UserCard).first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('View information'));
+    await tester.pumpAndSettle();
+    expect(find.text('Full name'), findsOneWidget);
+    expect(find.text('trananh@gmail.com'), findsWidgets);
+    expect(find.text('0912345678'), findsOneWidget);
+    expect(find.text('Account role'), findsOneWidget);
+    expect(find.text('Account status'), findsOneWidget);
+    expect(find.text('Active'), findsWidgets);
+
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(ChoiceChip).at(2));
+    await tester.pumpAndSettle();
+    expect(find.text('2 users'), findsOneWidget);
+    await tester.tap(find.byType(UserCard).first);
+    await tester.pumpAndSettle();
+    expect(find.text('Lock account'), findsNothing);
+    await tester.tap(find.text('View information'));
+    await tester.pumpAndSettle();
+    expect(find.text('Driver documents'), findsOneWidget);
+    expect(find.text('Driving license - front'), findsOneWidget);
+    expect(find.text('No image available'), findsWidgets);
   });
+}
+
+class _TestAdminDriverRepository implements AdminDriverRepository {
+  final requests = <AdminDriverRequest>[
+    const AdminDriverRequest(
+      id: 8,
+      name: 'Đỗ Quang Huy',
+      phone: '0907712244',
+      address: 'Quận 1',
+      avatarUrl: '',
+      licenseFrontUrl: '',
+      licenseBackUrl: '',
+      identityFrontUrl: '',
+      identityBackUrl: '',
+    ),
+  ];
+
+  @override
+  Future<List<AdminDriver>> getDrivers() async => [];
+
+  @override
+  Future<List<AdminDriverRequest>> getRequests() async => [...requests];
+
+  @override
+  Future<void> reviewRequest({
+    required int driverId,
+    required bool approved,
+    String reason = '',
+  }) async {
+    requests.removeWhere((request) => request.id == driverId);
+  }
 }

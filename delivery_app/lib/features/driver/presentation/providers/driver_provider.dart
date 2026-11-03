@@ -1,8 +1,14 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../data/network/base/provider.dart';
+import '../../data/datasources/admin_driver_remote_datasource.dart';
 import '../../data/datasources/driver_remote_datasource.dart';
+import '../../data/repositories/admin_driver_repository_impl.dart';
 import '../../data/repositories/driver_repository_impl.dart';
+import '../../domain/entities/admin_driver.dart';
+import '../../domain/entities/admin_driver_request.dart';
 import '../../domain/entities/driver.dart';
+import '../../domain/repositories/admin_driver_repository.dart';
 import '../../domain/repositories/driver_repository.dart';
 
 class DriverMetrics {
@@ -27,6 +33,72 @@ final driverRepositoryProvider = Provider<DriverRepository>((ref) {
 
 final driversProvider = Provider<List<Driver>>((ref) {
   return ref.watch(driverRepositoryProvider).getDrivers();
+});
+
+final adminDriverRepositoryProvider = Provider<AdminDriverRepository>((ref) {
+  final remoteDataSource = AdminDriverRemoteDataSource(
+    ref.watch(apiProviderProvider),
+  );
+  return AdminDriverRepositoryImpl(remoteDataSource);
+});
+
+final adminDriversProvider = FutureProvider<List<AdminDriver>>((ref) {
+  return ref.watch(adminDriverRepositoryProvider).getDrivers();
+});
+
+final adminDriverRequestsProvider = FutureProvider<List<AdminDriverRequest>>((
+  ref,
+) {
+  return ref.watch(adminDriverRepositoryProvider).getRequests();
+});
+
+class AdminDriverReviewNotifier extends Notifier<Set<int>> {
+  @override
+  Set<int> build() => {};
+
+  Future<void> review({
+    required int driverId,
+    required bool approved,
+    String reason = '',
+  }) async {
+    if (state.contains(driverId)) return;
+    state = {...state, driverId};
+    try {
+      await ref
+          .read(adminDriverRepositoryProvider)
+          .reviewRequest(
+            driverId: driverId,
+            approved: approved,
+            reason: reason,
+          );
+      ref.invalidate(adminDriverRequestsProvider);
+      if (approved) ref.invalidate(adminDriversProvider);
+    } finally {
+      state = {...state}..remove(driverId);
+    }
+  }
+}
+
+final adminDriverReviewProvider =
+    NotifierProvider<AdminDriverReviewNotifier, Set<int>>(
+      AdminDriverReviewNotifier.new,
+    );
+
+final filteredAdminDriversProvider = Provider<AsyncValue<List<AdminDriver>>>((
+  ref,
+) {
+  final query = ref.watch(driverSearchQueryProvider).trim().toLowerCase();
+  return ref.watch(adminDriversProvider).whenData((drivers) {
+    if (query.isEmpty) return drivers;
+    return drivers
+        .where(
+          (driver) =>
+              driver.name.toLowerCase().contains(query) ||
+              driver.phone.toLowerCase().contains(query) ||
+              driver.address.toLowerCase().contains(query),
+        )
+        .toList(growable: false);
+  });
 });
 
 class DriverSearchQuery extends Notifier<String> {

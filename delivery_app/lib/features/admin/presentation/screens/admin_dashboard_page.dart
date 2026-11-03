@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:easy_localization/easy_localization.dart';
+import 'package:delivery_app/generated/locale_keys.g.dart';
 
 import '../../../driver/presentation/providers/driver_provider.dart';
 import '../../../driver/presentation/widgets/driver_list_panel.dart';
 import '../widgets/admin_metrics_strip.dart';
+import '../widgets/admin_finance_shortcuts.dart';
 import '../widgets/admin_overview_header.dart';
 import '../widgets/admin_request_preview_section.dart';
 import '../widgets/admin_section_header.dart';
@@ -52,6 +55,16 @@ class AdminDashboardPage extends ConsumerWidget {
 
             AdminMetricsStrip(metrics: metrics),
 
+            Padding(
+              padding: EdgeInsets.fromLTRB(
+                horizontalPadding,
+                24,
+                horizontalPadding,
+                0,
+              ),
+              child: const AdminFinanceShortcuts(),
+            ),
+
             Center(
               child: ConstrainedBox(
                 constraints: BoxConstraints(maxWidth: maxContentWidth),
@@ -65,8 +78,8 @@ class AdminDashboardPage extends ConsumerWidget {
                   child: Column(
                     children: [
                       AdminSectionHeader(
-                        title: 'Tài xế có đánh giá cao',
-                        actionLabel: 'Xem tất cả',
+                        title: LocaleKeys.admin_high_rated_drivers.tr(),
+                        actionLabel: LocaleKeys.admin_view_all.tr(),
                         onActionPressed: onViewDrivers,
                       ),
 

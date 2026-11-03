@@ -30,7 +30,10 @@ class CustomInterceptor extends Interceptor {
     debugPrint(
       'ERROR[${err.response?.statusCode}] => PATH: ${err.requestOptions.uri}, RESPONSE: ${err.response}',
     );
-    final messageError = err.response?.data['error']?.toString() ?? '';
+    final responseData = err.response?.data;
+    final messageError = responseData is Map
+        ? responseData['error']?.toString() ?? ''
+        : '';
     if (messageError.isNotEmpty) {
       AppNavigate.instance.showAppDialog(message: messageError);
     }

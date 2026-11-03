@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
+import 'package:delivery_app/generated/locale_keys.g.dart';
 
 import '../../domain/entities/driver.dart';
 import 'driver_request_card.dart';
@@ -22,9 +24,9 @@ class DriverRequestListSection extends StatelessWidget {
       child: Column(
         children: [
           if (requests.isEmpty)
-            const Padding(
-              padding: EdgeInsets.all(24),
-              child: Text('Không có yêu cầu đang chờ duyệt'),
+            Padding(
+              padding: const EdgeInsets.all(24),
+              child: Text(LocaleKeys.admin_no_pending_requests.tr()),
             ),
           for (final request in requests) ...[
             DriverRequestCard(

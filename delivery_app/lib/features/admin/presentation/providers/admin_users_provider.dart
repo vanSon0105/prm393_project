@@ -55,20 +55,6 @@ class AdminUsersNotifier extends Notifier<AdminUsersState> {
           isActive: true,
         ),
         AppUser(
-          name: 'Nguyễn Bình',
-          email: 'nguyenbinh@gmail.com',
-          phone: '0987654321',
-          role: 'Tài xế',
-          isActive: true,
-        ),
-        AppUser(
-          name: 'Lê Hoàng',
-          email: 'lehoang@gmail.com',
-          phone: '0905123456',
-          role: 'Tài xế',
-          isActive: false,
-        ),
-        AppUser(
           name: 'Phạm Mai',
           email: 'phammai@gmail.com',
           phone: '0933111222',

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
+import 'package:delivery_app/generated/locale_keys.g.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/initials_avatar.dart';
@@ -65,7 +67,7 @@ class DriverRequestCard extends StatelessWidget {
                           ),
                         ),
                         onPressed: onReject,
-                        child: const Text('Từ chối'),
+                        child: Text(LocaleKeys.admin_reject.tr()),
                       ),
                     ),
                   ),
@@ -84,7 +86,7 @@ class DriverRequestCard extends StatelessWidget {
                           ),
                         ),
                         onPressed: onApprove,
-                        child: const Text('Duyệt'),
+                        child: Text(LocaleKeys.admin_approve.tr()),
                       ),
                     ),
                   ),
@@ -121,7 +123,7 @@ class _RequestDescription extends StatelessWidget {
         ),
         const SizedBox(height: 3),
         Text(
-          _subtitle,
+          _subtitle(),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: const TextStyle(
@@ -135,10 +137,17 @@ class _RequestDescription extends StatelessWidget {
     );
   }
 
-  String get _subtitle {
+  String _subtitle() {
     final date = request.submittedAt;
-    final submittedLabel =
-        'gửi ${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
-    return 'Tài xế ${request.vehicleType.toLowerCase()}, $submittedLabel';
+    final submittedDate =
+        '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+    final vehicle = switch (request.vehicleType) {
+      'Xe máy' => LocaleKeys.admin_vehicle_motorcycle.tr(),
+      'Ô tô' => LocaleKeys.admin_vehicle_car.tr(),
+      _ => request.vehicleType,
+    };
+    return LocaleKeys.admin_request_subtitle.tr(
+      namedArgs: {'vehicle': vehicle, 'date': submittedDate},
+    );
   }
 }

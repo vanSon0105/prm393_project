@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
+import 'package:delivery_app/generated/locale_keys.g.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../../../../gen/assets.gen.dart';
@@ -15,24 +17,24 @@ class DriverDirectoryHeader extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Quản trị',
-                  style: TextStyle(
+                  LocaleKeys.users_admin.tr(),
+                  style: const TextStyle(
                     color: AppColors.textSoft,
                     fontSize: 13,
                     fontWeight: FontWeight.w800,
                     letterSpacing: 0,
                   ),
                 ),
-                SizedBox(height: 8),
+                const SizedBox(height: 8),
                 Text(
-                  'Danh sách tài xế',
+                  LocaleKeys.admin_driver_list_title.tr(),
                   maxLines: 2,
-                  style: TextStyle(
+                  style: const TextStyle(
                     color: AppColors.text,
                     fontSize: 38,
                     fontWeight: FontWeight.w900,
@@ -68,7 +70,7 @@ class _BackButton extends StatelessWidget {
         ),
         child: IconButton(
           padding: EdgeInsets.zero,
-          tooltip: 'Quay lại',
+          tooltip: LocaleKeys.admin_back.tr(),
           onPressed: onPressed,
           icon: Assets.images.icBack.svg(
             width: 24,

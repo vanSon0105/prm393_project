@@ -7,9 +7,12 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../gen/assets.gen.dart';
 import '../../../../shared/widgets/app_screen_header.dart';
 import '../../../../shared/widgets/initials_avatar.dart';
+import '../../../driver/domain/entities/admin_driver.dart';
+import '../../../driver/presentation/providers/driver_provider.dart';
 import '../../domain/entities/app_user.dart';
 import '../providers/admin_users_provider.dart';
 import '../widgets/user_card.dart';
+import '../widgets/user_details_sheet.dart';
 import '../widgets/user_role_filter.dart';
 import '../widgets/user_search_field.dart';
 
@@ -20,7 +23,21 @@ class UserManagementPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(adminUsersProvider);
     final notifier = ref.read(adminUsersProvider.notifier);
-    final users = state.filteredUsers;
+    final driverState = ref.watch(adminDriversProvider);
+    final driverUsers = [
+      for (final driver in driverState.asData?.value ?? <AdminDriver>[])
+        AppUser(
+          name: driver.name,
+          email: '',
+          phone: driver.phone,
+          role: 'Tài xế',
+          isActive: true,
+          driverId: driver.id,
+        ),
+    ];
+    final users = state
+        .copyWith(users: [...state.users, ...driverUsers])
+        .filteredUsers;
 
     return Column(
       children: [
@@ -64,6 +81,22 @@ class UserManagementPage extends ConsumerWidget {
           ),
         ),
         SizedBox(height: 12),
+        if (driverState.isLoading) const LinearProgressIndicator(),
+        if (driverState.hasError)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(LocaleKeys.admin_users_driver_load_error.tr()),
+                ),
+                TextButton(
+                  onPressed: () => ref.invalidate(adminDriversProvider),
+                  child: Text(LocaleKeys.admin_try_again.tr()),
+                ),
+              ],
+            ),
+          ),
         Expanded(
           child: ListView.separated(
             padding: EdgeInsets.fromLTRB(20, 0, 20, 28),
@@ -95,8 +128,12 @@ class UserManagementPage extends ConsumerWidget {
     );
   }
 
-  void _showUserActions(BuildContext context, WidgetRef ref, AppUser user) {
-    showModalBottomSheet<void>(
+  Future<void> _showUserActions(
+    BuildContext context,
+    WidgetRef ref,
+    AppUser user,
+  ) async {
+    final showDetails = await showModalBottomSheet<bool>(
       context: context,
       showDragHandle: true,
       backgroundColor: AppColors.surfaceStrong,
@@ -123,7 +160,7 @@ class UserManagementPage extends ConsumerWidget {
                         ),
                         SizedBox(height: 4),
                         Text(
-                          user.email,
+                          user.email.isNotEmpty ? user.email : user.phone,
                           style: TextStyle(
                             color: AppColors.textSoft,
                             fontSize: 12,
@@ -143,48 +180,70 @@ class UserManagementPage extends ConsumerWidget {
                 title: Text(LocaleKeys.users_view_info.tr()),
                 trailing: Icon(Icons.chevron_right_rounded),
                 onTap: () {
-                  Navigator.pop(sheetContext);
-                  _showMessage(context, '${user.name} • ${user.phone}');
+                  Navigator.pop(sheetContext, true);
                 },
               ),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: _actionIcon(
-                  user.isActive
-                      ? Assets.images.icUserLock
-                      : Assets.images.icUserCheck,
-                  danger: user.isActive,
-                ),
-                title: Text(
-                  user.isActive
-                      ? LocaleKeys.users_lock_account.tr()
-                      : LocaleKeys.users_unlock_account.tr(),
-                  style: TextStyle(
-                    color: user.isActive ? AppColors.danger : AppColors.success,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                onTap: () {
-                  Navigator.pop(sheetContext);
-                  ref
-                      .read(adminUsersProvider.notifier)
-                      .toggleStatus(user.email);
-                  _showMessage(
-                    context,
+              if (user.driverId == null)
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: _actionIcon(
                     user.isActive
-                        ? LocaleKeys.users_account_locked_notice.tr(
-                            namedArgs: {'name': user.name},
-                          )
-                        : LocaleKeys.users_account_unlocked_notice.tr(
-                            namedArgs: {'name': user.name},
-                          ),
-                  );
-                },
-              ),
+                        ? Assets.images.icUserLock
+                        : Assets.images.icUserCheck,
+                    danger: user.isActive,
+                  ),
+                  title: Text(
+                    user.isActive
+                        ? LocaleKeys.users_lock_account.tr()
+                        : LocaleKeys.users_unlock_account.tr(),
+                    style: TextStyle(
+                      color: user.isActive
+                          ? AppColors.danger
+                          : AppColors.success,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    ref
+                        .read(adminUsersProvider.notifier)
+                        .toggleStatus(user.email);
+                    _showMessage(
+                      context,
+                      user.isActive
+                          ? LocaleKeys.users_account_locked_notice.tr(
+                              namedArgs: {'name': user.name},
+                            )
+                          : LocaleKeys.users_account_unlocked_notice.tr(
+                              namedArgs: {'name': user.name},
+                            ),
+                    );
+                  },
+                ),
             ],
           ),
         ),
       ),
+    );
+
+    if (showDetails != true || !context.mounted) return;
+    AdminDriver? driver;
+    for (final candidate
+        in ref.read(adminDriversProvider).asData?.value ?? <AdminDriver>[]) {
+      if (candidate.id == user.driverId) {
+        driver = candidate;
+        break;
+      }
+    }
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      backgroundColor: AppColors.surfaceStrong,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (_) => UserDetailsSheet(user: user, driver: driver),
     );
   }
 
