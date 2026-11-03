@@ -186,14 +186,13 @@ class _LoginPageState extends State<LoginPage> {
                   return Center(
                     child: InkWell(
                       onTap: () async {
-                        if (loginState.currentRole == Role.driver) {
-                          final accepted = await AppNavigate.instance
-                              .gotoDriverTerms();
-                          if (accepted == true && context.mounted) {
-                            AppNavigate.instance.gotoRegister(asDriver: true);
-                          }
-                        } else {
-                          AppNavigate.instance.gotoRegister();
+                        final accepted = loginState.currentRole == Role.driver
+                            ? (await AppNavigate.instance.gotoDriverTerms())
+                            : true;
+                        if (accepted) {
+                          AppNavigate.instance.gotoRegister(
+                            loginState.currentRole,
+                          );
                         }
                       },
                       child: RichText(

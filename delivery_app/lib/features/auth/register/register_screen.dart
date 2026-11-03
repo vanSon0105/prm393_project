@@ -1,22 +1,19 @@
+import 'package:delivery_app/features/auth/domain/entities/role.dart';
+import 'package:delivery_app/features/auth/register/register_state.dart';
+import 'package:delivery_app/features/auth/register/register_view_model.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../routes/app_navigate.dart';
 import '../../../shared/theme/app_theme.dart';
 import '../../../shared/widgets/common.dart';
 import '../../../shared/widgets/responsive_auth_layout.dart';
 import 'driver_documents_field.dart';
-import 'driver_terms_provider.dart';
-
-enum AccountType { customer, driver }
-
-enum _DriverDateField { birth, cccdExpiry, insuranceExpiry }
 
 class RegisterScreen extends ConsumerStatefulWidget {
-  const RegisterScreen({super.key, this.initialType = AccountType.customer});
+  const RegisterScreen({super.key, required this.role});
 
-  final AccountType initialType;
+  final Role role;
 
   @override
   ConsumerState<RegisterScreen> createState() => _RegisterScreenState();
@@ -26,114 +23,22 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
-  final _addressCtrl = TextEditingController();
   final _plateCtrl = TextEditingController();
-  final _birthDateCtrl = TextEditingController();
-  final _cccdCtrl = TextEditingController();
-  final _cccdExpiryCtrl = TextEditingController();
-  final _licenseNumberCtrl = TextEditingController();
-  final _insuranceExpiryCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
   final _confirmCtrl = TextEditingController();
+  final documentsFieldKey =
+      GlobalKey<FormFieldState<Map<DriverDocumentType, PlatformFile>>>();
 
-  AccountType _type = AccountType.customer;
-  DateTime? _birthDate;
-  DateTime? _cccdExpiry;
-  DateTime? _insuranceExpiry;
-  String? _licenseClass;
   bool _obscure = true;
   bool _agree = true;
 
-  bool get _isDriver => _type == AccountType.driver;
-
+  RegisterViewModel get viewModel => ref.read(
+    registerViewModelProvider(RegisterState(currentRole: widget.role)).notifier,
+  );
   @override
   void initState() {
     super.initState();
-    if (widget.initialType == AccountType.driver &&
-        ref.read(driverTermsConsentProvider)) {
-      _type = AccountType.driver;
-    }
-  }
-
-  Future<void> _selectType(AccountType type) async {
-    if (type == AccountType.driver && !ref.read(driverTermsConsentProvider)) {
-      final accepted = await AppNavigate.instance.gotoDriverTerms();
-      if (!mounted || accepted != true) return;
-    }
-    setState(() => _type = type);
-  }
-
-  Future<void> _selectDate(_DriverDateField field) async {
-    final today = DateUtils.dateOnly(DateTime.now());
-    final isBirth = field == _DriverDateField.birth;
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: isBirth
-          ? DateTime(today.year - 25, today.month, today.day)
-          : DateTime(today.year + 1, today.month, today.day),
-      firstDate: isBirth ? DateTime(1900) : today.add(const Duration(days: 1)),
-      lastDate: isBirth ? today : DateTime(today.year + 20),
-      helpText: isBirth ? 'Chọn ngày sinh' : 'Chọn ngày hết hạn',
-    );
-    if (!mounted || picked == null) return;
-
-    final formatted =
-        '${picked.day.toString().padLeft(2, '0')}/'
-        '${picked.month.toString().padLeft(2, '0')}/'
-        '${picked.year}';
-    setState(() {
-      switch (field) {
-        case _DriverDateField.birth:
-          _birthDate = picked;
-          _birthDateCtrl.text = formatted;
-        case _DriverDateField.cccdExpiry:
-          _cccdExpiry = picked;
-          _cccdExpiryCtrl.text = formatted;
-        case _DriverDateField.insuranceExpiry:
-          _insuranceExpiry = picked;
-          _insuranceExpiryCtrl.text = formatted;
-      }
-    });
-  }
-
-  String? _validateDriverDate(_DriverDateField field) {
-    final today = DateUtils.dateOnly(DateTime.now());
-    if (field == _DriverDateField.birth) {
-      final birth = _birthDate;
-      if (birth == null) return 'Vui lòng chọn ngày sinh.';
-      var age = today.year - birth.year;
-      if (today.month < birth.month ||
-          (today.month == birth.month && today.day < birth.day)) {
-        age--;
-      }
-      return age < 18 || age > 60 ? 'Tài xế cần từ 18 đến 60 tuổi.' : null;
-    }
-    final expiry = field == _DriverDateField.cccdExpiry
-        ? _cccdExpiry
-        : _insuranceExpiry;
-    if (expiry == null) return 'Vui lòng chọn ngày hết hạn.';
-    return expiry.isAfter(today) ? null : 'Giấy tờ cần còn hiệu lực.';
-  }
-
-  Widget _dateInput({
-    required String label,
-    required TextEditingController controller,
-    required _DriverDateField field,
-  }) {
-    return LabeledField(
-      label: label,
-      child: TextFormField(
-        controller: controller,
-        readOnly: true,
-        onTap: () => _selectDate(field),
-        decoration: const InputDecoration(
-          hintText: 'dd/MM/yyyy',
-          prefixIcon: Icon(Icons.calendar_today_outlined),
-          suffixIcon: Icon(Icons.arrow_drop_down_rounded),
-        ),
-        validator: (_) => _validateDriverDate(field),
-      ),
-    );
+    viewModel.getVehicleType();
   }
 
   @override
@@ -141,37 +46,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     for (final c in [
       _nameCtrl,
       _phoneCtrl,
-      _addressCtrl,
       _plateCtrl,
-      _birthDateCtrl,
-      _cccdCtrl,
-      _cccdExpiryCtrl,
-      _licenseNumberCtrl,
-      _insuranceExpiryCtrl,
       _passCtrl,
       _confirmCtrl,
     ]) {
       c.dispose();
     }
     super.dispose();
-  }
-
-  void _submit() {
-    if (_isDriver && !ref.read(driverTermsConsentProvider)) {
-      _toast('Vui lòng đọc và đồng ý với điều khoản tài xế trước.');
-      return;
-    }
-    if (!_formKey.currentState!.validate()) return;
-    if (!_isDriver && !_agree) {
-      _toast('Vui lòng đồng ý với điều khoản sử dụng.');
-      return;
-    }
-    if (_isDriver) {
-      _toast('Thông tin hợp lệ. Chức năng gửi hồ sơ tài xế chưa khả dụng.');
-    } else {
-      _toast('Đăng ký thành công! Mời bạn đăng nhập.');
-      Navigator.maybePop(context);
-    }
   }
 
   void _toast(String msg) =>
@@ -197,6 +78,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final registerState = ref.watch(
+      registerViewModelProvider(RegisterState(currentRole: widget.role)),
+    );
+
     return ResponsiveAuthLayout(
       cardMaxWidth: 560,
       brandTitle: 'Tham gia Nối\nchỉ trong 1 phút.',
@@ -218,7 +103,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             ),
 
             // Tab Khách hàng / Tài xế
-            _Segment(value: _type, onChanged: _selectType),
+            _Segment(value: registerState.currentRole, onChanged: (role) {}),
             const SizedBox(height: 22),
 
             LabeledField(
@@ -250,23 +135,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               ),
             ),
             const SizedBox(height: 16),
-
-            LabeledField(
-              label: 'Địa chỉ thường dùng',
-              child: TextFormField(
-                controller: _addressCtrl,
-                textInputAction: TextInputAction.next,
-                decoration: const InputDecoration(
-                  hintText: '12 Nguyễn Huệ, Quận 1',
-                  prefixIcon: Icon(Icons.location_on_outlined),
-                ),
-              ),
-            ),
-
             // Chỉ hiện khi chọn Tài xế
             AnimatedSize(
               duration: const Duration(milliseconds: 200),
-              child: _isDriver
+              child: registerState.isDriver
                   ? Padding(
                       padding: const EdgeInsets.only(top: 16),
                       child: _pair(
@@ -292,7 +164,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                               hintText: '59A1 234.56',
                               prefixIcon: Icon(Icons.credit_card_outlined),
                             ),
-                            validator: (v) => _isDriver
+                            validator: (v) => registerState.isDriver
                                 ? Validators.notEmpty(
                                     v,
                                     'Vui lòng nhập biển số xe.',
@@ -306,7 +178,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             ),
             const SizedBox(height: 16),
 
-            if (_isDriver) ...[
+            if (registerState.isDriver) ...[
               const Divider(height: 32),
               const Text(
                 'Hồ sơ và giấy tờ tài xế',
@@ -318,83 +190,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 style: TextStyle(color: AppColors.muted),
               ),
               const SizedBox(height: 20),
-              _pair(
-                size,
-                _dateInput(
-                  label: 'Ngày sinh *',
-                  controller: _birthDateCtrl,
-                  field: _DriverDateField.birth,
-                ),
-                LabeledField(
-                  label: 'Số CCCD *',
-                  child: TextFormField(
-                    controller: _cccdCtrl,
-                    keyboardType: TextInputType.number,
-                    inputFormatters: [
-                      FilteringTextInputFormatter.digitsOnly,
-                      LengthLimitingTextInputFormatter(12),
-                    ],
-                    decoration: const InputDecoration(
-                      hintText: '12 chữ số',
-                      prefixIcon: Icon(Icons.badge_outlined),
-                    ),
-                    validator: (value) =>
-                        RegExp(r'^\d{12}$').hasMatch(value?.trim() ?? '')
-                        ? null
-                        : 'CCCD cần có đúng 12 chữ số.',
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              _pair(
-                size,
-                _dateInput(
-                  label: 'Ngày hết hạn CCCD *',
-                  controller: _cccdExpiryCtrl,
-                  field: _DriverDateField.cccdExpiry,
-                ),
-                LabeledField(
-                  label: 'Số giấy phép lái xe *',
-                  child: TextFormField(
-                    controller: _licenseNumberCtrl,
-                    decoration: const InputDecoration(
-                      hintText: 'Nhập số giấy phép',
-                      prefixIcon: Icon(Icons.credit_card_outlined),
-                    ),
-                    validator: (value) => Validators.notEmpty(
-                      value,
-                      'Vui lòng nhập số giấy phép lái xe.',
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              _pair(
-                size,
-                LabeledField(
-                  label: 'Hạng giấy phép lái xe *',
-                  child: DropdownButtonFormField<String>(
-                    initialValue: _licenseClass,
-                    decoration: const InputDecoration(
-                      prefixIcon: Icon(Icons.two_wheeler_outlined),
-                    ),
-                    hint: const Text('Chọn hạng'),
-                    items: const [
-                      DropdownMenuItem(value: 'A1', child: Text('A1')),
-                      DropdownMenuItem(value: 'A2', child: Text('A2')),
-                    ],
-                    onChanged: (value) => setState(() => _licenseClass = value),
-                    validator: (value) =>
-                        value == null ? 'Vui lòng chọn hạng giấy phép.' : null,
-                  ),
-                ),
-                _dateInput(
-                  label: 'Ngày hết hạn bảo hiểm xe *',
-                  controller: _insuranceExpiryCtrl,
-                  field: _DriverDateField.insuranceExpiry,
-                ),
-              ),
-              const SizedBox(height: 22),
               DriverDocumentsField(),
               const SizedBox(height: 16),
             ],
@@ -438,7 +233,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             ),
             const SizedBox(height: 8),
 
-            if (_isDriver)
+            if (registerState.isDriver)
               const Padding(
                 padding: EdgeInsets.symmetric(vertical: 12),
                 child: Row(
@@ -470,8 +265,27 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             const SizedBox(height: 16),
 
             ElevatedButton(
-              onPressed: _submit,
-              child: Text(_isDriver ? 'Kiểm tra thông tin' : 'Gửi đăng ký'),
+              onPressed: () {
+                final isValid =
+                    documentsFieldKey.currentState?.validate() ?? false;
+                if (isValid) {
+                  final Map<DriverDocumentType, PlatformFile>? selectedFiles =
+                      documentsFieldKey.currentState?.value;
+                  if (selectedFiles != null) {
+                    final cccdFrontFile =
+                        selectedFiles[DriverDocumentType.cccdFront];
+                    final cccdBackFile =
+                        selectedFiles[DriverDocumentType.cccdBack];
+                    final licenseFront =
+                        selectedFiles[DriverDocumentType.drivingLicenseFront];
+                    final licenseBack =
+                        selectedFiles[DriverDocumentType.drivingLicenseBack];
+                  }
+                }
+              },
+              child: Text(
+                registerState.isDriver ? 'Kiểm tra thông tin' : 'Gửi đăng ký',
+              ),
             ),
             const SizedBox(height: 12),
 
@@ -502,12 +316,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 /// Tab Khách hàng / Tài xế
 class _Segment extends StatelessWidget {
   const _Segment({required this.value, required this.onChanged});
-  final AccountType value;
-  final ValueChanged<AccountType> onChanged;
+
+  final Role value;
+  final ValueChanged<Role> onChanged;
 
   @override
   Widget build(BuildContext context) {
-    Widget tab(AccountType t, String label) {
+    Widget tab(Role t, String label) {
       final selected = t == value;
       return Expanded(
         child: GestureDetector(
@@ -549,8 +364,8 @@ class _Segment extends StatelessWidget {
       ),
       child: Row(
         children: [
-          tab(AccountType.customer, 'Khách hàng'),
-          tab(AccountType.driver, 'Tài xế'),
+          tab(Role.customer, Role.customer.title),
+          tab(Role.driver, Role.driver.title),
         ],
       ),
     );

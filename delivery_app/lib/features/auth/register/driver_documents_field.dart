@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
@@ -6,8 +8,8 @@ import '../../../shared/theme/app_theme.dart';
 enum DriverDocumentType {
   cccdFront('Mặt trước CCCD'),
   cccdBack('Mặt sau CCCD'),
-  drivingLicense('Giấy phép lái xe'),
-  vehicleInsurance('Bảo hiểm xe');
+  drivingLicenseFront('Giấy phép lái xe mặt trước'),
+  drivingLicenseBack('Giấy phép lái xe mặt sau');
 
   const DriverDocumentType(this.label);
 
@@ -44,6 +46,7 @@ class DriverDocumentsField
               _DocumentTile(
                 label: type.label,
                 fileName: field.value?[type]?.name,
+                uri: field.value?[type]?.uri,
                 onSelect: () => _selectFile(field, type),
                 onRemove: field.value?.containsKey(type) ?? false
                     ? () {
@@ -102,11 +105,13 @@ class _DocumentTile extends StatelessWidget {
   const _DocumentTile({
     required this.label,
     required this.fileName,
+    this.uri,
     required this.onSelect,
     required this.onRemove,
   });
 
   final String label;
+  final Uri? uri;
   final String? fileName;
   final VoidCallback onSelect;
   final VoidCallback? onRemove;
@@ -120,43 +125,56 @@ class _DocumentTile extends StatelessWidget {
         border: Border.all(color: AppColors.line),
         borderRadius: BorderRadius.circular(12),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
-            fileName == null ? Icons.upload_file_rounded : Icons.check_circle,
-            color: fileName == null ? AppColors.muted : AppColors.primary,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: const TextStyle(fontWeight: FontWeight.w600),
-                ),
-                if (fileName != null)
-                  Text(
-                    fileName!,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: AppColors.muted,
-                      fontSize: 12,
+          Row(
+            children: [
+              Icon(
+                size: 24,
+                fileName == null
+                    ? Icons.upload_file_rounded
+                    : Icons.check_circle,
+                color: fileName == null ? AppColors.muted : AppColors.primary,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label,
+                      style: const TextStyle(fontWeight: FontWeight.w600),
                     ),
-                  ),
-              ],
-            ),
+                    if (fileName != null)
+                      Text(
+                        fileName!,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: AppColors.muted,
+                          fontSize: 12,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              TextButton(
+                onPressed: onSelect,
+                child: Text(fileName == null ? 'Chọn tệp' : 'Đổi'),
+              ),
+              if (onRemove != null)
+                IconButton(
+                  tooltip: 'Bỏ tệp $label',
+                  onPressed: onRemove,
+                  icon: const Icon(Icons.close_rounded),
+                ),
+            ],
           ),
-          TextButton(
-            onPressed: onSelect,
-            child: Text(fileName == null ? 'Chọn tệp' : 'Đổi'),
-          ),
-          if (onRemove != null)
-            IconButton(
-              tooltip: 'Bỏ tệp $label',
-              onPressed: onRemove,
-              icon: const Icon(Icons.close_rounded),
+          if (uri != null)
+            Container(
+              margin: EdgeInsets.only(left: 36),
+              child: Image.file(File.fromUri(uri!), height: 150),
             ),
         ],
       ),
