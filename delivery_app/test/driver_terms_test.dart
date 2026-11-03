@@ -1,6 +1,6 @@
 import 'package:delivery_app/features/auth/register/driver_terms_provider.dart';
 import 'package:delivery_app/features/auth/register/driver_terms_screen.dart';
-import 'package:delivery_app/features/auth/register/register_screen.dart';
+import 'package:delivery_app/features/auth/register/driver_documents_field.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -69,32 +69,35 @@ void main() {
     expect(find.text('Đăng ký tài xế'), findsOneWidget);
   });
 
-  testWidgets('Driver form shows required document fields', (tester) async {
+  testWidgets('Driver registration requires four document uploads', (
+    tester,
+  ) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    final container = ProviderContainer();
-    addTearDown(container.dispose);
-    container.read(driverTermsConsentProvider.notifier).accept();
+    final formKey = GlobalKey<FormState>();
 
     await tester.pumpWidget(
-      UncontrolledProviderScope(
-        container: container,
-        child: const MaterialApp(
-          home: RegisterScreen(initialType: AccountType.driver),
+      MaterialApp(
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: Form(key: formKey, child: DriverDocumentsField()),
+          ),
         ),
       ),
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Số CCCD *'), findsOneWidget);
+    expect(find.text('Ảnh giấy tờ *'), findsOneWidget);
     expect(find.text('Mặt trước CCCD'), findsOneWidget);
     expect(find.text('Mặt sau CCCD'), findsOneWidget);
-    expect(find.text('Giấy phép lái xe'), findsOneWidget);
-    expect(find.text('Bảo hiểm xe'), findsOneWidget);
-    expect(find.text('Kiểm tra thông tin'), findsOneWidget);
+    expect(find.text('Giấy phép lái xe mặt trước'), findsOneWidget);
+    expect(find.text('Giấy phép lái xe mặt sau'), findsOneWidget);
+    expect(formKey.currentState!.validate(), isFalse);
+    await tester.pump();
+    expect(find.text('Vui lòng chọn đủ ảnh/tệp cho 4 mục giấy tờ.'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }

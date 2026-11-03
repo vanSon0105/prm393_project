@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
+import 'package:delivery_app/generated/locale_keys.g.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../../domain/entities/driver.dart';
@@ -26,16 +28,16 @@ class DriverStatusChip extends StatelessWidget {
 
   _DriverStatusStyle _statusStyle(DriverStatus status) {
     return switch (status) {
-      DriverStatus.available => const _DriverStatusStyle(
-        label: 'Sẵn sàng',
+      DriverStatus.available => _DriverStatusStyle(
+        label: LocaleKeys.admin_driver_status_available.tr(),
         foregroundColor: AppColors.blue,
       ),
-      DriverStatus.delivering => const _DriverStatusStyle(
-        label: 'Đang giao',
+      DriverStatus.delivering => _DriverStatusStyle(
+        label: LocaleKeys.admin_driver_status_delivering.tr(),
         foregroundColor: AppColors.textFaint,
       ),
-      DriverStatus.offline => const _DriverStatusStyle(
-        label: 'Tạm nghỉ',
+      DriverStatus.offline => _DriverStatusStyle(
+        label: LocaleKeys.admin_driver_status_offline.tr(),
         foregroundColor: AppColors.textFaint,
       ),
     };

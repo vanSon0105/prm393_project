@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
+import 'package:delivery_app/generated/locale_keys.g.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../../../../gen/assets.gen.dart';
@@ -25,12 +27,13 @@ class AdminRequestPreviewSection extends StatelessWidget {
         child: Column(
           children: [
             AdminSectionHeader(
-              title: 'Yêu cầu mới',
-              actionLabel: 'Xem tất cả',
+              title: LocaleKeys.admin_new_requests.tr(),
+              actionLabel: LocaleKeys.admin_view_all.tr(),
               onActionPressed: onViewAllPressed,
             ),
             const SizedBox(height: 18),
-            if (requests.isEmpty) const Text('Không có yêu cầu đang chờ duyệt'),
+            if (requests.isEmpty)
+              Text(LocaleKeys.admin_no_pending_requests.tr()),
             for (final request in requests) ...[
               _RequestPreviewRow(request: request),
               if (request != requests.last) const SizedBox(height: 16),
@@ -86,7 +89,11 @@ class _RequestPreviewRow extends StatelessWidget {
                   ),
                   const SizedBox(height: 3),
                   Text(
-                    request.vehicleType,
+                    switch (request.vehicleType) {
+                      'Xe máy' => LocaleKeys.admin_vehicle_motorcycle.tr(),
+                      'Ô tô' => LocaleKeys.admin_vehicle_car.tr(),
+                      _ => request.vehicleType,
+                    },
                     style: const TextStyle(
                       color: AppColors.textSoft,
                       fontSize: 14,
