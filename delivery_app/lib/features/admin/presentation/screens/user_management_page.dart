@@ -87,10 +87,12 @@ class UserManagementPage extends ConsumerWidget {
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Row(
               children: [
-                const Expanded(child: Text('Không tải được tài xế từ API.')),
+                Expanded(
+                  child: Text(LocaleKeys.admin_users_driver_load_error.tr()),
+                ),
                 TextButton(
                   onPressed: () => ref.invalidate(adminDriversProvider),
-                  child: const Text('Thử lại'),
+                  child: Text(LocaleKeys.admin_try_again.tr()),
                 ),
               ],
             ),

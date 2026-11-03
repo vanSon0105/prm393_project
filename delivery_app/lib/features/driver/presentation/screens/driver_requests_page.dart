@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:easy_localization/easy_localization.dart';
+import 'package:delivery_app/generated/locale_keys.g.dart';
 
 import '../../domain/entities/admin_driver_request.dart';
 import '../providers/driver_provider.dart';
@@ -29,9 +31,15 @@ class DriverRequestsPage extends ConsumerWidget {
               children: [
                 Row(
                   children: [
-                    Expanded(child: Text('${items.length} yêu cầu chờ duyệt')),
+                    Expanded(
+                      child: Text(
+                        LocaleKeys.admin_pending_request_count.tr(
+                          namedArgs: {'count': '${items.length}'},
+                        ),
+                      ),
+                    ),
                     IconButton(
-                      tooltip: 'Tải lại',
+                      tooltip: LocaleKeys.admin_refresh.tr(),
                       onPressed: () =>
                           ref.invalidate(adminDriverRequestsProvider),
                       icon: const Icon(Icons.refresh_rounded),
@@ -40,9 +48,9 @@ class DriverRequestsPage extends ConsumerWidget {
                 ),
                 const SizedBox(height: 12),
                 if (items.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.all(24),
-                    child: Text('Không có yêu cầu đang chờ duyệt'),
+                  Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Text(LocaleKeys.admin_no_pending_requests.tr()),
                   ),
                 for (final request in items) ...[
                   AdminDriverRequestCard(
@@ -65,14 +73,12 @@ class DriverRequestsPage extends ConsumerWidget {
             padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Column(
               children: [
-                const Text(
-                  'Không tải được yêu cầu tài xế. Kiểm tra kết nối API rồi thử lại.',
-                ),
+                Text(LocaleKeys.admin_requests_load_error.tr()),
                 const SizedBox(height: 12),
                 OutlinedButton.icon(
                   onPressed: () => ref.invalidate(adminDriverRequestsProvider),
                   icon: const Icon(Icons.refresh_rounded),
-                  label: const Text('Thử lại'),
+                  label: Text(LocaleKeys.admin_try_again.tr()),
                 ),
               ],
             ),
@@ -90,16 +96,20 @@ class DriverRequestsPage extends ConsumerWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Duyệt tài xế?'),
-        content: Text('Cho phép ${request.name} hoạt động trên hệ thống.'),
+        title: Text(LocaleKeys.admin_approve_driver_question.tr()),
+        content: Text(
+          LocaleKeys.admin_approve_driver_message.tr(
+            namedArgs: {'name': request.name},
+          ),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Hủy'),
+            child: Text(LocaleKeys.admin_cancel.tr()),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Duyệt'),
+            child: Text(LocaleKeys.admin_approve.tr()),
           ),
         ],
       ),
@@ -135,11 +145,17 @@ class DriverRequestsPage extends ConsumerWidget {
       if (!context.mounted) return;
       _showResult(
         context,
-        approved ? 'Đã duyệt ${request.name}' : 'Đã từ chối ${request.name}',
+        approved
+            ? LocaleKeys.admin_approved_notice.tr(
+                namedArgs: {'name': request.name},
+              )
+            : LocaleKeys.admin_rejected_notice.tr(
+                namedArgs: {'name': request.name},
+              ),
       );
     } catch (_) {
       if (context.mounted) {
-        _showResult(context, 'Không xử lý được yêu cầu. Vui lòng thử lại.');
+        _showResult(context, LocaleKeys.admin_review_error.tr());
       }
     }
   }
@@ -180,28 +196,32 @@ class _RejectReasonDialogState extends State<_RejectReasonDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text('Từ chối ${widget.name}?'),
+      title: Text(
+        LocaleKeys.admin_reject_driver_question.tr(
+          namedArgs: {'name': widget.name},
+        ),
+      ),
       content: TextField(
         controller: controller,
         autofocus: true,
         minLines: 2,
         maxLines: 4,
-        decoration: const InputDecoration(
-          labelText: 'Lý do từ chối',
-          hintText: 'Nhập lý do để tài xế biết cần bổ sung gì',
+        decoration: InputDecoration(
+          labelText: LocaleKeys.admin_reject_reason_label.tr(),
+          hintText: LocaleKeys.admin_reject_reason_hint.tr(),
         ),
         onChanged: (_) => setState(() {}),
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('Hủy'),
+          child: Text(LocaleKeys.admin_cancel.tr()),
         ),
         FilledButton(
           onPressed: controller.text.trim().isEmpty
               ? null
               : () => Navigator.pop(context, controller.text.trim()),
-          child: const Text('Từ chối'),
+          child: Text(LocaleKeys.admin_reject.tr()),
         ),
       ],
     );

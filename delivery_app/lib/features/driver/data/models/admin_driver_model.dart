@@ -25,7 +25,7 @@ class AdminDriverModel extends AdminDriver {
 
     return AdminDriverModel(
       id: id,
-      name: name.isEmpty ? 'Tài xế #$id' : name,
+      name: name.isEmpty ? '#$id' : name,
       phone: (json['phone_number'] as String?)?.trim() ?? '',
       address: (json['address'] as String?)?.trim() ?? '',
       avatarUrl: avatar.endsWith('/image/') ? '' : avatar,

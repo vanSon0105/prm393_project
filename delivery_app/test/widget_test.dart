@@ -126,11 +126,11 @@ void main() {
     await tester.pump();
     await tester.pumpAndSettle();
 
-    expect(find.text('Vận hành'), findsOneWidget);
+    expect(find.text('Operations'), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey('admin-nav-drivers')));
     await tester.pumpAndSettle();
-    expect(find.text('Danh sách tài xế'), findsOneWidget);
+    expect(find.text('Driver list'), findsOneWidget);
 
     await tester.enterText(find.byType(TextField), '0901');
     await tester.pump();
@@ -139,11 +139,11 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey('admin-nav-requests')));
     await tester.pumpAndSettle();
-    expect(find.text('Yêu cầu mở\ntài khoản'), findsOneWidget);
+    expect(find.text('Account opening\nrequests'), findsOneWidget);
 
-    await tester.tap(find.text('Duyệt').first);
+    await tester.tap(find.text('Approve').first);
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Duyệt').last);
+    await tester.tap(find.text('Approve').last);
     await tester.pumpAndSettle();
     expect(find.text('Đỗ Quang Huy'), findsNothing);
 

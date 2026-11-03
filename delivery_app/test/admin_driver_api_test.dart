@@ -9,13 +9,21 @@ import 'package:delivery_app/features/driver/domain/repositories/admin_driver_re
 import 'package:delivery_app/features/driver/presentation/providers/driver_provider.dart';
 import 'package:delivery_app/features/driver/presentation/screens/driver_list_page.dart';
 import 'package:delivery_app/features/driver/presentation/screens/driver_requests_page.dart';
+import 'package:delivery_app/features/driver/presentation/widgets/admin_driver_request_card.dart';
 import 'package:dio/dio.dart';
+import 'package:easy_localization/easy_localization.dart';
+import 'package:easy_localization_loader/easy_localization_loader.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
-  setUpAll(() => Environment.configFlavor(FlavorValue.dev));
+  setUpAll(() async {
+    Environment.configFlavor(FlavorValue.dev);
+    SharedPreferences.setMockInitialValues({});
+    await EasyLocalization.ensureInitialized();
+  });
 
   test('loads and maps approved drivers from the admin API', () async {
     late RequestOptions request;
@@ -181,14 +189,17 @@ void main() {
         overrides: [
           adminDriverRepositoryProvider.overrideWithValue(repository),
         ],
-        child: const MaterialApp(home: Scaffold(body: DriverRequestsPage())),
+        child: _localizedApp(const Scaffold(body: DriverRequestsPage())),
       ),
     );
+    await tester.pump();
     await tester.pumpAndSettle();
 
-    await tester.tap(find.widgetWithText(OutlinedButton, 'Từ chối'));
+    expect(find.byType(AdminDriverRequestCard), findsOneWidget);
+    expect(find.text('Reject'), findsOneWidget);
+    await tester.tap(find.widgetWithText(OutlinedButton, 'Reject'));
     await tester.pumpAndSettle();
-    final rejectButton = find.widgetWithText(FilledButton, 'Từ chối');
+    final rejectButton = find.widgetWithText(FilledButton, 'Reject');
     expect(tester.widget<FilledButton>(rejectButton).onPressed, isNull);
 
     await tester.enterText(find.byType(TextField), '  Ảnh mờ  ');
@@ -202,6 +213,22 @@ void main() {
     expect(find.text('Nguyễn Văn A'), findsNothing);
   });
 }
+
+Widget _localizedApp(Widget home) => EasyLocalization(
+  supportedLocales: const [Locale('en', 'US'), Locale('ko', 'KR')],
+  startLocale: const Locale('en', 'US'),
+  fallbackLocale: const Locale('en', 'US'),
+  path: 'resources/langs',
+  assetLoader: JsonAssetLoader(),
+  child: Builder(
+    builder: (context) => MaterialApp(
+      locale: context.locale,
+      supportedLocales: context.supportedLocales,
+      localizationsDelegates: context.localizationDelegates,
+      home: home,
+    ),
+  ),
+);
 
 class _RecordingAdminDriverRepository implements AdminDriverRepository {
   final requests = <AdminDriverRequest>[

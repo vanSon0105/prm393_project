@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
+import 'package:delivery_app/generated/locale_keys.g.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/initials_avatar.dart';
@@ -72,7 +74,7 @@ class AdminDriverRequestCard extends StatelessWidget {
             TextButton.icon(
               onPressed: onViewDocuments,
               icon: const Icon(Icons.description_outlined),
-              label: const Text('Xem giấy tờ'),
+              label: Text(LocaleKeys.admin_view_documents.tr()),
             ),
             const SizedBox(height: 8),
             if (busy)
@@ -83,14 +85,14 @@ class AdminDriverRequestCard extends StatelessWidget {
                   Expanded(
                     child: OutlinedButton(
                       onPressed: onReject,
-                      child: const Text('Từ chối'),
+                      child: Text(LocaleKeys.admin_reject.tr()),
                     ),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: FilledButton(
                       onPressed: onApprove,
-                      child: const Text('Duyệt'),
+                      child: Text(LocaleKeys.admin_approve.tr()),
                     ),
                   ),
                 ],
@@ -110,10 +112,10 @@ class AdminDriverDocumentsSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final documents = <(String, String)>[
-      ('Bằng lái mặt trước', request.licenseFrontUrl),
-      ('Bằng lái mặt sau', request.licenseBackUrl),
-      ('Căn cước mặt trước', request.identityFrontUrl),
-      ('Căn cước mặt sau', request.identityBackUrl),
+      (LocaleKeys.users_license_front.tr(), request.licenseFrontUrl),
+      (LocaleKeys.users_license_back.tr(), request.licenseBackUrl),
+      (LocaleKeys.users_identity_front.tr(), request.identityFrontUrl),
+      (LocaleKeys.users_identity_back.tr(), request.identityBackUrl),
     ];
 
     return SafeArea(
@@ -123,7 +125,9 @@ class AdminDriverDocumentsSheet extends StatelessWidget {
           padding: const EdgeInsets.all(20),
           children: [
             Text(
-              'Giấy tờ của ${request.name}',
+              LocaleKeys.admin_documents_title.tr(
+                namedArgs: {'name': request.name},
+              ),
               style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: 16),
@@ -131,7 +135,7 @@ class AdminDriverDocumentsSheet extends StatelessWidget {
               Text(title, style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 8),
               if (url.isEmpty)
-                const Text('Chưa có ảnh')
+                Text(LocaleKeys.users_document_missing.tr())
               else
                 ClipRRect(
                   borderRadius: BorderRadius.circular(12),
@@ -139,9 +143,11 @@ class AdminDriverDocumentsSheet extends StatelessWidget {
                     url,
                     height: 220,
                     fit: BoxFit.contain,
-                    errorBuilder: (_, _, _) => const SizedBox(
+                    errorBuilder: (_, _, _) => SizedBox(
                       height: 80,
-                      child: Center(child: Text('Không tải được ảnh')),
+                      child: Center(
+                        child: Text(LocaleKeys.users_document_load_error.tr()),
+                      ),
                     ),
                   ),
                 ),

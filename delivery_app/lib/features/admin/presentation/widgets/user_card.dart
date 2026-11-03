@@ -63,7 +63,12 @@ class UserCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(9),
                     ),
                     child: Text(
-                      user.role,
+                      switch (user.role) {
+                        'Khách hàng' => LocaleKeys.users_role_customer.tr(),
+                        'Tài xế' => LocaleKeys.users_role_driver.tr(),
+                        'Admin' => LocaleKeys.users_role_admin.tr(),
+                        _ => user.role,
+                      },
                       style: TextStyle(
                         color: AppColors.blue,
                         fontSize: 12,

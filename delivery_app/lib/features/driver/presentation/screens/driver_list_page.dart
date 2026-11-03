@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:easy_localization/easy_localization.dart';
+import 'package:delivery_app/generated/locale_keys.g.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../providers/driver_provider.dart';
@@ -38,23 +40,25 @@ class DriverListPage extends ConsumerWidget {
                   children: [
                     Expanded(
                       child: Text(
-                        '${items.length} tài xế',
+                        LocaleKeys.admin_driver_count.tr(
+                          namedArgs: {'count': '${items.length}'},
+                        ),
                         style: const TextStyle(
                           color: AppColors.textSoft,
                           fontSize: 16,
                         ),
                       ),
                     ),
-                    const Text(
-                      'Đã phê duyệt',
-                      style: TextStyle(
+                    Text(
+                      LocaleKeys.admin_approved.tr(),
+                      style: const TextStyle(
                         color: AppColors.blue,
                         fontSize: 16,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
                     IconButton(
-                      tooltip: 'Tải lại',
+                      tooltip: LocaleKeys.admin_refresh.tr(),
                       onPressed: () => ref.invalidate(adminDriversProvider),
                       icon: const Icon(Icons.refresh_rounded),
                     ),
@@ -73,14 +77,12 @@ class DriverListPage extends ConsumerWidget {
             padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Column(
               children: [
-                const Text(
-                  'Không tải được danh sách tài xế. Kiểm tra kết nối API rồi thử lại.',
-                ),
+                Text(LocaleKeys.admin_driver_load_error.tr()),
                 const SizedBox(height: 12),
                 OutlinedButton.icon(
                   onPressed: () => ref.invalidate(adminDriversProvider),
                   icon: const Icon(Icons.refresh_rounded),
-                  label: const Text('Thử lại'),
+                  label: Text(LocaleKeys.admin_try_again.tr()),
                 ),
               ],
             ),

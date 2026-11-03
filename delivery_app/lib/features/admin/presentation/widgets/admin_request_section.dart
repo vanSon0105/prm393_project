@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
+import 'package:delivery_app/generated/locale_keys.g.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/section_heading.dart';
@@ -29,8 +31,10 @@ class AdminRequestSection extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             SectionHeading(
-              title: 'Yêu cầu mở tài khoản',
-              trailing: '${requests.length} yêu cầu',
+              title: LocaleKeys.admin_requests_heading.tr(),
+              trailing: LocaleKeys.admin_request_count.tr(
+                namedArgs: {'count': '${requests.length}'},
+              ),
             ),
             const SizedBox(height: 10),
             for (final request in requests) ...[
