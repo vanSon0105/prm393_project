@@ -1,12 +1,20 @@
 import 'package:delivery_app/features/auth/register/driver_terms_provider.dart';
 import 'package:delivery_app/features/auth/register/driver_terms_screen.dart';
 import 'package:delivery_app/features/auth/register/driver_documents_field.dart';
+import 'package:easy_localization/easy_localization.dart';
+import 'package:easy_localization_loader/easy_localization_loader.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  setUpAll(() async {
+    SharedPreferences.setMockInitialValues({});
+    await EasyLocalization.ensureInitialized();
+  });
   testWidgets('Driver registration requires reading and accepting terms', (
     tester,
   ) async {
@@ -80,24 +88,37 @@ void main() {
     final formKey = GlobalKey<FormState>();
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: SingleChildScrollView(
-            child: Form(key: formKey, child: DriverDocumentsField()),
+      EasyLocalization(
+        supportedLocales: const [Locale('en', 'US'), Locale('ko', 'KR')],
+        startLocale: const Locale('en', 'US'),
+        fallbackLocale: const Locale('en', 'US'),
+        path: 'resources/langs',
+        assetLoader: JsonAssetLoader(),
+        saveLocale: false,
+        child: Builder(
+          builder: (context) => MaterialApp(
+            locale: context.locale,
+            supportedLocales: context.supportedLocales,
+            localizationsDelegates: context.localizationDelegates,
+            home: Scaffold(
+              body: SingleChildScrollView(
+                child: Form(key: formKey, child: DriverDocumentsField()),
+              ),
+            ),
           ),
         ),
       ),
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Ảnh giấy tờ *'), findsOneWidget);
-    expect(find.text('Mặt trước CCCD'), findsOneWidget);
-    expect(find.text('Mặt sau CCCD'), findsOneWidget);
-    expect(find.text('Giấy phép lái xe mặt trước'), findsOneWidget);
-    expect(find.text('Giấy phép lái xe mặt sau'), findsOneWidget);
+    expect(find.text('Document photos *'), findsOneWidget);
+    expect(find.text('ID card front'), findsOneWidget);
+    expect(find.text('ID card back'), findsOneWidget);
+    expect(find.text('Driving license front'), findsOneWidget);
+    expect(find.text('Driving license back'), findsOneWidget);
     expect(formKey.currentState!.validate(), isFalse);
     await tester.pump();
-    expect(find.text('Vui lòng chọn đủ ảnh/tệp cho 4 mục giấy tờ.'), findsOneWidget);
+    expect(find.text('Upload all four document photos.'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }

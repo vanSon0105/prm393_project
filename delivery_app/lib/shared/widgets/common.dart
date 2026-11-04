@@ -54,9 +54,15 @@ class AuthTopBar extends StatelessWidget {
           ),
           if (eyebrow != null) ...[
             const SizedBox(width: 12),
-            Text(eyebrow!,
+            Flexible(
+              child: Text(
+                eyebrow!,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
-                    color: AppColors.muted, fontWeight: FontWeight.w600)),
+                    color: AppColors.muted, fontWeight: FontWeight.w600),
+              ),
+            ),
           ],
           const Spacer(),
           if (size != ScreenSize.desktop) const NoiLogo(),

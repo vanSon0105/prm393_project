@@ -1,6 +1,10 @@
-import 'package:delivery_app/features/auth/data/models/vehicle_type_model.dart';
+import 'package:delivery_app/features/auth/domain/entities/register_account.dart';
 import 'package:delivery_app/features/auth/domain/entities/role.dart';
 import 'package:delivery_app/features/auth/register/register_view_model.dart';
+import 'package:delivery_app/generated/locale_keys.g.dart';
+import 'package:delivery_app/routes/app_navigate.dart';
+import 'package:dio/dio.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -21,107 +25,213 @@ class RegisterScreen extends ConsumerStatefulWidget {
 
 class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _fullNameCtrl = TextEditingController();
   final _userNameCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
   final _plateCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
   final _confirmCtrl = TextEditingController();
-  final documentsFieldKey =
+  final _documentsKey =
       GlobalKey<FormFieldState<Map<DriverDocumentType, PlatformFile>>>();
-
+  int? _vehicleId;
   bool _obscure = true;
-  bool _agree = true;
+
+  RegisterViewModel get _viewModel =>
+      ref.read(registerViewModelProvider(widget.role).notifier);
+
   @override
   void initState() {
     super.initState();
-    ref.read(registerViewModelProvider(widget.role).notifier).getVehicleType();
+    if (widget.role == Role.driver) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _viewModel.getVehicleType();
+      });
+    }
   }
 
   @override
   void dispose() {
-    for (final c in [
+    for (final controller in [
+      _fullNameCtrl,
       _userNameCtrl,
       _phoneCtrl,
       _plateCtrl,
       _passCtrl,
       _confirmCtrl,
     ]) {
-      c.dispose();
+      controller.dispose();
     }
     super.dispose();
   }
 
-  /// RESPONSIVE
-  Widget _pair(ScreenSize size, Widget a, Widget b) {
+  Widget _pair(ScreenSize size, Widget first, Widget second) {
     if (size == ScreenSize.mobile) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [a, const SizedBox(height: 16), b],
+        children: [first, const SizedBox(height: 16), second],
       );
     }
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(child: a),
+        Expanded(child: first),
         const SizedBox(width: 16),
-        Expanded(child: b),
+        Expanded(child: second),
       ],
     );
   }
 
+  Future<void> _switchRole(Role role) async {
+    if (role == widget.role) return;
+    if (role == Role.driver && !await AppNavigate.instance.gotoDriverTerms()) {
+      return;
+    }
+    if (mounted) AppNavigate.instance.gotoRegister(role);
+  }
+
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+    final documents = <String, RegisterDocument>{};
+    if (widget.role == Role.driver) {
+      final selected = _documentsKey.currentState?.value;
+      if (selected == null ||
+          selected.length != DriverDocumentType.values.length) {
+        return;
+      }
+      try {
+        for (final entry in <String, DriverDocumentType>{
+          'front_side_of_the_identity_card': DriverDocumentType.cccdFront,
+          'the_back_of_the_identity_card': DriverDocumentType.cccdBack,
+          'driving_license_front_side': DriverDocumentType.drivingLicenseFront,
+          'driving_license_back_side': DriverDocumentType.drivingLicenseBack,
+        }.entries) {
+          final file = selected[entry.value]!;
+          documents[entry.key] = RegisterDocument(
+            name: file.name,
+            bytes: await file.readAsBytes(),
+          );
+        }
+      } catch (_) {
+        if (mounted) _notice(LocaleKeys.register_file_read_error.tr());
+        return;
+      }
+    }
+
+    if (!mounted) return;
+    try {
+      await _viewModel.register(
+        RegisterAccountRequest(
+          fullName: _fullNameCtrl.text,
+          userName: _userNameCtrl.text,
+          password: _passCtrl.text,
+          phoneNumber: _phoneCtrl.text,
+          role: widget.role,
+          vehicleId: _vehicleId,
+          licensePlate: widget.role == Role.driver ? _plateCtrl.text : null,
+          documents: documents,
+        ),
+      );
+      if (!mounted) return;
+      await showDialog<void>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: Text(LocaleKeys.register_success_title.tr()),
+          content: Text(
+            widget.role == Role.driver
+                ? LocaleKeys.register_driver_pending.tr()
+                : LocaleKeys.register_customer_success.tr(),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: Text(LocaleKeys.register_go_login.tr()),
+            ),
+          ],
+        ),
+      );
+      if (mounted) AppNavigate.instance.gotoLogin();
+    } on DioException catch (error) {
+      if (!mounted) return;
+      _notice(
+        error.response?.statusCode == 409
+            ? LocaleKeys.register_conflict_error.tr()
+            : LocaleKeys.register_submit_error.tr(),
+      );
+    } catch (_) {
+      if (mounted) _notice(LocaleKeys.register_submit_error.tr());
+    }
+  }
+
+  void _notice(String message) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
+  }
+
   @override
   Widget build(BuildContext context) {
-    final registerState = ref.watch(registerViewModelProvider(widget.role));
-    final viewModel = ref.watch(
-      registerViewModelProvider(widget.role).notifier,
-    );
-
+    final state = ref.watch(registerViewModelProvider(widget.role));
     return ResponsiveAuthLayout(
       cardMaxWidth: 560,
-      brandTitle: 'Tham gia Nối\nchỉ trong 1 phút.',
-      brandSubtitle: 'Khách hàng dùng ngay sau khi đăng ký. Tài khoản tài xế sẽ được admin duyệt trước khi nhận chuyến.',
-      brandChips: const [
-        BrandChip(label: 'Miễn phí đăng ký'),
-        BrandChip(label: 'Thanh toán tiền mặt / QR'),
+      brandTitle: LocaleKeys.register_brand_title.tr(),
+      brandSubtitle: LocaleKeys.register_brand_subtitle.tr(),
+      brandChips: [
+        BrandChip(label: LocaleKeys.register_brand_free.tr()),
+        BrandChip(label: LocaleKeys.register_brand_payment.tr()),
       ],
       form: (size) => Form(
         key: _formKey,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            AuthTopBar(size: size, eyebrow: 'Tạo tài khoản'),
+            AuthTopBar(
+              size: size,
+              eyebrow: LocaleKeys.register_create_account.tr(),
+            ),
             AuthHeading(
-              title: 'Thông tin đăng ký',
-              subtitle: 'Chọn loại tài khoản và điền thông tin cơ bản.',
+              title: LocaleKeys.register_heading.tr(),
+              subtitle: LocaleKeys.register_subtitle.tr(),
               size: size,
             ),
-
-            // Tab Khách hàng / Tài xế
-            _Segment(
-              value: registerState.currentRole,
-              onChanged: (role) {
-                viewModel.changeRole(role);
-              },
-            ),
+            _Segment(value: widget.role, onChanged: _switchRole),
             const SizedBox(height: 22),
-
             LabeledField(
-              label: 'Tài khoản',
+              label: LocaleKeys.profile_full_name.tr(),
               child: TextFormField(
-                controller: _userNameCtrl,
+                controller: _fullNameCtrl,
                 textInputAction: TextInputAction.next,
-                decoration: const InputDecoration(
-                  hintText: 'Nguyễn Văn A',
-                  prefixIcon: Icon(Icons.person_outline_rounded),
+                decoration: InputDecoration(
+                  hintText: LocaleKeys.register_full_name_hint.tr(),
+                  prefixIcon: const Icon(Icons.badge_outlined),
                 ),
-                validator: (v) =>
-                    Validators.notEmpty(v, 'Vui lòng nhập họ và tên.'),
+                validator: (value) =>
+                    (value ?? '').trim().length < 2 ||
+                        (value ?? '').trim().length > 45
+                    ? LocaleKeys.register_full_name_error.tr()
+                    : null,
               ),
             ),
             const SizedBox(height: 16),
-
             LabeledField(
-              label: 'Số điện thoại',
+              label: LocaleKeys.login_phone_label.tr(),
+              child: TextFormField(
+                controller: _userNameCtrl,
+                textInputAction: TextInputAction.next,
+                autocorrect: false,
+                decoration: InputDecoration(
+                  hintText: LocaleKeys.register_username_hint.tr(),
+                  prefixIcon: const Icon(Icons.person_outline_rounded),
+                ),
+                validator: (value) =>
+                    RegExp(r'^[a-zA-Z0-9_.]{3,45}$')
+                        .hasMatch(value?.trim() ?? '')
+                    ? null
+                    : LocaleKeys.register_username_error.tr(),
+              ),
+            ),
+            const SizedBox(height: 16),
+            LabeledField(
+              label: LocaleKeys.profile_phone.tr(),
               child: TextFormField(
                 controller: _phoneCtrl,
                 keyboardType: TextInputType.phone,
@@ -130,113 +240,97 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   hintText: '090 123 4567',
                   prefixIcon: Icon(Icons.phone_iphone_rounded),
                 ),
-                validator: Validators.phone,
+                validator: (value) =>
+                    RegExp(r'^0\d{9}$')
+                        .hasMatch((value ?? '').replaceAll(' ', ''))
+                    ? null
+                    : LocaleKeys.register_phone_error.tr(),
               ),
             ),
-            const SizedBox(height: 16),
-            // Chỉ hiện khi chọn Tài xế
-            AnimatedSize(
-              duration: const Duration(milliseconds: 200),
-              child: registerState.isDriver
-                  ? Padding(
-                      padding: const EdgeInsets.only(top: 16),
-                      child: _pair(
-                        size,
-                        LabeledField(
-                          label: 'Loại xe',
-                          child: DropdownButtonFormField<VehicleTypeData>(
-                            initialValue: registerState.vehicleTypeDataSelected,
-                            hint: const Text('Chọn loại xe của bạn'),
-                            isExpanded: true,
-                            icon: const Icon(
-                              Icons.keyboard_arrow_down_rounded,
-                              color: AppColors.muted,
-                            ),
-                            items: registerState.vehicles.map((
-                              VehicleTypeData vehicle,
-                            ) {
-                              return DropdownMenuItem<VehicleTypeData>(
-                                value: vehicle,
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      vehicle.id == 1
-                                          ? Icons.two_wheeler_rounded
-                                          : Icons.directions_car_rounded,
-                                      color: AppColors.ink,
-                                      size: 22,
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Text(
-                                      vehicle.name ?? '',
-                                      style: const TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            }).toList(),
-
-                            onChanged: (VehicleTypeData? newValue) {
-                              viewModel.changeVehicle(newValue);
-                            },
-
-                            // Kiểm tra tính hợp lệ khi bấm nút Đăng ký
-                            validator: (value) => value == null
-                                ? 'Vui lòng chọn loại xe phương tiện.'
-                                : null,
-                          ),
+            if (state.isDriver) ...[
+              const SizedBox(height: 16),
+              _pair(
+                size,
+                LabeledField(
+                  label: LocaleKeys.register_vehicle_type.tr(),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      DropdownButtonFormField<int>(
+                        initialValue: _vehicleId,
+                        isExpanded: true,
+                        items: [
+                          for (final vehicle in state.vehicles)
+                            if (vehicle.id != null)
+                              DropdownMenuItem(
+                                value: vehicle.id!,
+                                child: Text(vehicle.name ?? '#${vehicle.id}'),
+                              ),
+                        ],
+                        onChanged: state.loadingVehicles
+                            ? null
+                            : (value) => setState(() => _vehicleId = value),
+                        decoration: InputDecoration(
+                          hintText: state.loadingVehicles
+                              ? LocaleKeys.loading_txt.tr()
+                              : LocaleKeys.register_select_vehicle.tr(),
+                          prefixIcon: const Icon(Icons.two_wheeler_rounded),
                         ),
-                        LabeledField(
-                          label: 'Biển số xe',
-                          child: TextFormField(
-                            controller: _plateCtrl,
-                            textCapitalization: TextCapitalization.characters,
-                            decoration: const InputDecoration(
-                              hintText: '59A1 234.56',
-                              prefixIcon: Icon(Icons.credit_card_outlined),
-                            ),
-                            validator: (v) => registerState.isDriver
-                                ? Validators.notEmpty(
-                                    v,
-                                    'Vui lòng nhập biển số xe.',
-                                  )
-                                : null,
-                          ),
-                        ),
+                        validator: (value) => value == null
+                            ? LocaleKeys.register_vehicle_required.tr()
+                            : null,
                       ),
-                    )
-                  : const SizedBox(width: double.infinity),
-            ),
-            const SizedBox(height: 16),
-
-            if (registerState.isDriver) ...[
+                      if (state.vehicleLoadFailed) ...[
+                        Text(LocaleKeys.register_vehicle_load_error.tr()),
+                        TextButton(
+                          onPressed: _viewModel.getVehicleType,
+                          child: Text(LocaleKeys.admin_try_again.tr()),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                LabeledField(
+                  label: LocaleKeys.register_license_plate.tr(),
+                  child: TextFormField(
+                    controller: _plateCtrl,
+                    textCapitalization: TextCapitalization.characters,
+                    decoration: const InputDecoration(
+                      hintText: '59A1 234.56',
+                      prefixIcon: Icon(Icons.credit_card_outlined),
+                    ),
+                    validator: (value) => (value ?? '').trim().isEmpty
+                        ? LocaleKeys.register_plate_required.tr()
+                        : null,
+                  ),
+                ),
+              ),
               const Divider(height: 32),
-              const Text(
-                'Hồ sơ và giấy tờ tài xế',
-                style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800),
+              Text(
+                LocaleKeys.register_documents_title.tr(),
+                style: const TextStyle(
+                  fontSize: 19,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
               const SizedBox(height: 6),
-              const Text(
-                'Điền thông tin trên giấy tờ và chọn ảnh rõ nét để hoàn thiện hồ sơ.',
-                style: TextStyle(color: AppColors.muted),
+              Text(
+                LocaleKeys.register_documents_description.tr(),
+                style: const TextStyle(color: AppColors.muted),
               ),
               const SizedBox(height: 20),
-              DriverDocumentsField(key: documentsFieldKey),
-              const SizedBox(height: 16),
+              DriverDocumentsField(key: _documentsKey),
             ],
-
+            const SizedBox(height: 16),
             _pair(
               size,
               LabeledField(
-                label: 'Mật khẩu',
+                label: LocaleKeys.login_password_label.tr(),
                 child: TextFormField(
                   controller: _passCtrl,
                   obscureText: _obscure,
                   decoration: InputDecoration(
-                    hintText: 'Tối thiểu 6 ký tự',
+                    hintText: LocaleKeys.register_password_hint.tr(),
                     prefixIcon: const Icon(Icons.lock_outline_rounded),
                     suffixIcon: IconButton(
                       icon: Icon(
@@ -247,104 +341,66 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       onPressed: () => setState(() => _obscure = !_obscure),
                     ),
                   ),
-                  validator: Validators.password,
+                  validator: (value) => (value ?? '').length < 6
+                      ? LocaleKeys.register_password_error.tr()
+                      : null,
                 ),
               ),
               LabeledField(
-                label: 'Nhập lại mật khẩu',
+                label: LocaleKeys.register_confirm_password.tr(),
                 child: TextFormField(
                   controller: _confirmCtrl,
                   obscureText: _obscure,
-                  decoration: const InputDecoration(
-                    hintText: 'Nhập lại',
-                    prefixIcon: Icon(Icons.lock_outline_rounded),
+                  decoration: InputDecoration(
+                    hintText: LocaleKeys.register_confirm_hint.tr(),
+                    prefixIcon: const Icon(Icons.lock_outline_rounded),
                   ),
-                  validator: (v) => (v ?? '').isEmpty || v != _passCtrl.text
-                      ? 'Mật khẩu nhập lại không khớp.'
+                  validator: (value) =>
+                      value != _passCtrl.text || (value ?? '').isEmpty
+                      ? LocaleKeys.register_password_mismatch.tr()
                       : null,
                 ),
               ),
             ),
-            const SizedBox(height: 8),
-
-            if (registerState.isDriver)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 12),
+            const SizedBox(height: 12),
+            if (state.isDriver)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12),
                 child: Row(
                   children: [
-                    Icon(Icons.verified_rounded, color: AppColors.primary),
-                    SizedBox(width: 8),
+                    const Icon(
+                      Icons.verified_rounded,
+                      color: AppColors.primary,
+                    ),
+                    const SizedBox(width: 8),
                     Expanded(
-                      child: Text('Đã đồng ý với điều khoản dành cho tài xế'),
+                      child: Text(
+                        LocaleKeys.register_driver_terms_accepted.tr(),
+                      ),
                     ),
                   ],
                 ),
-              )
-            else
-              Row(
-                children: [
-                  Checkbox(
-                    value: _agree,
-                    activeColor: AppColors.primary,
-                    onChanged: (v) => setState(() => _agree = v ?? false),
-                  ),
-                  const Expanded(
-                    child: Text(
-                      'Tôi đồng ý với điều khoản sử dụng',
-                      style: TextStyle(color: AppColors.muted),
-                    ),
-                  ),
-                ],
               ),
             const SizedBox(height: 16),
-
             ElevatedButton(
-              onPressed: () {
-                final Map<DriverDocumentType, PlatformFile>? selectedFiles =
-                    documentsFieldKey.currentState?.value;
-                debugPrint('-------- $selectedFiles');
-                if (selectedFiles != null) {
-                  final cccdFrontFile =
-                      selectedFiles[DriverDocumentType.cccdFront];
-                  final cccdBackFile =
-                      selectedFiles[DriverDocumentType.cccdBack];
-                  final licenseFront =
-                      selectedFiles[DriverDocumentType.drivingLicenseFront];
-                  final licenseBack =
-                      selectedFiles[DriverDocumentType.drivingLicenseBack];
-                  viewModel.registerAccount(
-                    userName: _userNameCtrl.text.trim(),
-                    password: _passCtrl.text.trim(),
-                    phoneNumber: _phoneCtrl.text.trim(),
-                    vehicleId: registerState.vehicleTypeDataSelected?.id,
-                    licensePlate: _plateCtrl.text.trim(),
-                    drivingLicenseFrontSide: licenseFront?.xFile.path ?? '',
-                    drivingLicenseBackSide: licenseBack?.xFile.path ?? '',
-                    frontSideOfTheIdentityCard: cccdFrontFile?.xFile.path ?? '',
-                    backSideOfTheIdentityCard: cccdBackFile?.xFile.path ?? '',
-                  );
-                }
-              },
+              onPressed: state.submitting || state.loadingVehicles
+                  ? null
+                  : _submit,
               child: Text(
-                registerState.isDriver ? 'Kiểm tra thông tin' : 'Gửi đăng ký',
+                state.submitting
+                    ? LocaleKeys.register_submitting.tr()
+                    : LocaleKeys.register_submit.tr(),
               ),
             ),
             const SizedBox(height: 12),
-
             Wrap(
               alignment: WrapAlignment.center,
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                const Text(
-                  'Đã có tài khoản?',
-                  style: TextStyle(color: AppColors.muted),
-                ),
+                Text(LocaleKeys.register_have_account.tr()),
                 TextButton(
                   onPressed: () => Navigator.maybePop(context),
-                  child: const Text(
-                    'Đăng nhập',
-                    style: TextStyle(fontWeight: FontWeight.w700),
-                  ),
+                  child: Text(LocaleKeys.login_btn_login.tr()),
                 ),
               ],
             ),
@@ -355,7 +411,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   }
 }
 
-/// Tab Khách hàng / Tài xế
 class _Segment extends StatelessWidget {
   const _Segment({required this.value, required this.onChanged});
 
@@ -363,53 +418,30 @@ class _Segment extends StatelessWidget {
   final ValueChanged<Role> onChanged;
 
   @override
-  Widget build(BuildContext context) {
-    Widget tab(Role t, String label) {
-      final selected = t == value;
-      return Expanded(
-        child: GestureDetector(
-          onTap: () => onChanged(t),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 0),
-            padding: const EdgeInsets.symmetric(vertical: 10),
-            decoration: BoxDecoration(
-              color: selected ? AppColors.surface : Colors.transparent,
-              borderRadius: BorderRadius.circular(999),
-              boxShadow: selected
-                  ? const [
-                      BoxShadow(
-                        color: Color(0x140F172A),
-                        blurRadius: 8,
-                        offset: Offset(0, 2),
-                      ),
-                    ]
-                  : null,
-            ),
-            alignment: Alignment.center,
-            child: Text(
-              label,
-              style: TextStyle(
-                fontWeight: FontWeight.w600,
-                color: selected ? AppColors.ink : AppColors.muted,
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(4),
+    decoration: BoxDecoration(
+      color: const Color(0xFFEEF2F7),
+      borderRadius: BorderRadius.circular(999),
+    ),
+    child: Row(
+      children: [
+        for (final role in [Role.customer, Role.driver])
+          Expanded(
+            child: TextButton(
+              onPressed: () => onChanged(role),
+              style: TextButton.styleFrom(
+                backgroundColor: role == value
+                    ? AppColors.surface
+                    : Colors.transparent,
+                foregroundColor: role == value
+                    ? AppColors.ink
+                    : AppColors.muted,
               ),
+              child: Text(role.title),
             ),
           ),
-        ),
-      );
-    }
-
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: const Color(0xFFEEF2F7),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Row(
-        children: [
-          tab(Role.customer, Role.customer.title),
-          tab(Role.driver, Role.driver.title),
-        ],
-      ),
-    );
-  }
+      ],
+    ),
+  );
 }
