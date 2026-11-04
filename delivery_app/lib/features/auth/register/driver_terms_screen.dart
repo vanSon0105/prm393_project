@@ -1,3 +1,5 @@
+import 'package:delivery_app/generated/locale_keys.g.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -47,7 +49,7 @@ class _DriverTermsScreenState extends ConsumerState<DriverTermsScreen> {
       child: Scaffold(
         appBar: AppBar(
           backgroundColor: AppColors.bg,
-          title: const Text('Điều khoản tài xế'),
+          title: Text(LocaleKeys.driver_terms_title.tr()),
           actions: const [
             Padding(
               padding: EdgeInsets.only(right: 20),
@@ -67,75 +69,77 @@ class _DriverTermsScreenState extends ConsumerState<DriverTermsScreen> {
                       padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
-                        children: const [
-                          Icon(
+                        children: [
+                          const Icon(
                             Icons.two_wheeler_rounded,
                             size: 44,
                             color: AppColors.primary,
                           ),
-                          SizedBox(height: 16),
+                          const SizedBox(height: 16),
                           Text(
-                            'Điều kiện đăng ký tài xế',
-                            style: TextStyle(
+                            LocaleKeys.driver_terms_heading.tr(),
+                            style: const TextStyle(
                               fontSize: 27,
                               fontWeight: FontWeight.w800,
                               height: 1.2,
                             ),
                           ),
-                          SizedBox(height: 10),
+                          const SizedBox(height: 10),
                           Text(
-                            'Vui lòng đọc các điều kiện dưới đây trước khi điền thông tin đăng ký.',
-                            style: TextStyle(
+                            LocaleKeys.driver_terms_intro.tr(),
+                            style: const TextStyle(
                               fontSize: 15,
                               height: 1.5,
                               color: AppColors.muted,
                             ),
                           ),
-                          SizedBox(height: 28),
+                          const SizedBox(height: 28),
                           _TermsSection(
                             number: '01',
-                            title: 'Điều kiện đăng ký',
+                            title: LocaleKeys.driver_terms_eligibility_title
+                                .tr(),
                             items: [
-                              'Bạn từ 18 đến 60 tuổi tại ngày đăng ký.',
-                              'Có CCCD gồm 12 chữ số và còn hiệu lực.',
-                              'Có giấy phép lái xe hạng A1 hoặc A2 và bảo hiểm xe còn hạn.',
-                              'Sử dụng xe máy có biển số hợp lệ để nhận chuyến.',
+                              LocaleKeys.driver_terms_eligibility_age.tr(),
+                              LocaleKeys.driver_terms_eligibility_id.tr(),
+                              LocaleKeys.driver_terms_eligibility_license.tr(),
+                              LocaleKeys.driver_terms_eligibility_vehicle.tr(),
                             ],
                           ),
-                          SizedBox(height: 16),
+                          const SizedBox(height: 16),
                           _TermsSection(
                             number: '02',
-                            title: 'Thông tin đăng ký',
+                            title: LocaleKeys.driver_terms_information_title
+                                .tr(),
                             items: [
-                              'Cung cấp thông tin cá nhân và phương tiện chính xác, sử dụng giấy tờ của chính bạn.',
-                              'Đảm bảo CCCD, giấy phép lái xe và bảo hiểm xe còn hiệu lực trong thời gian hoạt động.',
-                              'Cập nhật thông tin khi giấy tờ hoặc phương tiện thay đổi.',
+                              LocaleKeys.driver_terms_information_accurate.tr(),
+                              LocaleKeys.driver_terms_information_valid.tr(),
+                              LocaleKeys.driver_terms_information_update.tr(),
                             ],
                           ),
-                          SizedBox(height: 16),
+                          const SizedBox(height: 16),
                           _TermsSection(
                             number: '03',
-                            title: 'Xét duyệt tài khoản',
+                            title: LocaleKeys.driver_terms_review_title.tr(),
                             items: [
-                              'Đăng ký tài khoản không đồng nghĩa với việc được nhận chuyến ngay.',
-                              'Tài khoản tài xế cần được xét duyệt trước khi có thể bật nhận chuyến.',
-                              'Nếu thông tin không chính xác hoặc giấy tờ hết hiệu lực, bạn cần bổ sung hoặc cập nhật trước khi hoạt động.',
+                              LocaleKeys.driver_terms_review_pending.tr(),
+                              LocaleKeys.driver_terms_review_required.tr(),
+                              LocaleKeys.driver_terms_review_correction.tr(),
                             ],
                           ),
-                          SizedBox(height: 16),
+                          const SizedBox(height: 16),
                           _TermsSection(
                             number: '04',
-                            title: 'Khi nhận chuyến',
+                            title: LocaleKeys.driver_terms_trips_title.tr(),
                             items: [
-                              'Chỉ bật nhận chuyến khi bạn sẵn sàng và đủ điều kiện hoạt động.',
-                              'Sau khi nhận chuyến, cập nhật đúng các bước đến điểm đón, đón khách và hoàn thành chuyến trong ứng dụng.',
-                              'Nếu không thể tiếp tục chuyến, hãy dùng chức năng hủy và ghi rõ lý do.',
+                              LocaleKeys.driver_terms_trips_ready.tr(),
+                              LocaleKeys.driver_terms_trips_progress.tr(),
+                              LocaleKeys.driver_terms_trips_cancel.tr(),
                             ],
                           ),
-                          SizedBox(height: 24),
+                          const SizedBox(height: 24),
                           Text(
-                            'Bằng việc đồng ý, bạn xác nhận đã đọc và hiểu các điều kiện đăng ký tài xế ở trên. Sau đó, bạn có thể tiếp tục điền hồ sơ.',
-                            style: TextStyle(
+                            LocaleKeys.driver_terms_confirmation.tr(),
+                            style: const TextStyle(
                               color: AppColors.muted,
                               fontSize: 13,
                               height: 1.5,
@@ -156,11 +160,11 @@ class _DriverTermsScreenState extends ConsumerState<DriverTermsScreen> {
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           if (!_readToEnd)
-                            const Padding(
-                              padding: EdgeInsets.only(bottom: 8),
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 8),
                               child: Text(
-                                'Cuộn xuống cuối để đọc toàn bộ điều khoản.',
-                                style: TextStyle(color: AppColors.muted),
+                                LocaleKeys.driver_terms_scroll_hint.tr(),
+                                style: const TextStyle(color: AppColors.muted),
                               ),
                             ),
                           CheckboxListTile(
@@ -169,9 +173,9 @@ class _DriverTermsScreenState extends ConsumerState<DriverTermsScreen> {
                                 ? (value) =>
                                       setState(() => _agreed = value ?? false)
                                 : null,
-                            title: const Text(
-                              'Tôi đã đọc và đồng ý với điều khoản dành cho tài xế',
-                              style: TextStyle(fontSize: 14),
+                            title: Text(
+                              LocaleKeys.driver_terms_agree.tr(),
+                              style: const TextStyle(fontSize: 14),
                             ),
                             controlAffinity: ListTileControlAffinity.leading,
                             contentPadding: EdgeInsets.zero,
@@ -189,7 +193,7 @@ class _DriverTermsScreenState extends ConsumerState<DriverTermsScreen> {
                                     context.pop(true);
                                   }
                                 : null,
-                            child: const Text('Tiếp tục đăng ký tài xế'),
+                            child: Text(LocaleKeys.driver_terms_continue.tr()),
                           ),
                         ],
                       ),

@@ -1,19 +1,25 @@
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
+import 'package:delivery_app/generated/locale_keys.g.dart';
+import 'package:easy_localization/easy_localization.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../../shared/theme/app_theme.dart';
 
 enum DriverDocumentType {
-  cccdFront('Mặt trước CCCD'),
-  cccdBack('Mặt sau CCCD'),
-  drivingLicenseFront('Giấy phép lái xe mặt trước'),
-  drivingLicenseBack('Giấy phép lái xe mặt sau');
+  cccdFront,
+  cccdBack,
+  drivingLicenseFront,
+  drivingLicenseBack;
 
-  const DriverDocumentType(this.label);
-
-  final String label;
+  String get label => switch (this) {
+    cccdFront => LocaleKeys.register_identity_front.tr(),
+    cccdBack => LocaleKeys.register_identity_back.tr(),
+    drivingLicenseFront => LocaleKeys.register_license_front.tr(),
+    drivingLicenseBack => LocaleKeys.register_license_back.tr(),
+  };
 }
 
 class DriverDocumentsField
@@ -27,18 +33,18 @@ class DriverDocumentsField
           )) {
             return null;
           }
-          return 'Vui lòng chọn đủ ảnh/tệp cho 4 mục giấy tờ.';
+          return LocaleKeys.register_documents_required.tr();
         },
         builder: (field) => Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text(
-              'Ảnh giấy tờ *',
+            Text(
+              LocaleKeys.register_documents_label.tr(),
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 6),
-            const Text(
-              'Chọn ảnh JPG, PNG hoặc tệp PDF; mỗi tệp tối đa 10 MB.',
+            Text(
+              LocaleKeys.register_documents_help.tr(),
               style: TextStyle(color: AppColors.muted, fontSize: 13),
             ),
             const SizedBox(height: 12),
@@ -76,7 +82,7 @@ class DriverDocumentsField
     try {
       final file = await FilePicker.pickFile(
         type: FileType.custom,
-        allowedExtensions: const ['jpg', 'jpeg', 'png', 'pdf'],
+        allowedExtensions: const ['jpg', 'jpeg', 'png'],
       );
       if (!field.mounted || file == null) return;
 
@@ -84,9 +90,7 @@ class DriverDocumentsField
       if (!field.mounted) return;
       if (size == 0 || size > 10 * 1024 * 1024) {
         ScaffoldMessenger.of(field.context).showSnackBar(
-          const SnackBar(
-            content: Text('Tệp cần có dung lượng từ 1 byte đến 10 MB.'),
-          ),
+          SnackBar(content: Text(LocaleKeys.register_file_size_error.tr())),
         );
         return;
       }
@@ -95,7 +99,7 @@ class DriverDocumentsField
     } catch (_) {
       if (!field.mounted) return;
       ScaffoldMessenger.of(field.context).showSnackBar(
-        const SnackBar(content: Text('Không thể mở tệp. Vui lòng thử lại.')),
+        SnackBar(content: Text(LocaleKeys.register_file_read_error.tr())),
       );
     }
   }
@@ -161,17 +165,23 @@ class _DocumentTile extends StatelessWidget {
               ),
               TextButton(
                 onPressed: onSelect,
-                child: Text(fileName == null ? 'Chọn tệp' : 'Đổi'),
+                child: Text(
+                  fileName == null
+                      ? LocaleKeys.register_choose_file.tr()
+                      : LocaleKeys.register_change_file.tr(),
+                ),
               ),
               if (onRemove != null)
                 IconButton(
-                  tooltip: 'Bỏ tệp $label',
+                  tooltip: LocaleKeys.register_remove_file.tr(
+                    namedArgs: {'name': label},
+                  ),
                   onPressed: onRemove,
                   icon: const Icon(Icons.close_rounded),
                 ),
             ],
           ),
-          if (uri != null)
+          if (uri != null && !kIsWeb)
             Container(
               margin: EdgeInsets.only(left: 36),
               child: Image.file(File.fromUri(uri!), height: 150),

@@ -335,6 +335,9 @@ func getDriverRequests(w http.ResponseWriter, r *http.Request) {
 		FROM Profile p
 		INNER JOIN Driver d ON p.profile_id = d.driver_id
 		WHERE d.active = 0
+		  AND NOT EXISTS (
+			SELECT 1 FROM ReasonReject rr WHERE rr.driver_id = d.driver_id
+		  )
 	`
 	rows, err := db.Query(query)
 	if err != nil {
@@ -455,6 +458,13 @@ func approveDriver(w http.ResponseWriter, r *http.Request) {
 		}{Error: "Dữ liệu JSON không hợp lệ"})
 		return
 	}
+	routeID, err := strconv.Atoi(mux.Vars(r)["id"])
+	if err != nil || routeID <= 0 || routeID != req.DriverID {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{"error": "driver_id không khớp với URL"})
+		return
+	}
+	req.Reason = strings.TrimSpace(req.Reason)
 
 	if !req.Status && req.Reason == "" {
 		w.WriteHeader(http.StatusBadRequest)
@@ -475,27 +485,33 @@ func approveDriver(w http.ResponseWriter, r *http.Request) {
 	}
 	defer tx.Rollback()
 
+	var existingID int
+	err = tx.QueryRowContext(ctx,
+		"SELECT driver_id FROM Driver WHERE driver_id = ? FOR UPDATE", req.DriverID,
+	).Scan(&existingID)
+	if err == sql.ErrNoRows {
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Không tìm thấy tài xế"})
+		return
+	}
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Không thể kiểm tra tài xế"})
+		return
+	}
+
 	activeValue := 0
 	if req.Status {
 		activeValue = 1
 	}
 
 	updateQuery := "UPDATE Driver SET active = ? WHERE driver_id = ?"
-	result, err := tx.ExecContext(ctx, updateQuery, activeValue, req.DriverID)
+	_, err = tx.ExecContext(ctx, updateQuery, activeValue, req.DriverID)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(struct {
 			Error string `json:"error"`
 		}{Error: "Lỗi hệ thống khi cập nhật trạng thái tài xế"})
-		return
-	}
-
-	rowsAffected, _ := result.RowsAffected()
-	if rowsAffected == 0 {
-		w.WriteHeader(http.StatusNotFound)
-		json.NewEncoder(w).Encode(struct {
-			Error string `json:"error"`
-		}{Error: "Không tìm thấy tài xế với driver_id đã cung cấp"})
 		return
 	}
 
@@ -937,7 +953,11 @@ func registerUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userName := r.FormValue("user_name")
+	userName := strings.TrimSpace(r.FormValue("user_name"))
+	fullName := strings.TrimSpace(r.FormValue("full_name"))
+	if fullName == "" {
+		fullName = userName
+	}
 	password := r.FormValue("password")
 	role := r.FormValue("role")
 	phoneNumber := r.FormValue("phone_number")
@@ -997,8 +1017,8 @@ func registerUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	profileQuery := "INSERT INTO Profile (user_name, password, phone_number, role_id) VALUES (?, ?, ?, ?)"
-	res, err := tx.ExecContext(ctx, profileQuery, userName, password, phoneNumber, roleID)
+	profileQuery := "INSERT INTO Profile (full_name, user_name, password, phone_number, role_id) VALUES (?, ?, ?, ?, ?)"
+	res, err := tx.ExecContext(ctx, profileQuery, fullName, userName, password, phoneNumber, roleID)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(map[string]string{"error": "Lỗi ghi nhận hồ sơ người dùng"})
@@ -1077,7 +1097,7 @@ func registerUser(w http.ResponseWriter, r *http.Request) {
 
 		driverQuery := `
 			INSERT INTO Driver (
-				driver_id, vehicleType_id, licensePlate, driving_license_front_side, 
+				driver_id, vehicleType_id, licensePlate, driving_license_front_side,
 				driving_license_back_side, front_side_of_the_identity_card, 
 				the_back_of_the_identity_card, active
 			) VALUES (?, ?, ?, ?, ?, ?, ?, 0)

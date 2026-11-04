@@ -17,6 +17,8 @@ abstract class ApiParam {
 
   bool get useMultipart => false;
 
+  Map<String, dynamic> get extra => const {};
+
   Future<FormData> get formData async {
     return FormData();
   }

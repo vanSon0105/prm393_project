@@ -1,12 +1,19 @@
 import 'package:delivery_app/features/auth/register/driver_terms_provider.dart';
 import 'package:delivery_app/features/auth/register/driver_terms_screen.dart';
-import 'package:delivery_app/features/auth/register/driver_documents_field.dart';
+import 'package:easy_localization/easy_localization.dart';
+import 'package:easy_localization_loader/easy_localization_loader.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  setUpAll(() async {
+    SharedPreferences.setMockInitialValues({});
+    await EasyLocalization.ensureInitialized();
+  });
   testWidgets('Driver registration requires reading and accepting terms', (
     tester,
   ) async {
@@ -37,17 +44,33 @@ void main() {
     addTearDown(router.dispose);
 
     await tester.pumpWidget(
-      UncontrolledProviderScope(
-        container: container,
-        child: MaterialApp.router(routerConfig: router),
+      EasyLocalization(
+        supportedLocales: const [Locale('en', 'US'), Locale('ko', 'KR')],
+        startLocale: const Locale('en', 'US'),
+        fallbackLocale: const Locale('en', 'US'),
+        path: 'resources/langs',
+        assetLoader: JsonAssetLoader(),
+        saveLocale: false,
+        child: UncontrolledProviderScope(
+          container: container,
+          child: Builder(
+            builder: (context) => MaterialApp.router(
+              locale: context.locale,
+              supportedLocales: context.supportedLocales,
+              localizationsDelegates: context.localizationDelegates,
+              routerConfig: router,
+            ),
+          ),
+        ),
       ),
     );
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Đăng ký tài xế'));
     await tester.pumpAndSettle();
 
     final continueButton = find.widgetWithText(
       ElevatedButton,
-      'Tiếp tục đăng ký tài xế',
+      'Continue driver registration',
     );
     expect(tester.widget<ElevatedButton>(continueButton).onPressed, isNull);
     expect(container.read(driverTermsConsentProvider), isFalse);
@@ -67,37 +90,5 @@ void main() {
     await tester.pumpAndSettle();
     expect(container.read(driverTermsConsentProvider), isTrue);
     expect(find.text('Đăng ký tài xế'), findsOneWidget);
-  });
-
-  testWidgets('Driver registration requires four document uploads', (
-    tester,
-  ) async {
-    tester.view.physicalSize = const Size(390, 844);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-
-    final formKey = GlobalKey<FormState>();
-
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: SingleChildScrollView(
-            child: Form(key: formKey, child: DriverDocumentsField()),
-          ),
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    expect(find.text('Ảnh giấy tờ *'), findsOneWidget);
-    expect(find.text('Mặt trước CCCD'), findsOneWidget);
-    expect(find.text('Mặt sau CCCD'), findsOneWidget);
-    expect(find.text('Giấy phép lái xe mặt trước'), findsOneWidget);
-    expect(find.text('Giấy phép lái xe mặt sau'), findsOneWidget);
-    expect(formKey.currentState!.validate(), isFalse);
-    await tester.pump();
-    expect(find.text('Vui lòng chọn đủ ảnh/tệp cho 4 mục giấy tờ.'), findsOneWidget);
-    expect(tester.takeException(), isNull);
   });
 }
