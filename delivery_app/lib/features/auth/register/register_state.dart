@@ -4,25 +4,33 @@ import 'package:delivery_app/features/auth/domain/entities/role.dart';
 class RegisterState {
   final Role currentRole;
   final List<VehicleTypeData> vehicles;
-  final VehicleTypeData? vehicleTypeDataSelected;
+  final bool loadingVehicles;
+  final bool submitting;
+  final bool vehicleLoadFailed;
 
   RegisterState({
     required this.currentRole,
-    required this.vehicles,
-    this.vehicleTypeDataSelected,
+    this.vehicles = const [],
+    this.loadingVehicles = false,
+    this.submitting = false,
+    this.vehicleLoadFailed = false,
   });
 
   bool get isDriver => currentRole == Role.driver;
 
-  RegisterState copyWidth({
+  RegisterState copyWith({
     Role? role,
     List<VehicleTypeData>? vehicles,
-    VehicleTypeData? vehicle,
+    bool? loadingVehicles,
+    bool? submitting,
+    bool? vehicleLoadFailed,
   }) {
     return RegisterState(
       currentRole: role ?? currentRole,
       vehicles: vehicles ?? this.vehicles,
-      vehicleTypeDataSelected: vehicle ?? vehicleTypeDataSelected,
+      loadingVehicles: loadingVehicles ?? this.loadingVehicles,
+      submitting: submitting ?? this.submitting,
+      vehicleLoadFailed: vehicleLoadFailed ?? this.vehicleLoadFailed,
     );
   }
 }

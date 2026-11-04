@@ -9,7 +9,10 @@ class CustomInterceptor extends Interceptor {
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
     debugPrint('REQUEST[${options.method}] => PATH: ${options.uri}');
     debugPrint('HEADER: ${options.headers}');
-    debugPrint('BODY: ${options.data}');
+    if (!options.uri.path.endsWith('/api/user/login') &&
+        !options.uri.path.endsWith('/api/user/register')) {
+      debugPrint('BODY: ${options.data}');
+    }
     return super.onRequest(options, handler);
   }
 
@@ -34,7 +37,8 @@ class CustomInterceptor extends Interceptor {
     final messageError = responseData is Map
         ? responseData['error']?.toString() ?? ''
         : '';
-    if (messageError.isNotEmpty) {
+    if (messageError.isNotEmpty &&
+        err.requestOptions.extra['skipApiErrorDialog'] != true) {
       AppNavigate.instance.showAppDialog(message: messageError);
     }
     super.onError(err, handler);
