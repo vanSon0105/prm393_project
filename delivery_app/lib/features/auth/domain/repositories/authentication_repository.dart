@@ -4,7 +4,6 @@ import 'package:delivery_app/features/auth/data/models/vehicle_type_model.dart';
 import 'package:delivery_app/features/auth/data/repositories/login_param.dart';
 import 'package:delivery_app/features/auth/data/repositories/register_driver_param.dart';
 import 'package:delivery_app/features/auth/data/repositories/register_user_param.dart';
-import 'package:delivery_app/features/auth/domain/entities/register_account.dart';
 import 'package:delivery_app/features/auth/domain/entities/role.dart';
 
 abstract class AuthenticationRepository {
@@ -13,8 +12,6 @@ abstract class AuthenticationRepository {
   Future<RegisterModel> registerCustomerAccount(RegisterUserParam param);
 
   Future<RegisterModel> registerDriverAccount(RegisterDriverParam param);
-
-  Future<RegisterAccountResult> registerAccount(RegisterAccountRequest request);
 
   Future<VehicleTypeModel> getVehicleTypes();
 

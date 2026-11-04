@@ -4,6 +4,8 @@ import 'package:delivery_app/config/environment.dart';
 import 'package:delivery_app/data/network/base/provider.dart';
 import 'package:delivery_app/features/auth/data/repositories/authentication_repository_impl.dart';
 import 'package:delivery_app/features/auth/data/repositories/login_param.dart';
+import 'package:delivery_app/features/auth/data/repositories/register_driver_param.dart';
+import 'package:delivery_app/features/auth/data/repositories/register_user_param.dart';
 import 'package:delivery_app/features/auth/domain/entities/login_status.dart';
 import 'package:delivery_app/features/auth/domain/entities/register_account.dart';
 import 'package:delivery_app/features/auth/domain/entities/role.dart';
@@ -17,10 +19,12 @@ void main() {
     'customer registration sends multipart fields without driver files',
     () async {
       FormData? submitted;
+      RequestOptions? sentRequest;
       final dio = Dio(BaseOptions(baseUrl: Environment.baseUrl))
         ..interceptors.add(
           InterceptorsWrapper(
             onRequest: (options, handler) {
+              sentRequest = options;
               submitted = options.data as FormData;
               handler.resolve(
                 Response(
@@ -39,20 +43,22 @@ void main() {
             },
           ),
         );
-      final repository = AuthenticationRepositoryImpl(ApiProvider(dio), dio);
+      final repository = AuthenticationRepositoryImpl(ApiProvider(dio));
 
-      final result = await repository.registerAccount(
-        const RegisterAccountRequest(
+      final result = await repository.registerCustomerAccount(
+        RegisterUserParam(
           fullName: 'Nguyen Van A',
           userName: 'new_customer',
           password: 'secret123',
           phoneNumber: '090 123 4567',
-          role: Role.customer,
         ),
       );
 
-      expect(result.profileId, 8);
-      expect(result.role, Role.customer);
+      expect(result.data.profileId, 8);
+      expect(result.data.role, 'CUSTOMER');
+      expect(sentRequest?.method, 'POST');
+      expect(sentRequest?.uri.path, '/api/user/register');
+      expect(sentRequest?.contentType, contains('multipart/form-data'));
       expect(Map.fromEntries(submitted!.fields), {
         'full_name': 'Nguyen Van A',
         'user_name': 'new_customer',
@@ -110,19 +116,18 @@ void main() {
           },
         ),
       );
-    final repository = AuthenticationRepositoryImpl(ApiProvider(dio), dio);
+    final repository = AuthenticationRepositoryImpl(ApiProvider(dio));
     final document = RegisterDocument(
       name: 'document.jpg',
       bytes: Uint8List.fromList([1, 2, 3]),
     );
 
-    await repository.registerAccount(
-      RegisterAccountRequest(
+    await repository.registerDriverAccount(
+      RegisterDriverParam(
         fullName: 'New Driver',
         userName: 'new_driver',
         password: 'secret123',
         phoneNumber: '0901234567',
-        role: Role.driver,
         vehicleId: 1,
         licensePlate: '59A1 234.56',
         documents: {
@@ -135,6 +140,7 @@ void main() {
     );
 
     final fields = Map.fromEntries(submitted!.fields);
+    expect(fields['full_name'], 'New Driver');
     expect(fields['role'], 'DRIVER');
     expect(fields['vehicle_id'], '1');
     expect(fields['license_plate'], '59A1 234.56');

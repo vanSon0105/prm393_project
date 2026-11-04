@@ -30,32 +30,3 @@ class RegisterAccountRequest {
   final String? licensePlate;
   final Map<String, RegisterDocument> documents;
 }
-
-class RegisterAccountResult {
-  const RegisterAccountResult({
-    required this.profileId,
-    required this.userName,
-    required this.role,
-  });
-
-  final int profileId;
-  final String userName;
-  final Role role;
-
-  factory RegisterAccountResult.fromJson(Map<String, dynamic> json) {
-    final profileId = json['profile_id'];
-    final userName = json['user_name'];
-    final role = json['role'];
-    if (profileId is! int || userName is! String || role is! String) {
-      throw const FormatException('Invalid registration response');
-    }
-    return RegisterAccountResult(
-      profileId: profileId,
-      userName: userName,
-      role: Role.values.firstWhere(
-        (value) => value.value == role,
-        orElse: () => throw const FormatException('Invalid registration role'),
-      ),
-    );
-  }
-}

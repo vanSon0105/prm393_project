@@ -17,8 +17,7 @@ ApiRepository apiRepository(Ref ref) {
 @riverpod
 AuthenticationRepository authenticationRepository(Ref ref) {
   final apiProvider = ref.watch(apiProviderProvider);
-  final dio = ref.watch(dioClientProvider);
-  return AuthenticationRepositoryImpl(apiProvider, dio);
+  return AuthenticationRepositoryImpl(apiProvider);
 }
 
 @Riverpod(keepAlive: true)

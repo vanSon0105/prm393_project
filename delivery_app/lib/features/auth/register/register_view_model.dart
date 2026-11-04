@@ -1,6 +1,9 @@
 import 'package:delivery_app/features/auth/register/register_state.dart';
 import 'package:delivery_app/features/auth/domain/entities/register_account.dart';
 import 'package:delivery_app/features/auth/domain/entities/role.dart';
+import 'package:delivery_app/features/auth/data/models/register_model.dart';
+import 'package:delivery_app/features/auth/data/repositories/register_driver_param.dart';
+import 'package:delivery_app/features/auth/data/repositories/register_user_param.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../di/repository_module.dart';
@@ -34,13 +37,48 @@ class RegisterViewModel extends _$RegisterViewModel {
     }
   }
 
-  Future<RegisterAccountResult> register(RegisterAccountRequest request) async {
+  Future<RegisterModel> register(RegisterAccountRequest request) async {
     if (state.submitting) throw StateError('Registration already in progress');
     state = state.copyWith(submitting: true);
     try {
-      return await ref
-          .read(authenticationRepositoryProvider)
-          .registerAccount(request);
+      final repository = ref.read(authenticationRepositoryProvider);
+      switch (request.role) {
+        case Role.customer:
+          return await repository.registerCustomerAccount(
+            RegisterUserParam(
+              fullName: request.fullName,
+              userName: request.userName,
+              password: request.password,
+              phoneNumber: request.phoneNumber,
+            ),
+          );
+        case Role.driver:
+          if (request.vehicleId == null ||
+              request.licensePlate?.trim().isEmpty != false ||
+              !{
+                'driving_license_front_side',
+                'driving_license_back_side',
+                'front_side_of_the_identity_card',
+                'the_back_of_the_identity_card',
+              }.every(request.documents.containsKey)) {
+            throw ArgumentError(
+              'Driver vehicle and four documents are required',
+            );
+          }
+          return await repository.registerDriverAccount(
+            RegisterDriverParam(
+              fullName: request.fullName,
+              userName: request.userName,
+              password: request.password,
+              phoneNumber: request.phoneNumber,
+              vehicleId: request.vehicleId!,
+              licensePlate: request.licensePlate!,
+              documents: request.documents,
+            ),
+          );
+        case Role.admin:
+          throw ArgumentError('Admin registration is not supported');
+      }
     } finally {
       if (ref.mounted) state = state.copyWith(submitting: false);
     }

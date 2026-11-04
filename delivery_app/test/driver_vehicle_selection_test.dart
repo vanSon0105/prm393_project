@@ -5,7 +5,6 @@ import 'package:delivery_app/features/auth/data/models/vehicle_type_model.dart';
 import 'package:delivery_app/features/auth/data/repositories/login_param.dart';
 import 'package:delivery_app/features/auth/data/repositories/register_driver_param.dart';
 import 'package:delivery_app/features/auth/data/repositories/register_user_param.dart';
-import 'package:delivery_app/features/auth/domain/entities/register_account.dart';
 import 'package:delivery_app/features/auth/domain/entities/role.dart';
 import 'package:delivery_app/features/auth/domain/repositories/authentication_repository.dart';
 import 'package:delivery_app/features/auth/register/register_screen.dart';
@@ -88,11 +87,6 @@ class _VehicleRepository implements AuthenticationRepository {
   @override
   Future<LoginModel> login({required LoginParam param}) =>
       throw UnimplementedError();
-
-  @override
-  Future<RegisterAccountResult> registerAccount(
-    RegisterAccountRequest request,
-  ) => throw UnimplementedError();
 
   @override
   Future<RegisterModel> registerCustomerAccount(RegisterUserParam param) =>

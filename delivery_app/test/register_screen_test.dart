@@ -5,7 +5,6 @@ import 'package:delivery_app/features/auth/data/models/vehicle_type_model.dart';
 import 'package:delivery_app/features/auth/data/repositories/login_param.dart';
 import 'package:delivery_app/features/auth/data/repositories/register_driver_param.dart';
 import 'package:delivery_app/features/auth/data/repositories/register_user_param.dart';
-import 'package:delivery_app/features/auth/domain/entities/register_account.dart';
 import 'package:delivery_app/features/auth/domain/entities/role.dart';
 import 'package:delivery_app/features/auth/domain/repositories/authentication_repository.dart';
 import 'package:delivery_app/features/auth/register/register_screen.dart';
@@ -53,10 +52,9 @@ void main() {
     await tester.tap(submit);
     await tester.pumpAndSettle();
 
-    expect(repository.submitted?.role, Role.customer);
     expect(repository.submitted?.fullName, 'Nguyen Van A');
     expect(repository.submitted?.userName, 'new_customer');
-    expect(repository.submitted?.documents, isEmpty);
+    expect(repository.submitted?.phoneNumber, '0901234567');
     expect(
       find.text('Your customer account is ready. Sign in to continue.'),
       findsOneWidget,
@@ -97,27 +95,24 @@ Future<void> _pumpRegisterScreen(
 }
 
 class _RecordingRepository implements AuthenticationRepository {
-  RegisterAccountRequest? submitted;
+  RegisterUserParam? submitted;
 
   @override
-  Future<RegisterModel> registerCustomerAccount(RegisterUserParam param) =>
-      throw UnimplementedError();
+  Future<RegisterModel> registerCustomerAccount(RegisterUserParam param) async {
+    submitted = param;
+    return RegisterModel(
+      data: RegisterData(
+        profileId: 8,
+        userName: 'new_customer',
+        role: 'CUSTOMER',
+        message: 'Created',
+      ),
+    );
+  }
 
   @override
   Future<RegisterModel> registerDriverAccount(RegisterDriverParam param) =>
       throw UnimplementedError();
-
-  @override
-  Future<RegisterAccountResult> registerAccount(
-    RegisterAccountRequest request,
-  ) async {
-    submitted = request;
-    return const RegisterAccountResult(
-      profileId: 8,
-      userName: 'new_customer',
-      role: Role.customer,
-    );
-  }
 
   @override
   Future<LoginModel> login({required LoginParam param}) =>

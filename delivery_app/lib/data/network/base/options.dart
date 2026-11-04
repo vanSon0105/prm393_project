@@ -9,6 +9,7 @@ extension ApiParamExt on ApiParam {
       return status >= 200 && status < 300;
     },
     headers: headers,
+    extra: extra,
   );
 
   Map<String, dynamic> get headers {
