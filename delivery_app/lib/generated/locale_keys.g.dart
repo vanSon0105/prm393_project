@@ -331,5 +331,31 @@ abstract class  LocaleKeys {
   static const register_have_account = 'register_have_account';
   static const register_full_name_hint = 'register_full_name_hint';
   static const register_full_name_error = 'register_full_name_error';
+  static const register_phone_hint = 'register_phone_hint';
+  static const register_plate_hint = 'register_plate_hint';
+  static const driver_terms_title = 'driver_terms_title';
+  static const driver_terms_heading = 'driver_terms_heading';
+  static const driver_terms_intro = 'driver_terms_intro';
+  static const driver_terms_eligibility_title = 'driver_terms_eligibility_title';
+  static const driver_terms_eligibility_age = 'driver_terms_eligibility_age';
+  static const driver_terms_eligibility_id = 'driver_terms_eligibility_id';
+  static const driver_terms_eligibility_license = 'driver_terms_eligibility_license';
+  static const driver_terms_eligibility_vehicle = 'driver_terms_eligibility_vehicle';
+  static const driver_terms_information_title = 'driver_terms_information_title';
+  static const driver_terms_information_accurate = 'driver_terms_information_accurate';
+  static const driver_terms_information_valid = 'driver_terms_information_valid';
+  static const driver_terms_information_update = 'driver_terms_information_update';
+  static const driver_terms_review_title = 'driver_terms_review_title';
+  static const driver_terms_review_pending = 'driver_terms_review_pending';
+  static const driver_terms_review_required = 'driver_terms_review_required';
+  static const driver_terms_review_correction = 'driver_terms_review_correction';
+  static const driver_terms_trips_title = 'driver_terms_trips_title';
+  static const driver_terms_trips_ready = 'driver_terms_trips_ready';
+  static const driver_terms_trips_progress = 'driver_terms_trips_progress';
+  static const driver_terms_trips_cancel = 'driver_terms_trips_cancel';
+  static const driver_terms_confirmation = 'driver_terms_confirmation';
+  static const driver_terms_scroll_hint = 'driver_terms_scroll_hint';
+  static const driver_terms_agree = 'driver_terms_agree';
+  static const driver_terms_continue = 'driver_terms_continue';
 
 }

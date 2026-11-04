@@ -236,9 +236,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 controller: _phoneCtrl,
                 keyboardType: TextInputType.phone,
                 textInputAction: TextInputAction.next,
-                decoration: const InputDecoration(
-                  hintText: '090 123 4567',
-                  prefixIcon: Icon(Icons.phone_iphone_rounded),
+                decoration: InputDecoration(
+                  hintText: LocaleKeys.register_phone_hint.tr(),
+                  prefixIcon: const Icon(Icons.phone_iphone_rounded),
                 ),
                 validator: (value) =>
                     RegExp(r'^0\d{9}$')
@@ -295,9 +295,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   child: TextFormField(
                     controller: _plateCtrl,
                     textCapitalization: TextCapitalization.characters,
-                    decoration: const InputDecoration(
-                      hintText: '59A1 234.56',
-                      prefixIcon: Icon(Icons.credit_card_outlined),
+                    decoration: InputDecoration(
+                      hintText: LocaleKeys.register_plate_hint.tr(),
+                      prefixIcon: const Icon(Icons.credit_card_outlined),
                     ),
                     validator: (value) => (value ?? '').trim().isEmpty
                         ? LocaleKeys.register_plate_required.tr()
