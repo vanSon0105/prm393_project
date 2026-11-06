@@ -139,10 +139,16 @@ func main() {
 	// Driver APIs
 	r.HandleFunc("/api/driver/trips/{id}/accept", acceptTrip).Methods("POST")
 	r.HandleFunc("/api/driver/trips/{id}/complete", completeTrip).Methods("POST")
+	r.HandleFunc("/api/driver/{id}/register-info", getRegisterRequest).Methods("GET")
+	r.HandleFunc("/api/driver/{id}/register-info", resubmitDriverRegisterInfo).Methods("POST")
 
-	// Driver, User, Admin Login/Register API
+	// For Driver, User, Admin
 	r.HandleFunc("/api/user/login", loginUser).Methods("POST")
 	r.HandleFunc("/api/user/register", registerUser).Methods("POST")
+	r.HandleFunc("/api/{id}/bank-info", getBankInfo).Methods("GET")
+	r.HandleFunc("/api/{id}/bank-info", updateBankInfo).Methods("POST")
+	r.HandleFunc("/api/{id}/profile", getUserProfile).Methods("GET")
+	r.HandleFunc("/api/{id}/profile", updateUserProfile).Methods("POST", "PATCH")
 
 	// Customer connect to listener location of driver realtime
 	r.HandleFunc("/ws/user/track/{trip_id}", handleUserTracking)
@@ -1125,4 +1131,1075 @@ func registerUser(w http.ResponseWriter, r *http.Request) {
 	jsonData, _ := json.Marshal(apiResponse)
 	w.WriteHeader(http.StatusCreated)
 	w.Write(jsonData)
+}
+
+// Get driver bank information
+func getBankInfo(w http.ResponseWriter, r *http.Request) {
+	type BankInfoResponse struct {
+		ProfileID         int    `json:"profile_id"`
+		BankName          string `json:"bank_name"`
+		BankAccountNumber string `json:"bank_account_number"`
+		BankAccountName   string `json:"bank_account_name"`
+		QRCode            string `json:"bank_qr_code"`
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	vars := mux.Vars(r)
+	profileID, err := strconv.Atoi(vars["id"])
+
+	if err != nil || profileID <= 0 {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{
+			"error": "profile_id không hợp lệ",
+		})
+		return
+	}
+
+	query := `
+        SELECT
+            profile_id,
+            bank_name,
+            bank_account_number,
+            bank_account_name,
+            bank_qr_code
+        FROM Profile
+        WHERE profile_id = ?
+    `
+
+	var bankInfo BankInfoResponse
+	var bankName, accountNumber, accountName, qrCode sql.NullString
+
+	err = db.QueryRow(query, profileID).Scan(
+		&bankInfo.ProfileID,
+		&bankName,
+		&accountNumber,
+		&accountName,
+		&qrCode,
+	)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			w.WriteHeader(http.StatusNotFound)
+			json.NewEncoder(w).Encode(map[string]string{
+				"error": "Không tìm thấy thông tin ngân hàng",
+			})
+			return
+		}
+
+		log.Printf("Lỗi lấy thông tin ngân hàng: %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{
+			"error": "Lỗi hệ thống khi lấy thông tin ngân hàng",
+		})
+		return
+	}
+
+	bankInfo.BankName = parseNullString(bankName)
+	bankInfo.BankAccountNumber = parseNullString(accountNumber)
+	bankInfo.BankAccountName = parseNullString(accountName)
+	bankInfo.QRCode = parseNullString(qrCode)
+
+	apiResponse := struct {
+		Data BankInfoResponse `json:"data"`
+	}{
+		Data: bankInfo,
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(apiResponse)
+}
+
+func updateBankInfo(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		json.NewEncoder(w).Encode(map[string]string{
+			"error": "Phương thức không được hỗ trợ",
+		})
+		return
+	}
+
+	profileID := mux.Vars(r)["id"]
+
+	id, err := strconv.Atoi(profileID)
+	if err != nil || id <= 0 {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{
+			"error": "profile_id không hợp lệ",
+		})
+		return
+	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, 10<<20)
+
+	err = r.ParseMultipartForm(10 << 20)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{
+			"error": "Dữ liệu không hợp lệ hoặc file vượt quá dung lượng cho phép",
+		})
+		return
+	}
+
+	var oldQRCode sql.NullString
+
+	err = db.QueryRow(
+		`SELECT bank_qr_code FROM Profile WHERE profile_id = ?`,
+		id,
+	).Scan(&oldQRCode)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			w.WriteHeader(http.StatusNotFound)
+			json.NewEncoder(w).Encode(map[string]string{
+				"error": "Không tìm thấy tài khoản tài xế",
+			})
+			return
+		}
+
+		log.Printf("Lỗi lấy thông tin Profile: %v", err)
+
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{
+			"error": "Lỗi hệ thống",
+		})
+		return
+	}
+
+	var setClauses []string
+	var args []interface{}
+
+	bankName := strings.TrimSpace(r.FormValue("bank_name"))
+	bankAccountNumber := strings.TrimSpace(r.FormValue("bank_account_number"))
+	bankAccountName := strings.TrimSpace(r.FormValue("bank_account_name"))
+
+	if bankName != "" {
+		setClauses = append(setClauses, "bank_name = ?")
+		args = append(args, bankName)
+	}
+
+	if bankAccountNumber != "" {
+		setClauses = append(setClauses, "bank_account_number = ?")
+		args = append(args, bankAccountNumber)
+	}
+
+	if bankAccountName != "" {
+		setClauses = append(setClauses, "bank_account_name = ?")
+		args = append(args, bankAccountName)
+	}
+
+	var newQRFileName string
+	var newQRFilePath string
+	var tempQRFilePath string
+	var backupQRFilePath string
+
+	uploadedFiles := r.MultipartForm.File["bank_qr_code"]
+
+	if len(uploadedFiles) > 0 {
+		header := uploadedFiles[0]
+
+		file, err := header.Open()
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(map[string]string{
+				"error": "Không thể đọc file QR code",
+			})
+			return
+		}
+		defer file.Close()
+
+		ext := strings.ToLower(filepath.Ext(header.Filename))
+
+		allowedExts := map[string]bool{
+			".jpg":  true,
+			".jpeg": true,
+			".png":  true,
+			".webp": true,
+		}
+
+		if !allowedExts[ext] {
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(map[string]string{
+				"error": "Chỉ hỗ trợ ảnh JPG, JPEG, PNG hoặc WEBP",
+			})
+			return
+		}
+
+		newQRFileName = fmt.Sprintf("%d_bank%s", id, ext)
+		newQRFilePath = filepath.Join("image", newQRFileName)
+
+		if err := os.MkdirAll("image", os.ModePerm); err != nil {
+			log.Printf("Lỗi tạo thư mục image: %v", err)
+
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(map[string]string{
+				"error": "Không thể tạo thư mục lưu ảnh",
+			})
+			return
+		}
+
+		tempFile, err := os.CreateTemp("image", "qr_temp_*")
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(map[string]string{
+				"error": "Không thể tạo file QR code",
+			})
+			return
+		}
+
+		tempQRFilePath = tempFile.Name()
+
+		_, copyErr := io.Copy(tempFile, file)
+		closeErr := tempFile.Close()
+
+		if copyErr != nil || closeErr != nil {
+			os.Remove(tempQRFilePath)
+
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(map[string]string{
+				"error": "Không thể lưu file QR code",
+			})
+			return
+		}
+
+		setClauses = append(setClauses, "bank_qr_code = ?")
+		args = append(args, newQRFileName)
+	}
+
+	if len(setClauses) == 0 {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{
+			"error": "Không có thông tin nào được gửi để cập nhật",
+		})
+		return
+	}
+
+	if tempQRFilePath != "" {
+
+		if _, err := os.Stat(newQRFilePath); err == nil {
+
+			backupFile, err := os.CreateTemp("image", "qr_backup_*")
+			if err != nil {
+				os.Remove(tempQRFilePath)
+
+				w.WriteHeader(http.StatusInternalServerError)
+				json.NewEncoder(w).Encode(map[string]string{
+					"error": "Không thể backup QR code cũ",
+				})
+				return
+			}
+
+			backupQRFilePath = backupFile.Name()
+			backupFile.Close()
+			os.Remove(backupQRFilePath)
+
+			if err := os.Rename(newQRFilePath, backupQRFilePath); err != nil {
+				os.Remove(tempQRFilePath)
+
+				w.WriteHeader(http.StatusInternalServerError)
+				json.NewEncoder(w).Encode(map[string]string{
+					"error": "Không thể backup QR code cũ",
+				})
+				return
+			}
+
+		} else if !os.IsNotExist(err) {
+			os.Remove(tempQRFilePath)
+
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(map[string]string{
+				"error": "Không thể truy cập QR code cũ",
+			})
+			return
+		}
+
+		if err := os.Rename(tempQRFilePath, newQRFilePath); err != nil {
+
+			if backupQRFilePath != "" {
+				os.Rename(backupQRFilePath, newQRFilePath)
+			}
+
+			os.Remove(tempQRFilePath)
+
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(map[string]string{
+				"error": "Không thể lưu QR code",
+			})
+			return
+		}
+	}
+
+	query := fmt.Sprintf(
+		"UPDATE Profile SET %s WHERE profile_id = ?",
+		strings.Join(setClauses, ", "),
+	)
+
+	args = append(args, id)
+
+	result, err := db.Exec(query, args...)
+
+	if err != nil {
+		log.Printf("Lỗi update bank information: %v", err)
+
+		if newQRFilePath != "" {
+			os.Remove(newQRFilePath)
+		}
+
+		if backupQRFilePath != "" {
+			os.Rename(backupQRFilePath, newQRFilePath)
+		}
+
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{
+			"error": "Không thể cập nhật thông tin ngân hàng",
+		})
+		return
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		log.Printf("Lỗi lấy RowsAffected: %v", err)
+	}
+
+	if backupQRFilePath != "" {
+		os.Remove(backupQRFilePath)
+	}
+
+	if newQRFileName != "" && oldQRCode.Valid {
+		oldFileName := filepath.Base(oldQRCode.String)
+
+		if oldFileName != "" && oldFileName != newQRFileName {
+			oldFilePath := filepath.Join("image", oldFileName)
+			os.Remove(oldFilePath)
+		}
+	}
+
+	w.WriteHeader(http.StatusOK)
+
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"message": "Cập nhật thông tin ngân hàng thành công",
+		"data": map[string]interface{}{
+			"profile_id":          id,
+			"bank_name":           bankName,
+			"bank_account_number": bankAccountNumber,
+			"bank_account_name":   bankAccountName,
+			"bank_qr_code":        newQRFileName,
+		},
+		"rows_affected": rowsAffected,
+	})
+}
+
+func getRegisterRequest(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	driverID, err := strconv.Atoi(mux.Vars(r)["id"])
+	if err != nil || driverID <= 0 {
+		http.Error(w, `{"error":"driver_id không hợp lệ"}`, http.StatusBadRequest)
+		return
+	}
+
+	var (
+		phoneNumber   sql.NullString
+		vehicleID     sql.NullInt64
+		licensePlate  sql.NullString
+		licenseFront  sql.NullString
+		licenseBack   sql.NullString
+		identityFront sql.NullString
+		identityBack  sql.NullString
+		reason        string
+	)
+
+	query := `
+		SELECT
+			p.phone_number,
+			d.vehicleType_id,
+			d.licensePlate,
+			d.driving_license_front_side,
+			d.driving_license_back_side,
+			d.front_side_of_the_identity_card,
+			d.the_back_of_the_identity_card,
+			rr.reason
+		FROM Driver d
+		INNER JOIN Profile p ON p.profile_id = d.driver_id
+		INNER JOIN ReasonReject rr ON rr.driver_id = d.driver_id
+		WHERE d.driver_id = ?
+		  AND d.active = 0
+		ORDER BY rr.id DESC
+		LIMIT 1
+	`
+
+	err = db.QueryRow(query, driverID).Scan(
+		&phoneNumber,
+		&vehicleID,
+		&licensePlate,
+		&licenseFront,
+		&licenseBack,
+		&identityFront,
+		&identityBack,
+		&reason,
+	)
+
+	if err == sql.ErrNoRows {
+		http.Error(w, `{"error":"Không tìm thấy hồ sơ tài xế bị từ chối"}`, http.StatusNotFound)
+		return
+	}
+	if err != nil {
+		log.Printf("Lỗi lấy thông tin hồ sơ tài xế: %v", err)
+		http.Error(w, `{"error":"Lỗi hệ thống khi lấy thông tin hồ sơ"}`, http.StatusInternalServerError)
+		return
+	}
+
+	baseImgURL := fmt.Sprintf("http://%s:8080/image/", getLocalIP())
+
+	imageURL := func(filename sql.NullString) string {
+		if !filename.Valid || filename.String == "" {
+			return ""
+		}
+		return baseImgURL + filename.String
+	}
+
+	response := map[string]interface{}{
+		"driver_id":                       driverID,
+		"phone_number":                    parseNullString(phoneNumber),
+		"vehicle_id":                      vehicleID.Int64,
+		"license_plate":                   parseNullString(licensePlate),
+		"driving_license_front_side":      imageURL(licenseFront),
+		"driving_license_back_side":       imageURL(licenseBack),
+		"front_side_of_the_identity_card": imageURL(identityFront),
+		"the_back_of_the_identity_card":   imageURL(identityBack),
+		"reason":                          reason,
+	}
+
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"data": response,
+	})
+}
+
+func resubmitDriverRegisterInfo(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		json.NewEncoder(w).Encode(map[string]string{
+			"error": "Phương thức không được hỗ trợ",
+		})
+		return
+	}
+
+	err := r.ParseMultipartForm(25 << 20)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{
+			"error": "Không thể xử lý dữ liệu form-data hoặc file quá lớn",
+		})
+		return
+	}
+
+	driverID, err := strconv.Atoi(mux.Vars(r)["id"])
+	if err != nil || driverID <= 0 {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{
+			"error": "driver_id không hợp lệ",
+		})
+		return
+	}
+
+	tx, err := db.Begin()
+	if err != nil {
+		log.Println("Lỗi khởi tạo transaction:", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{
+			"error": "Lỗi hệ thống",
+		})
+		return
+	}
+	defer tx.Rollback()
+
+	var active int
+	err = tx.QueryRow(
+		"SELECT active FROM Driver WHERE driver_id = ? FOR UPDATE",
+		driverID,
+	).Scan(&active)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			w.WriteHeader(http.StatusNotFound)
+			json.NewEncoder(w).Encode(map[string]string{
+				"error": "Không tìm thấy tài xế",
+			})
+			return
+		}
+
+		log.Println("Lỗi kiểm tra tài xế:", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{
+			"error": "Lỗi hệ thống khi kiểm tra tài xế",
+		})
+		return
+	}
+
+	if active != 0 {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{
+			"error": "Tài khoản tài xế không ở trạng thái cần đăng ký lại",
+		})
+		return
+	}
+
+	var rejectCount int
+	err = tx.QueryRow(
+		"SELECT COUNT(*) FROM ReasonReject WHERE driver_id = ?",
+		driverID,
+	).Scan(&rejectCount)
+
+	if err != nil {
+		log.Println("Lỗi kiểm tra ReasonReject:", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{
+			"error": "Lỗi kiểm tra trạng thái hồ sơ",
+		})
+		return
+	}
+
+	if rejectCount == 0 {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{
+			"error": "Hồ sơ tài xế không có trạng thái bị từ chối",
+		})
+		return
+	}
+
+	phoneNumber := r.FormValue("phone_number")
+
+	if phoneNumber != "" {
+		_, err = tx.Exec(
+			"UPDATE Profile SET phone_number = ? WHERE profile_id = ?",
+			phoneNumber,
+			driverID,
+		)
+
+		if err != nil {
+			log.Println("Lỗi cập nhật số điện thoại:", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(map[string]string{
+				"error": "Lỗi cập nhật số điện thoại",
+			})
+			return
+		}
+	}
+
+	var driverUpdates []string
+	var driverArgs []interface{}
+
+	vehicleID := r.FormValue("vehicle_id")
+	if vehicleID != "" {
+		driverUpdates = append(driverUpdates, "vehicleType_id = ?")
+		driverArgs = append(driverArgs, vehicleID)
+	}
+
+	licensePlate := r.FormValue("license_plate")
+	if licensePlate != "" {
+		driverUpdates = append(driverUpdates, "licensePlate = ?")
+		driverArgs = append(driverArgs, licensePlate)
+	}
+
+	err = os.MkdirAll("./image", 0755)
+	if err != nil {
+		log.Println("Lỗi tạo thư mục image:", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{
+			"error": "Không thể truy cập thư mục lưu ảnh",
+		})
+		return
+	}
+
+	saveImage := func(formKey, columnName, targetName string) error {
+		if r.MultipartForm == nil {
+			return nil
+		}
+
+		files := r.MultipartForm.File[formKey]
+
+		if len(files) == 0 {
+			return nil
+		}
+
+		file, err := files[0].Open()
+		if err != nil {
+			return fmt.Errorf("không thể đọc file %s: %v", formKey, err)
+		}
+		defer file.Close()
+
+		outPath := filepath.Join(".", "image", targetName)
+
+		outFile, err := os.Create(outPath)
+		if err != nil {
+			return fmt.Errorf("không thể tạo file %s: %v", targetName, err)
+		}
+
+		_, copyErr := io.Copy(outFile, file)
+		closeErr := outFile.Close()
+
+		if copyErr != nil {
+			return fmt.Errorf("lỗi ghi file %s: %v", targetName, copyErr)
+		}
+
+		if closeErr != nil {
+			return fmt.Errorf("lỗi đóng file %s: %v", targetName, closeErr)
+		}
+
+		driverUpdates = append(driverUpdates, columnName+" = ?")
+		driverArgs = append(driverArgs, targetName)
+
+		return nil
+	}
+
+	imageFields := []struct {
+		formKey    string
+		columnName string
+		targetName string
+	}{
+		{
+			formKey:    "driving_license_front_side",
+			columnName: "driving_license_front_side",
+			targetName: fmt.Sprintf("%d_license_front_side.jpg", driverID),
+		},
+		{
+			formKey:    "driving_license_back_side",
+			columnName: "driving_license_back_side",
+			targetName: fmt.Sprintf("%d_driver_license_back_side.jpg", driverID),
+		},
+		{
+			formKey:    "front_side_of_the_identity_card",
+			columnName: "front_side_of_the_identity_card",
+			targetName: fmt.Sprintf("%d_driver_front_side.jpg", driverID),
+		},
+		{
+			formKey:    "the_back_of_the_identity_card",
+			columnName: "the_back_of_the_identity_card",
+			targetName: fmt.Sprintf("%d_driver_back_side.png", driverID),
+		},
+	}
+
+	for _, field := range imageFields {
+		err = saveImage(
+			field.formKey,
+			field.columnName,
+			field.targetName,
+		)
+
+		if err != nil {
+			log.Println("Lỗi lưu ảnh:", err)
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(map[string]string{
+				"error": err.Error(),
+			})
+			return
+		}
+	}
+
+	if len(driverUpdates) > 0 {
+		driverArgs = append(driverArgs, driverID)
+
+		updateQuery := fmt.Sprintf(
+			"UPDATE Driver SET %s WHERE driver_id = ?",
+			strings.Join(driverUpdates, ", "),
+		)
+
+		_, err = tx.Exec(updateQuery, driverArgs...)
+		if err != nil {
+			log.Println("Lỗi cập nhật Driver:", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(map[string]string{
+				"error": "Lỗi cập nhật thông tin tài xế",
+			})
+			return
+		}
+	}
+
+	_, err = tx.Exec(
+		"DELETE FROM ReasonReject WHERE driver_id = ?",
+		driverID,
+	)
+
+	if err != nil {
+		log.Println("Lỗi xóa ReasonReject:", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{
+			"error": "Lỗi cập nhật trạng thái hồ sơ",
+		})
+		return
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		log.Println("Lỗi commit transaction:", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{
+			"error": "Lỗi hoàn tất đăng ký lại",
+		})
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"data": map[string]interface{}{
+			"driver_id": driverID,
+			"active":    0,
+			"message":   "Cập nhật hồ sơ thành công. Vui lòng chờ quản trị viên phê duyệt lại.",
+		},
+	})
+}
+
+func getUserProfile(w http.ResponseWriter, r *http.Request) {
+	type UserProfileResponse struct {
+		ProfileID         int    `json:"profile_id"`
+		UserName          string `json:"user_name"`
+		FullName          string `json:"full_name"`
+		PhoneNumber       string `json:"phone_number"`
+		Address           string `json:"address"`
+		Image             string `json:"image"`
+		BankName          string `json:"bank_name"`
+		BankAccountNumber string `json:"bank_account_number"`
+		BankAccountName   string `json:"bank_account_name"`
+		BankQRCode        string `json:"bank_qr_code"`
+
+		DrivingLicenseFrontSide    string `json:"driving_license_front_side,omitempty"`
+		DrivingLicenseBackSide     string `json:"driving_license_back_side,omitempty"`
+		FrontSideOfTheIdentityCard string `json:"front_side_of_the_identity_card,omitempty"`
+		TheBackOfTheIdentityCard   string `json:"the_back_of_the_identity_card,omitempty"`
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+
+	profileID, err := strconv.Atoi(mux.Vars(r)["id"])
+	if err != nil || profileID <= 0 {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{
+			"error": "profile_id không hợp lệ",
+		})
+		return
+	}
+
+	query := `
+		SELECT p.profile_id, p.user_name, p.full_name, p.phone_number, p.address,
+		       p.image, p.bank_name, p.bank_account_number, p.bank_account_name,
+		       p.bank_qr_code, r.role_value
+		FROM Profile p
+		INNER JOIN Role r ON p.role_id = r.role_id
+		WHERE p.profile_id = ?
+	`
+
+	var profile UserProfileResponse
+	var fullName, phoneNumber, address, image sql.NullString
+	var bankName, bankAccountNumber, bankAccountName, bankQRCode sql.NullString
+	var roleValue string
+
+	err = db.QueryRow(query, profileID).Scan(
+		&profile.ProfileID,
+		&profile.UserName,
+		&fullName,
+		&phoneNumber,
+		&address,
+		&image,
+		&bankName,
+		&bankAccountNumber,
+		&bankAccountName,
+		&bankQRCode,
+		&roleValue,
+	)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			w.WriteHeader(http.StatusNotFound)
+			json.NewEncoder(w).Encode(map[string]string{
+				"error": "Không tìm thấy người dùng",
+			})
+			return
+		}
+
+		log.Printf("Lỗi lấy thông tin người dùng: %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{
+			"error": "Lỗi hệ thống khi lấy thông tin người dùng",
+		})
+		return
+	}
+
+	baseImgURL := fmt.Sprintf("http://%s:8080/image/", getLocalIP())
+
+	imageURL := func(filename sql.NullString) string {
+		if !filename.Valid || filename.String == "" {
+			return ""
+		}
+		return baseImgURL + filename.String
+	}
+
+	profile.FullName = parseNullString(fullName)
+	profile.PhoneNumber = parseNullString(phoneNumber)
+	profile.Address = parseNullString(address)
+	profile.Image = imageURL(image)
+	profile.BankName = parseNullString(bankName)
+	profile.BankAccountNumber = parseNullString(bankAccountNumber)
+	profile.BankAccountName = parseNullString(bankAccountName)
+	profile.BankQRCode = imageURL(bankQRCode)
+
+	if roleValue == "DRIVER" {
+		var licenseFront, licenseBack, identityFront, identityBack sql.NullString
+
+		err = db.QueryRow(`
+			SELECT driving_license_front_side, driving_license_back_side,
+			       front_side_of_the_identity_card, the_back_of_the_identity_card
+			FROM Driver
+			WHERE driver_id = ?`, profileID,
+		).Scan(&licenseFront, &licenseBack, &identityFront, &identityBack)
+
+		if err != nil && err != sql.ErrNoRows {
+			log.Printf("Lỗi lấy thông tin giấy tờ tài xế: %v", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(map[string]string{
+				"error": "Lỗi hệ thống khi lấy thông tin tài xế",
+			})
+			return
+		}
+
+		if err == nil {
+			profile.DrivingLicenseFrontSide = imageURL(licenseFront)
+			profile.DrivingLicenseBackSide = imageURL(licenseBack)
+			profile.FrontSideOfTheIdentityCard = imageURL(identityFront)
+			profile.TheBackOfTheIdentityCard = imageURL(identityBack)
+		}
+	}
+
+	apiResponse := struct {
+		Data UserProfileResponse `json:"data"`
+	}{
+		Data: profile,
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(apiResponse)
+}
+
+func updateUserProfile(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	if r.Method != http.MethodPost && r.Method != http.MethodPatch {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		json.NewEncoder(w).Encode(map[string]string{
+			"error": "Phương thức không được hỗ trợ",
+		})
+		return
+	}
+
+	id, err := strconv.Atoi(mux.Vars(r)["id"])
+	if err != nil || id <= 0 {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{
+			"error": "profile_id không hợp lệ",
+		})
+		return
+	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, 10<<20)
+
+	err = r.ParseMultipartForm(10 << 20)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{
+			"error": "Dữ liệu không hợp lệ hoặc file vượt quá dung lượng cho phép",
+		})
+		return
+	}
+
+	var exists int
+
+	err = db.QueryRow(
+		`SELECT 1 FROM Profile WHERE profile_id = ?`,
+		id,
+	).Scan(&exists)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			w.WriteHeader(http.StatusNotFound)
+			json.NewEncoder(w).Encode(map[string]string{
+				"error": "Không tìm thấy người dùng",
+			})
+			return
+		}
+
+		log.Printf("Lỗi lấy thông tin Profile: %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{
+			"error": "Lỗi hệ thống",
+		})
+		return
+	}
+
+	var setClauses []string
+	var args []interface{}
+
+	fullName := strings.TrimSpace(r.FormValue("full_name"))
+	phoneNumber := strings.TrimSpace(r.FormValue("phone_number"))
+	address := strings.TrimSpace(r.FormValue("address"))
+
+	if fullName != "" {
+		if len([]rune(fullName)) > 45 {
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(map[string]string{
+				"error": "full_name tối đa 45 ký tự",
+			})
+			return
+		}
+		setClauses = append(setClauses, "full_name = ?")
+		args = append(args, fullName)
+	}
+
+	if phoneNumber != "" {
+		digits := strings.TrimPrefix(phoneNumber, "+")
+		validPhone := len(digits) >= 9 && len(digits) <= 15
+		for _, c := range digits {
+			if c < '0' || c > '9' {
+				validPhone = false
+				break
+			}
+		}
+		if !validPhone {
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(map[string]string{
+				"error": "phone_number không hợp lệ",
+			})
+			return
+		}
+		setClauses = append(setClauses, "phone_number = ?")
+		args = append(args, phoneNumber)
+	}
+
+	if address != "" {
+		if len([]rune(address)) > 45 {
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(map[string]string{
+				"error": "address tối đa 45 ký tự",
+			})
+			return
+		}
+		setClauses = append(setClauses, "address = ?")
+		args = append(args, address)
+	}
+
+	var newImageName string
+	var tempImagePath string
+
+	uploadedFiles := r.MultipartForm.File["image"]
+
+	if len(uploadedFiles) > 0 {
+		header := uploadedFiles[0]
+
+		file, err := header.Open()
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(map[string]string{
+				"error": "Không thể đọc file ảnh",
+			})
+			return
+		}
+		defer file.Close()
+
+		ext := strings.ToLower(filepath.Ext(header.Filename))
+
+		allowedExts := map[string]bool{
+			".jpg":  true,
+			".jpeg": true,
+			".png":  true,
+			".webp": true,
+		}
+
+		if !allowedExts[ext] {
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(map[string]string{
+				"error": "Chỉ hỗ trợ ảnh JPG, JPEG, PNG hoặc WEBP",
+			})
+			return
+		}
+
+		if err := os.MkdirAll("image", os.ModePerm); err != nil {
+			log.Printf("Lỗi tạo thư mục image: %v", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(map[string]string{
+				"error": "Không thể tạo thư mục lưu ảnh",
+			})
+			return
+		}
+
+		tempFile, err := os.CreateTemp("image", "avatar_tmp_*")
+		if err != nil {
+			log.Printf("Lỗi tạo file tạm: %v", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(map[string]string{
+				"error": "Không thể lưu ảnh",
+			})
+			return
+		}
+		tempImagePath = tempFile.Name()
+
+		defer func() {
+			if tempImagePath != "" {
+				os.Remove(tempImagePath)
+			}
+		}()
+
+		_, copyErr := io.Copy(tempFile, file)
+		closeErr := tempFile.Close()
+
+		if copyErr != nil || closeErr != nil {
+			log.Printf("Lỗi ghi ảnh: copy=%v close=%v", copyErr, closeErr)
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(map[string]string{
+				"error": "Không thể lưu ảnh",
+			})
+			return
+		}
+
+		newImageName = fmt.Sprintf("%d_image.jpg", id)
+		setClauses = append(setClauses, "image = ?")
+		args = append(args, newImageName)
+	}
+
+	if len(setClauses) == 0 {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{
+			"error": "Không có trường nào để cập nhật",
+		})
+		return
+	}
+
+	args = append(args, id)
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE Profile SET %s WHERE profile_id = ?",
+		strings.Join(setClauses, ", "),
+	)
+
+	_, err = db.Exec(updateQuery, args...)
+	if err != nil {
+		log.Printf("Lỗi cập nhật Profile: %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{
+			"error": "Lỗi cập nhật thông tin người dùng",
+		})
+		return
+	}
+
+	if tempImagePath != "" {
+		finalPath := filepath.Join("image", newImageName)
+
+		if err := os.Rename(tempImagePath, finalPath); err != nil {
+			log.Printf("Lỗi đổi tên ảnh đại diện: %v", err)
+		} else {
+			tempImagePath = ""
+		}
+	}
+	getUserProfile(w, r)
 }
