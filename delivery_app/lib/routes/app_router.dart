@@ -3,6 +3,7 @@ import 'package:delivery_app/features/admin/presentation/screens/admin_bank_acco
 import 'package:delivery_app/features/admin/presentation/screens/admin_top_up_requests_page.dart';
 import 'package:delivery_app/features/auth/domain/entities/role.dart';
 import 'package:delivery_app/features/auth/register/driver_terms_screen.dart';
+import 'package:delivery_app/features/auth/register/driver_resubmit_screen.dart';
 import 'package:delivery_app/features/auth/register/register_screen.dart';
 import 'package:delivery_app/features/detail_delivery/detail_delivery_page.dart';
 import 'package:delivery_app/features/driver/presentation/screens/driver_earnings_page.dart';
@@ -23,6 +24,7 @@ enum AppRoute {
   login(rawValue: '/login'),
   register(rawValue: '/register'),
   driverTerms(rawValue: '/driver-terms'),
+  driverResubmit(rawValue: '/driver/:driverId/resubmit'),
   admin(rawValue: '/admin'),
   adminBankAccount(rawValue: '/admin/bank-account'),
   adminTopUpRequests(rawValue: '/admin/top-up-requests'),
@@ -67,6 +69,13 @@ GoRouter createAppRouter({String? initialLocation}) => GoRouter(
       path: AppRoute.driverTerms.rawValue,
       name: AppRoute.driverTerms.rawValue,
       builder: (context, state) => const DriverTermsScreen(),
+    ),
+    GoRoute(
+      path: AppRoute.driverResubmit.rawValue,
+      name: AppRoute.driverResubmit.rawValue,
+      builder: (context, state) => DriverResubmitScreen(
+        driverId: int.parse(state.pathParameters['driverId']!),
+      ),
     ),
 
     GoRoute(

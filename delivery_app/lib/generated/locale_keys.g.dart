@@ -264,6 +264,16 @@ abstract class  LocaleKeys {
   static const admin_bank_qr_choose = 'admin_bank_qr_choose';
   static const admin_bank_qr_size_error = 'admin_bank_qr_size_error';
   static const admin_bank_qr_load_error = 'admin_bank_qr_load_error';
+  static const driver_resubmit_title = 'driver_resubmit_title';
+  static const driver_resubmit_description = 'driver_resubmit_description';
+  static const driver_resubmit_reason = 'driver_resubmit_reason';
+  static const driver_resubmit_documents_hint = 'driver_resubmit_documents_hint';
+  static const driver_resubmit_image_error = 'driver_resubmit_image_error';
+  static const driver_resubmit_send = 'driver_resubmit_send';
+  static const driver_resubmit_load_error = 'driver_resubmit_load_error';
+  static const driver_resubmit_error = 'driver_resubmit_error';
+  static const driver_resubmit_success_title = 'driver_resubmit_success_title';
+  static const driver_resubmit_success_message = 'driver_resubmit_success_message';
   static const admin_transfer_note = 'admin_transfer_note';
   static const admin_field_required = 'admin_field_required';
   static const admin_account_number_invalid = 'admin_account_number_invalid';

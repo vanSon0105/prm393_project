@@ -44,10 +44,18 @@ class LoginViewModel extends _$LoginViewModel {
               .read(appViewModelProvider.notifier)
               .updateAppData(role, profileId: response.data?.profileId);
         case LoginStatus.pending:
-        case LoginStatus.reject:
           AppNavigate.instance.showAppDialog(
             message: response.data?.message ?? '',
           );
+        case LoginStatus.reject:
+          final driverId = response.data?.profileId;
+          if (role == Role.driver && driverId != null && driverId > 0) {
+            AppNavigate.instance.gotoDriverResubmit(driverId);
+          } else {
+            AppNavigate.instance.showAppDialog(
+              message: response.data?.message ?? '',
+            );
+          }
       }
     } catch (_) {
     } finally {
