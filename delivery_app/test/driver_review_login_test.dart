@@ -113,6 +113,33 @@ void main() {
     expect(resubmitRepository.saved?.phoneNumber, '0901234567');
     expect(resubmitRepository.saved?.vehicleId, 1);
     expect(find.text('Application sent'), findsOneWidget);
+    resubmitRepository
+      ..reason = 'The new document is still blurry'
+      ..phoneNumber = '0909876543'
+      ..licensePlate = '59A1-67890';
+    await tester.tap(find.text('Go to sign in'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Driver'));
+    await tester.pump();
+    await tester.enterText(find.byType(TextField).first, 'rejected_driver');
+    await tester.enterText(find.byType(TextField).last, 'secret123');
+    await tester.tap(find.text('Sign in'));
+    await tester.pumpAndSettle();
+    expect(
+      find.text('Reason: The new document is still blurry'),
+      findsOneWidget,
+    );
+    expect(find.text('0909876543'), findsOneWidget);
+    expect(find.text('59A1-67890'), findsOneWidget);
+    expect(resubmitRepository.requestCalls, 2);
+    expect(
+      tester
+          .widget<FilledButton>(
+            find.widgetWithText(FilledButton, 'Send for review again'),
+          )
+          .onPressed,
+      isNotNull,
+    );
     expect(tester.takeException(), isNull);
   });
 }
@@ -153,22 +180,28 @@ class _DriverReviewRepository implements AuthenticationRepository {
 
 class _RejectedRequestRepository implements DriverResubmitRepository {
   DriverResubmitData? saved;
+  String reason = 'Document is unclear';
+  String phoneNumber = '0901234567';
+  String licensePlate = '59A1-12345';
+  int requestCalls = 0;
 
   @override
-  Future<RejectedDriverRequest> getRequest(int driverId) async =>
-      RejectedDriverRequest(
-        driverId: driverId,
-        phoneNumber: '0901234567',
-        vehicleId: 1,
-        licensePlate: '59A1-12345',
-        reason: 'Document is unclear',
-        documentUrls: const {
-          'front_side_of_the_identity_card': 'http://bad-ip/image/id-front.jpg',
-          'the_back_of_the_identity_card': 'http://bad-ip/image/id-back.jpg',
-          'driving_license_front_side': 'http://bad-ip/image/license-front.jpg',
-          'driving_license_back_side': 'http://bad-ip/image/license-back.jpg',
-        },
-      );
+  Future<RejectedDriverRequest> getRequest(int driverId) async {
+    requestCalls++;
+    return RejectedDriverRequest(
+      driverId: driverId,
+      phoneNumber: phoneNumber,
+      vehicleId: 1,
+      licensePlate: licensePlate,
+      reason: reason,
+      documentUrls: const {
+        'front_side_of_the_identity_card': 'http://bad-ip/image/id-front.jpg',
+        'the_back_of_the_identity_card': 'http://bad-ip/image/id-back.jpg',
+        'driving_license_front_side': 'http://bad-ip/image/license-front.jpg',
+        'driving_license_back_side': 'http://bad-ip/image/license-back.jpg',
+      },
+    );
+  }
 
   @override
   Future<void> resubmit(int driverId, DriverResubmitData data) async {

@@ -134,6 +134,16 @@ class _DriverResubmitScreenState extends ConsumerState<DriverResubmitScreen> {
       if (next case AsyncData(value: final request)) _fill(request);
     });
     final request = ref.watch(rejectedDriverRequestProvider(widget.driverId));
+    if (!_filled) {
+      switch (request) {
+        case AsyncData(value: final data):
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted && !_filled) _fill(data);
+          });
+        default:
+          break;
+      }
+    }
     final vehicles = ref.watch(driverResubmitVehiclesProvider);
     final submitting = ref
         .watch(driverResubmitActionsProvider)

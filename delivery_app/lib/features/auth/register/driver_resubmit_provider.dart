@@ -11,8 +11,8 @@ final driverResubmitRepositoryProvider = Provider<DriverResubmitRepository>((
   return DriverResubmitRemoteRepository(ref.watch(apiProviderProvider));
 });
 
-final rejectedDriverRequestProvider =
-    FutureProvider.family<RejectedDriverRequest, int>(
+final rejectedDriverRequestProvider = FutureProvider.autoDispose
+    .family<RejectedDriverRequest, int>(
       (ref, driverId) =>
           ref.watch(driverResubmitRepositoryProvider).getRequest(driverId),
       retry: (count, error) => null,
