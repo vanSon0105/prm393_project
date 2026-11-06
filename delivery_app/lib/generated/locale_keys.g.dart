@@ -260,6 +260,10 @@ abstract class  LocaleKeys {
   static const admin_bank_name = 'admin_bank_name';
   static const admin_account_number = 'admin_account_number';
   static const admin_account_holder = 'admin_account_holder';
+  static const admin_bank_qr_code = 'admin_bank_qr_code';
+  static const admin_bank_qr_choose = 'admin_bank_qr_choose';
+  static const admin_bank_qr_size_error = 'admin_bank_qr_size_error';
+  static const admin_bank_qr_load_error = 'admin_bank_qr_load_error';
   static const admin_transfer_note = 'admin_transfer_note';
   static const admin_field_required = 'admin_field_required';
   static const admin_account_number_invalid = 'admin_account_number_invalid';

@@ -43,12 +43,12 @@ void main() {
             onRequest: (options, handler) {
               calls.add(options);
               final data = switch (Uri.parse(options.path).path) {
-                '/api/admin/bank-account' when options.method == 'GET' => {
+                '/api/4/bank-info' when options.method == 'GET' => {
                   'data': {
                     'bank_name': 'Example Bank',
-                    'account_number': '1234567890',
-                    'account_holder': 'TEAM',
-                    'transfer_note': 'Driver ID',
+                    'bank_account_number': '1234567890',
+                    'bank_account_name': 'TEAM',
+                    'bank_qr_code': '4_bank.png',
                   },
                 },
                 '/api/admin/top-up-requests' => {
@@ -73,22 +73,32 @@ void main() {
             },
           ),
         );
-      final repository = AdminFinanceRemoteRepository(ApiProvider(dio));
+      final repository = AdminFinanceRemoteRepository(
+        ApiProvider(dio),
+        profileId: 4,
+      );
 
       final bank = await repository.getBankAccount();
       expect(bank?.accountNumber, '1234567890');
+      expect(bank?.qrCode, '4_bank.png');
       await repository.updateBankAccount(
         const AdminBankAccount(
           bankName: 'Example Bank',
           accountNumber: '1234567890',
           accountHolder: 'TEAM',
+          qrBytes: [1, 2, 3],
+          qrFileName: 'bank.png',
         ),
       );
-      expect(calls[1].method, 'PUT');
+      expect(calls[0].uri.path, '/api/4/bank-info');
+      expect(calls[1].method, 'POST');
       expect(
-        jsonDecode(calls[1].data as String)['account_number'],
+        (calls[1].data as FormData).fields
+            .singleWhere((field) => field.key == 'bank_account_number')
+            .value,
         '1234567890',
       );
+      expect((calls[1].data as FormData).files.single.key, 'bank_qr_code');
 
       final requests = await repository.getTopUpRequests();
       expect(calls[2].queryParameters['status'], 'pending');

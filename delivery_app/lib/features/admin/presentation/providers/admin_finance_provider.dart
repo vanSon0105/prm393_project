@@ -1,4 +1,5 @@
 import 'package:delivery_app/data/network/base/provider.dart';
+import 'package:delivery_app/features/app_view_model.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/admin_finance_remote_repository.dart';
@@ -6,7 +7,13 @@ import '../../domain/entities/admin_finance.dart';
 import '../../domain/repositories/admin_finance_repository.dart';
 
 final adminFinanceRepositoryProvider = Provider<AdminFinanceRepository>((ref) {
-  return AdminFinanceRemoteRepository(ref.watch(apiProviderProvider));
+  final profileId = ref.watch(
+    appViewModelProvider.select((app) => app.profileId),
+  );
+  return AdminFinanceRemoteRepository(
+    ref.watch(apiProviderProvider),
+    profileId: profileId,
+  );
 });
 
 final adminBankAccountProvider = FutureProvider<AdminBankAccount?>((ref) {

@@ -1,3 +1,6 @@
+import 'dart:typed_data';
+
+import 'package:delivery_app/config/environment.dart';
 import 'package:delivery_app/core/theme/app_theme.dart';
 import 'package:delivery_app/features/admin/domain/entities/admin_finance.dart';
 import 'package:delivery_app/features/admin/presentation/admin_finance_error_message.dart';
@@ -6,6 +9,7 @@ import 'package:delivery_app/generated/locale_keys.g.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:file_picker/file_picker.dart';
 
 class AdminBankAccountPage extends ConsumerStatefulWidget {
   const AdminBankAccountPage({super.key});
@@ -20,7 +24,9 @@ class _AdminBankAccountPageState extends ConsumerState<AdminBankAccountPage> {
   final _bankName = TextEditingController();
   final _accountNumber = TextEditingController();
   final _accountHolder = TextEditingController();
-  final _transferNote = TextEditingController();
+  Uint8List? _qrBytes;
+  String? _qrFileName;
+  String _savedQrCode = '';
   bool _loaded = false;
 
   @override
@@ -28,7 +34,6 @@ class _AdminBankAccountPageState extends ConsumerState<AdminBankAccountPage> {
     _bankName.dispose();
     _accountNumber.dispose();
     _accountHolder.dispose();
-    _transferNote.dispose();
     super.dispose();
   }
 
@@ -38,7 +43,29 @@ class _AdminBankAccountPageState extends ConsumerState<AdminBankAccountPage> {
     _bankName.text = account?.bankName ?? '';
     _accountNumber.text = account?.accountNumber ?? '';
     _accountHolder.text = account?.accountHolder ?? '';
-    _transferNote.text = account?.transferNote ?? '';
+    _savedQrCode = account?.qrCode ?? '';
+  }
+
+  Future<void> _selectQrCode() async {
+    try {
+      final file = await FilePicker.pickFile(
+        type: FileType.custom,
+        allowedExtensions: const ['jpg', 'jpeg', 'png', 'webp'],
+      );
+      if (file == null) return;
+      final bytes = await file.readAsBytes();
+      if (!mounted) return;
+      if (bytes.isEmpty || bytes.length > 10 * 1024 * 1024) {
+        _notice(LocaleKeys.admin_bank_qr_size_error.tr());
+        return;
+      }
+      setState(() {
+        _qrBytes = bytes;
+        _qrFileName = file.name;
+      });
+    } catch (_) {
+      if (mounted) _notice(LocaleKeys.register_file_read_error.tr());
+    }
   }
 
   Future<void> _save() async {
@@ -47,7 +74,8 @@ class _AdminBankAccountPageState extends ConsumerState<AdminBankAccountPage> {
       bankName: _bankName.text,
       accountNumber: _accountNumber.text,
       accountHolder: _accountHolder.text,
-      transferNote: _transferNote.text,
+      qrBytes: _qrBytes,
+      qrFileName: _qrFileName,
     );
     try {
       await ref
@@ -141,12 +169,29 @@ class _AdminBankAccountPageState extends ConsumerState<AdminBankAccountPage> {
                               : null,
                         ),
                         const SizedBox(height: 16),
-                        TextFormField(
-                          controller: _transferNote,
-                          decoration: InputDecoration(
-                            labelText: LocaleKeys.admin_transfer_note.tr(),
+                        Text(LocaleKeys.admin_bank_qr_code.tr()),
+                        const SizedBox(height: 8),
+                        if (_qrBytes != null)
+                          Image.memory(
+                            _qrBytes!,
+                            height: 180,
+                            fit: BoxFit.contain,
+                          )
+                        else if (_savedQrCode.isNotEmpty)
+                          Image.network(
+                            '${Environment.baseUrl}/image/${Uri.encodeComponent(_savedQrCode)}',
+                            height: 180,
+                            fit: BoxFit.contain,
+                            errorBuilder: (_, _, _) =>
+                                Text(LocaleKeys.admin_bank_qr_load_error.tr()),
                           ),
-                          maxLines: 2,
+                        OutlinedButton.icon(
+                          onPressed: saving ? null : _selectQrCode,
+                          icon: const Icon(Icons.qr_code_2),
+                          label: Text(
+                            _qrFileName ?? LocaleKeys.admin_bank_qr_choose.tr(),
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                         const SizedBox(height: 24),
                         FilledButton(

@@ -14,8 +14,8 @@ class AppViewModel extends _$AppViewModel {
     return AppState();
   }
 
-  void updateAppData(Role role) {
-    state = state.copyWith(role: role);
+  void updateAppData(Role role, {int? profileId}) {
+    state = state.copyWith(role: role, profileId: profileId);
   }
 
   void clearData() {
