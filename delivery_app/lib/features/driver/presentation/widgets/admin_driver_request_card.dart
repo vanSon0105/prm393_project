@@ -1,3 +1,4 @@
+import 'package:delivery_app/config/environment.dart';
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:delivery_app/generated/locale_keys.g.dart';
@@ -12,7 +13,7 @@ class AdminDriverRequestCard extends StatelessWidget {
     required this.busy,
     required this.onApprove,
     required this.onReject,
-    required this.onViewDocuments,
+    required this.onViewApplication,
     super.key,
   });
 
@@ -20,7 +21,7 @@ class AdminDriverRequestCard extends StatelessWidget {
   final bool busy;
   final VoidCallback onApprove;
   final VoidCallback onReject;
-  final VoidCallback onViewDocuments;
+  final VoidCallback onViewApplication;
 
   @override
   Widget build(BuildContext context) {
@@ -72,9 +73,9 @@ class AdminDriverRequestCard extends StatelessWidget {
             ],
             const SizedBox(height: 8),
             TextButton.icon(
-              onPressed: onViewDocuments,
+              onPressed: onViewApplication,
               icon: const Icon(Icons.description_outlined),
-              label: Text(LocaleKeys.admin_view_documents.tr()),
+              label: Text(LocaleKeys.admin_view_application.tr()),
             ),
             const SizedBox(height: 8),
             if (busy)
@@ -104,18 +105,36 @@ class AdminDriverRequestCard extends StatelessWidget {
   }
 }
 
-class AdminDriverDocumentsSheet extends StatelessWidget {
-  const AdminDriverDocumentsSheet({required this.request, super.key});
+class AdminDriverApplicationSheet extends StatefulWidget {
+  const AdminDriverApplicationSheet({required this.request, super.key});
 
   final AdminDriverRequest request;
 
   @override
+  State<AdminDriverApplicationSheet> createState() =>
+      _AdminDriverApplicationSheetState();
+}
+
+class _AdminDriverApplicationSheetState
+    extends State<AdminDriverApplicationSheet> {
+  final _imageRevision = DateTime.now().microsecondsSinceEpoch.toString();
+
+  String _imageUrl(String raw) {
+    final uri = Uri.tryParse(raw);
+    if (uri == null || uri.pathSegments.isEmpty) return raw;
+    return Uri.parse(Environment.baseUrl)
+        .resolve('/image/${Uri.encodeComponent(uri.pathSegments.last)}')
+        .replace(queryParameters: {'v': _imageRevision})
+        .toString();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final documents = <(String, String)>[
-      (LocaleKeys.users_license_front.tr(), request.licenseFrontUrl),
-      (LocaleKeys.users_license_back.tr(), request.licenseBackUrl),
-      (LocaleKeys.users_identity_front.tr(), request.identityFrontUrl),
-      (LocaleKeys.users_identity_back.tr(), request.identityBackUrl),
+      (LocaleKeys.users_license_front.tr(), widget.request.licenseFrontUrl),
+      (LocaleKeys.users_license_back.tr(), widget.request.licenseBackUrl),
+      (LocaleKeys.users_identity_front.tr(), widget.request.identityFrontUrl),
+      (LocaleKeys.users_identity_back.tr(), widget.request.identityBackUrl),
     ];
 
     return SafeArea(
@@ -125,10 +144,31 @@ class AdminDriverDocumentsSheet extends StatelessWidget {
           padding: const EdgeInsets.all(20),
           children: [
             Text(
-              LocaleKeys.admin_documents_title.tr(
-                namedArgs: {'name': request.name},
+              LocaleKeys.admin_application_title.tr(
+                namedArgs: {'name': widget.request.name},
               ),
               style: Theme.of(context).textTheme.titleLarge,
+            ),
+            const SizedBox(height: 16),
+            _detailRow(LocaleKeys.profile_full_name.tr(), widget.request.name),
+            _detailRow(
+              LocaleKeys.login_phone_label.tr(),
+              widget.request.userName,
+            ),
+            _detailRow(LocaleKeys.profile_phone.tr(), widget.request.phone),
+            _detailRow(LocaleKeys.profile_address.tr(), widget.request.address),
+            _detailRow(
+              LocaleKeys.register_vehicle_type.tr(),
+              widget.request.vehicleType,
+            ),
+            _detailRow(
+              LocaleKeys.register_license_plate.tr(),
+              widget.request.licensePlate,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              LocaleKeys.register_documents_title.tr(),
+              style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: 16),
             for (final (title, url) in documents) ...[
@@ -140,7 +180,7 @@ class AdminDriverDocumentsSheet extends StatelessWidget {
                 ClipRRect(
                   borderRadius: BorderRadius.circular(12),
                   child: Image.network(
-                    url,
+                    _imageUrl(url),
                     height: 220,
                     fit: BoxFit.contain,
                     errorBuilder: (_, _, _) => SizedBox(
@@ -155,6 +195,21 @@ class AdminDriverDocumentsSheet extends StatelessWidget {
             ],
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _detailRow(String label, String value) {
+    if (value.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: const TextStyle(color: AppColors.textSoft)),
+          const SizedBox(height: 3),
+          Text(value),
+        ],
       ),
     );
   }

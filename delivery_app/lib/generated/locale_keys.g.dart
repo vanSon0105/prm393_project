@@ -243,6 +243,8 @@ abstract class  LocaleKeys {
   static const admin_reject_reason_label = 'admin_reject_reason_label';
   static const admin_reject_reason_hint = 'admin_reject_reason_hint';
   static const admin_view_documents = 'admin_view_documents';
+  static const admin_view_application = 'admin_view_application';
+  static const admin_application_title = 'admin_application_title';
   static const admin_documents_title = 'admin_documents_title';
   static const admin_request_count = 'admin_request_count';
   static const admin_driver_trips_completed = 'admin_driver_trips_completed';

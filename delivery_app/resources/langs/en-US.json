@@ -239,6 +239,8 @@
   "admin_reject_reason_label": "Rejection reason",
   "admin_reject_reason_hint": "Explain what the driver needs to update",
   "admin_view_documents": "View documents",
+  "admin_view_application": "View application",
+  "admin_application_title": "{name}'s application",
   "admin_documents_title": "{name}'s documents",
   "admin_request_count": "{count} requests",
   "admin_driver_trips_completed": "{count} trips completed",

@@ -28,6 +28,7 @@ class _DriverResubmitScreenState extends ConsumerState<DriverResubmitScreen> {
   int? _vehicleId;
   bool _filled = false;
   RejectedDriverRequest? _originalRequest;
+  final _imageRevision = DateTime.now().microsecondsSinceEpoch.toString();
 
   static const _documentKeys = {
     DriverDocumentType.cccdFront: 'front_side_of_the_identity_card',
@@ -77,7 +78,10 @@ class _DriverResubmitScreenState extends ConsumerState<DriverResubmitScreen> {
   String _imageUrl(String raw) {
     final uri = Uri.tryParse(raw);
     if (uri == null || uri.pathSegments.isEmpty) return raw;
-    return '${Environment.baseUrl}/image/${Uri.encodeComponent(uri.pathSegments.last)}';
+    return Uri.parse(Environment.baseUrl)
+        .resolve('/image/${Uri.encodeComponent(uri.pathSegments.last)}')
+        .replace(queryParameters: {'v': _imageRevision})
+        .toString();
   }
 
   Future<void> _submit() async {
@@ -150,7 +154,14 @@ class _DriverResubmitScreenState extends ConsumerState<DriverResubmitScreen> {
         .contains(widget.driverId);
 
     return Scaffold(
-      appBar: AppBar(title: Text(LocaleKeys.driver_resubmit_title.tr())),
+      appBar: AppBar(
+        leading: IconButton(
+          tooltip: LocaleKeys.register_go_login.tr(),
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => AppNavigate.instance.gotoLogin(),
+        ),
+        title: Text(LocaleKeys.driver_resubmit_title.tr()),
+      ),
       bottomNavigationBar: request is AsyncData && vehicles is AsyncData
           ? SafeArea(
               child: Padding(
@@ -266,7 +277,14 @@ class _DriverResubmitScreenState extends ConsumerState<DriverResubmitScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(entry.key.label),
-                              if ((data.documentUrls[entry.value] ?? '')
+                              if (_replacements[entry.value]
+                                  case final replacement?)
+                                Image.memory(
+                                  replacement.bytes,
+                                  height: 140,
+                                  fit: BoxFit.contain,
+                                )
+                              else if ((data.documentUrls[entry.value] ?? '')
                                   .isNotEmpty)
                                 Image.network(
                                   _imageUrl(data.documentUrls[entry.value]!),

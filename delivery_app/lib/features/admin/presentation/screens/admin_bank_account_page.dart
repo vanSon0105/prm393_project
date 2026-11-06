@@ -38,12 +38,14 @@ class _AdminBankAccountPageState extends ConsumerState<AdminBankAccountPage> {
   }
 
   void _fill(AdminBankAccount? account) {
-    if (_loaded) return;
-    _loaded = true;
-    _bankName.text = account?.bankName ?? '';
-    _accountNumber.text = account?.accountNumber ?? '';
-    _accountHolder.text = account?.accountHolder ?? '';
-    _savedQrCode = account?.qrCode ?? '';
+    if (!mounted || _loaded) return;
+    setState(() {
+      _loaded = true;
+      _bankName.text = account?.bankName ?? '';
+      _accountNumber.text = account?.accountNumber ?? '';
+      _accountHolder.text = account?.accountHolder ?? '';
+      _savedQrCode = account?.qrCode ?? '';
+    });
   }
 
   Future<void> _selectQrCode() async {
@@ -99,6 +101,16 @@ class _AdminBankAccountPageState extends ConsumerState<AdminBankAccountPage> {
       if (next case AsyncData(value: final account)) _fill(account);
     });
     final account = ref.watch(adminBankAccountProvider);
+    if (!_loaded) {
+      switch (account) {
+        case AsyncData(value: final bankDetails):
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted && !_loaded) _fill(bankDetails);
+          });
+        default:
+          break;
+      }
+    }
     final saving = ref.watch(adminFinanceActionsProvider).contains('bank');
 
     return Theme(

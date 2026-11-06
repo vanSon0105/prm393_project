@@ -108,6 +108,17 @@ void main() {
     expect(find.text('Reason: Document is unclear'), findsOneWidget);
     expect(find.text('0901234567'), findsOneWidget);
     expect(find.text('Driver map'), findsNothing);
+    await tester.tap(find.byTooltip('Go to sign in'));
+    await tester.pumpAndSettle();
+    expect(find.text('Sign in'), findsOneWidget);
+    expect(resubmitRepository.saved, isNull);
+
+    await tester.tap(find.text('Driver'));
+    await tester.pump();
+    await tester.enterText(find.byType(TextField).first, 'rejected_driver');
+    await tester.enterText(find.byType(TextField).last, 'secret123');
+    await tester.tap(find.text('Sign in'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Send for review again'));
     await tester.pumpAndSettle();
     expect(resubmitRepository.saved?.phoneNumber, '0901234567');
@@ -131,7 +142,7 @@ void main() {
     );
     expect(find.text('0909876543'), findsOneWidget);
     expect(find.text('59A1-67890'), findsOneWidget);
-    expect(resubmitRepository.requestCalls, 2);
+    expect(resubmitRepository.requestCalls, 3);
     expect(
       tester
           .widget<FilledButton>(

@@ -57,6 +57,13 @@ type DriverResponse struct {
 	IdentityCardBackUrl    string `json:"identity_card_back_url"`
 }
 
+type DriverRequestResponse struct {
+	DriverResponse
+	UserName     string `json:"user_name"`
+	VehicleType  string `json:"vehicle_type"`
+	LicensePlate string `json:"license_plate"`
+}
+
 type Trip struct {
 	TripID       int     `json:"trip_id"`
 	TripDistance int     `json:"trip_distance"`
@@ -331,9 +338,11 @@ func getDriverRequests(w http.ResponseWriter, r *http.Request) {
 		SELECT 
 			p.profile_id, p.full_name, p.phone_number, p.address, p.image,
 			d.driving_license_front_side, d.driving_license_back_side, 
-			d.front_side_of_the_identity_card, d.the_back_of_the_identity_card
+			d.front_side_of_the_identity_card, d.the_back_of_the_identity_card,
+			p.user_name, v.type, d.licensePlate
 		FROM Profile p
 		INNER JOIN Driver d ON p.profile_id = d.driver_id
+		INNER JOIN VehicleType v ON v.id = d.vehicleType_id
 		WHERE d.active = 0
 		  AND NOT EXISTS (
 			SELECT 1 FROM ReasonReject rr WHERE rr.driver_id = d.driver_id
@@ -347,15 +356,17 @@ func getDriverRequests(w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 
-	var drivers []DriverResponse
+	var drivers []DriverRequestResponse
 	log.Print("Request get all request drivers")
 
 	for rows.Next() {
 		var fullName, phoneNumber, address, avatar, licenseFront, licenseBack, idFront, idBack sql.NullString
+		var userName, vehicleType, licensePlate string
 		var driverID int
 		err := rows.Scan(
 			&driverID, &fullName, &phoneNumber, &address, &avatar,
 			&licenseFront, &licenseBack, &idFront, &idBack,
+			&userName, &vehicleType, &licensePlate,
 		)
 		if err != nil {
 			log.Print(err)
@@ -374,7 +385,12 @@ func getDriverRequests(w http.ResponseWriter, r *http.Request) {
 			IdentityCardFrontUrl:   baseImgURL + parseNullString(idFront),
 			IdentityCardBackUrl:    baseImgURL + parseNullString(idBack),
 		}
-		drivers = append(drivers, d)
+		drivers = append(drivers, DriverRequestResponse{
+			DriverResponse: d,
+			UserName:     userName,
+			VehicleType:  vehicleType,
+			LicensePlate: licensePlate,
+		})
 	}
 
 	w.Header().Set("Content-Type", "application/json")
