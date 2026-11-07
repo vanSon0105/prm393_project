@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/gorilla/mux"
@@ -59,9 +60,10 @@ type DriverResponse struct {
 
 type DriverRequestResponse struct {
 	DriverResponse
-	UserName     string `json:"user_name"`
-	VehicleType  string `json:"vehicle_type"`
-	LicensePlate string `json:"license_plate"`
+	UserName                string `json:"user_name"`
+	VehicleType             string `json:"vehicle_type"`
+	LicensePlate            string `json:"license_plate"`
+	LicensePlateExpiredDate string `json:"license_plate_expired_date"`
 }
 
 type Trip struct {
@@ -112,7 +114,7 @@ func parseNullString(ns sql.NullString) string {
 
 func main() {
 	var err error
-	dsn := "root:root@tcp(127.0.0.1:3306)/mydb"
+	dsn := "root:root@tcp(127.0.0.1:3306)/mydb?parseTime=true"
 	db, err = sql.Open("mysql", dsn)
 	if err != nil {
 		log.Fatal(err)
@@ -339,7 +341,7 @@ func getDriverRequests(w http.ResponseWriter, r *http.Request) {
 			p.profile_id, p.full_name, p.phone_number, p.address, p.image,
 			d.driving_license_front_side, d.driving_license_back_side, 
 			d.front_side_of_the_identity_card, d.the_back_of_the_identity_card,
-			p.user_name, v.type, d.licensePlate
+			p.user_name, v.type, d.licensePlate, d.licensePlateExpiredDate
 		FROM Profile p
 		INNER JOIN Driver d ON p.profile_id = d.driver_id
 		INNER JOIN VehicleType v ON v.id = d.vehicleType_id
@@ -362,11 +364,12 @@ func getDriverRequests(w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		var fullName, phoneNumber, address, avatar, licenseFront, licenseBack, idFront, idBack sql.NullString
 		var userName, vehicleType, licensePlate string
+		var licensePlateExpiredDate time.Time
 		var driverID int
 		err := rows.Scan(
 			&driverID, &fullName, &phoneNumber, &address, &avatar,
 			&licenseFront, &licenseBack, &idFront, &idBack,
-			&userName, &vehicleType, &licensePlate,
+			&userName, &vehicleType, &licensePlate, &licensePlateExpiredDate,
 		)
 		if err != nil {
 			log.Print(err)
@@ -386,10 +389,11 @@ func getDriverRequests(w http.ResponseWriter, r *http.Request) {
 			IdentityCardBackUrl:    baseImgURL + parseNullString(idBack),
 		}
 		drivers = append(drivers, DriverRequestResponse{
-			DriverResponse: d,
-			UserName:     userName,
-			VehicleType:  vehicleType,
-			LicensePlate: licensePlate,
+			DriverResponse:          d,
+			UserName:                userName,
+			VehicleType:             vehicleType,
+			LicensePlate:            licensePlate,
+			LicensePlateExpiredDate: licensePlateExpiredDate.Format("2006-01-02"),
 		})
 	}
 
@@ -941,6 +945,7 @@ func registerUser(w http.ResponseWriter, r *http.Request) {
 		PhoneNumber                string `json:"phone_number"`
 		VehicleID                  string `json:"vehicle_id,omitempty"`
 		LicensePlate               string `json:"license_plate,omitempty"`
+		LicensePlateExpiredDate    string `json:"license_plate_expired_date,omitempty"`
 		DrivingLicenseFrontSide    string `json:"driving_license_front_side,omitempty"`
 		DrivingLicenseBackSide     string `json:"driving_license_back_side,omitempty"`
 		FrontSideOfTheIdentityCard string `json:"front_side_of_the_identity_card,omitempty"`
@@ -1060,8 +1065,9 @@ func registerUser(w http.ResponseWriter, r *http.Request) {
 	case "DRIVER":
 		vehicleID := r.FormValue("vehicle_id")
 		licensePlate := r.FormValue("license_plate")
+		licensePlateExpiredDate := r.FormValue("license_plate_expired_date")
 
-		if vehicleID == "" || licensePlate == "" {
+		if vehicleID == "" || licensePlate == "" || licensePlateExpiredDate == "" {
 			w.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(w).Encode(map[string]string{"error": "Tài xế bắt buộc phải nhập vehicle_id và license_plate"})
 			return
@@ -1115,10 +1121,10 @@ func registerUser(w http.ResponseWriter, r *http.Request) {
 			INSERT INTO Driver (
 				driver_id, vehicleType_id, licensePlate, driving_license_front_side,
 				driving_license_back_side, front_side_of_the_identity_card, 
-				the_back_of_the_identity_card, active
-			) VALUES (?, ?, ?, ?, ?, ?, ?, 0)
+				the_back_of_the_identity_card, active, licensePlateExpiredDate
+			) VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?)
 		`
-		_, err = tx.ExecContext(ctx, driverQuery, newID, vehicleID, licensePlate, licenseFrontName, licenseBackName, idFrontName, idBackName)
+		_, err = tx.ExecContext(ctx, driverQuery, newID, vehicleID, licensePlate, licenseFrontName, licenseBackName, idFrontName, idBackName, licensePlateExpiredDate)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			json.NewEncoder(w).Encode(map[string]string{"error": "Lỗi lưu hồ sơ tài xế và phương tiện vào cơ sở dữ liệu"})
@@ -1517,14 +1523,15 @@ func getRegisterRequest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var (
-		phoneNumber   sql.NullString
-		vehicleID     sql.NullInt64
-		licensePlate  sql.NullString
-		licenseFront  sql.NullString
-		licenseBack   sql.NullString
-		identityFront sql.NullString
-		identityBack  sql.NullString
-		reason        string
+		phoneNumber             sql.NullString
+		vehicleID               sql.NullInt64
+		licensePlate            sql.NullString
+		licensePlateExpiredDate time.Time
+		licenseFront            sql.NullString
+		licenseBack             sql.NullString
+		identityFront           sql.NullString
+		identityBack            sql.NullString
+		reason                  string
 	)
 
 	query := `
@@ -1532,6 +1539,7 @@ func getRegisterRequest(w http.ResponseWriter, r *http.Request) {
 			p.phone_number,
 			d.vehicleType_id,
 			d.licensePlate,
+			d.licensePlateExpiredDate,
 			d.driving_license_front_side,
 			d.driving_license_back_side,
 			d.front_side_of_the_identity_card,
@@ -1550,6 +1558,7 @@ func getRegisterRequest(w http.ResponseWriter, r *http.Request) {
 		&phoneNumber,
 		&vehicleID,
 		&licensePlate,
+		&licensePlateExpiredDate,
 		&licenseFront,
 		&licenseBack,
 		&identityFront,
@@ -1581,6 +1590,7 @@ func getRegisterRequest(w http.ResponseWriter, r *http.Request) {
 		"phone_number":                    parseNullString(phoneNumber),
 		"vehicle_id":                      vehicleID.Int64,
 		"license_plate":                   parseNullString(licensePlate),
+		"license_plate_expired_date":      licensePlateExpiredDate.Format("2006-01-02"),
 		"driving_license_front_side":      imageURL(licenseFront),
 		"driving_license_back_side":       imageURL(licenseBack),
 		"front_side_of_the_identity_card": imageURL(identityFront),
@@ -1719,6 +1729,12 @@ func resubmitDriverRegisterInfo(w http.ResponseWriter, r *http.Request) {
 	if licensePlate != "" {
 		driverUpdates = append(driverUpdates, "licensePlate = ?")
 		driverArgs = append(driverArgs, licensePlate)
+	}
+
+	licensePlateExpiredDate := r.FormValue("license_plate_expired_date")
+	if licensePlateExpiredDate != "" {
+		driverUpdates = append(driverUpdates, "licensePlateExpiredDate = ?")
+		driverArgs = append(driverArgs, licensePlateExpiredDate)
 	}
 
 	err = os.MkdirAll("./image", 0755)
