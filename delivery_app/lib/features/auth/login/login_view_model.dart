@@ -4,6 +4,7 @@ import 'package:delivery_app/features/auth/data/repositories/login_param.dart';
 import 'package:delivery_app/features/auth/domain/entities/login_status.dart';
 import 'package:delivery_app/features/auth/domain/entities/role.dart';
 import 'package:delivery_app/features/auth/login/login_state.dart';
+import 'package:delivery_app/features/auth/register/driver_resubmit_provider.dart';
 import 'package:delivery_app/routes/app_navigate.dart';
 import 'package:delivery_app/widget/app_loading.dart';
 import 'package:flutter/cupertino.dart';
@@ -40,12 +41,23 @@ class LoginViewModel extends _$LoginViewModel {
       switch (status) {
         case LoginStatus.approved:
           AppNavigate.instance.gotoScreenBy(screen: role.screen);
-          ref.read(appViewModelProvider.notifier).updateAppData(role);
+          ref
+              .read(appViewModelProvider.notifier)
+              .updateAppData(role, profileId: response.data?.profileId);
         case LoginStatus.pending:
-        case LoginStatus.reject:
           AppNavigate.instance.showAppDialog(
             message: response.data?.message ?? '',
           );
+        case LoginStatus.reject:
+          final driverId = response.data?.profileId;
+          if (role == Role.driver && driverId != null && driverId > 0) {
+            ref.invalidate(rejectedDriverRequestProvider(driverId));
+            AppNavigate.instance.gotoDriverResubmit(driverId);
+          } else {
+            AppNavigate.instance.showAppDialog(
+              message: response.data?.message ?? '',
+            );
+          }
       }
     } catch (_) {
     } finally {

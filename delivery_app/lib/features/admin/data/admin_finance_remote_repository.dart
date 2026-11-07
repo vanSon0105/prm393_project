@@ -1,18 +1,28 @@
 import 'package:delivery_app/data/network/base/param.dart';
 import 'package:delivery_app/data/network/base/provider.dart';
+import 'package:dio/dio.dart';
 
 import '../domain/entities/admin_finance.dart';
 import '../domain/repositories/admin_finance_repository.dart';
 
 class AdminFinanceRemoteRepository implements AdminFinanceRepository {
-  const AdminFinanceRemoteRepository(this._api);
+  const AdminFinanceRemoteRepository(this._api, {this.profileId});
 
   final ApiProvider _api;
+  final int? profileId;
+
+  int get _requiredProfileId {
+    final id = profileId;
+    if (id == null || id <= 0) {
+      throw StateError('Admin profile ID is unavailable. Sign in again.');
+    }
+    return id;
+  }
 
   @override
   Future<AdminBankAccount?> getBankAccount() async {
     final response = await _api.requestApi(
-      param: _FinanceParam('/api/admin/bank-account'),
+      param: _FinanceParam('/api/$_requiredProfileId/bank-info'),
     );
     final data = _data(response);
     if (data == null) return null;
@@ -23,13 +33,8 @@ class AdminFinanceRemoteRepository implements AdminFinanceRepository {
   }
 
   @override
-  Future<void> updateBankAccount(AdminBankAccount account) => _api.requestApi(
-    param: _FinanceParam(
-      '/api/admin/bank-account',
-      method: Method.put,
-      body: account.toJson(),
-    ),
-  );
+  Future<void> updateBankAccount(AdminBankAccount account) =>
+      _api.requestApi(param: _BankUpdateParam(_requiredProfileId, account));
 
   @override
   Future<List<DriverTopUpRequest>> getTopUpRequests() async {
@@ -81,6 +86,35 @@ class AdminFinanceRemoteRepository implements AdminFinanceRepository {
     }
     return response['data'];
   }
+}
+
+class _BankUpdateParam extends ApiParam {
+  _BankUpdateParam(this.profileId, this.account);
+
+  final int profileId;
+  final AdminBankAccount account;
+
+  @override
+  String get path => '/api/$profileId/bank-info';
+
+  @override
+  String get method => Method.post;
+
+  @override
+  String get contentType => HeaderContentType.multipartFormData;
+
+  @override
+  bool get useMultipart => true;
+
+  @override
+  Future<FormData> get formData async => FormData.fromMap({
+    ...account.toJson(),
+    if (account.qrBytes != null && account.qrFileName != null)
+      'bank_qr_code': MultipartFile.fromBytes(
+        account.qrBytes!,
+        filename: account.qrFileName,
+      ),
+  });
 }
 
 class _FinanceParam extends ApiParam {

@@ -58,7 +58,7 @@ class DriverRequestsPage extends ConsumerWidget {
                     busy: reviewing.contains(request.id),
                     onApprove: () => _approve(context, ref, request),
                     onReject: () => _reject(context, ref, request),
-                    onViewDocuments: () => _showDocuments(context, request),
+                    onViewApplication: () => _showApplication(context, request),
                   ),
                   const SizedBox(height: 12),
                 ],
@@ -160,11 +160,11 @@ class DriverRequestsPage extends ConsumerWidget {
     }
   }
 
-  void _showDocuments(BuildContext context, AdminDriverRequest request) {
+  void _showApplication(BuildContext context, AdminDriverRequest request) {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      builder: (_) => AdminDriverDocumentsSheet(request: request),
+      builder: (_) => AdminDriverApplicationSheet(request: request),
     );
   }
 

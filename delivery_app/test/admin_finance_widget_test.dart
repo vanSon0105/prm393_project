@@ -50,6 +50,52 @@ void main() {
     expect(repository.reviewedId, 7);
     expect(repository.approved, isTrue);
   });
+
+  testWidgets('saved bank details appear when the page is opened again', (
+    tester,
+  ) async {
+    final repository = _FinanceRepository();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          adminFinanceRepositoryProvider.overrideWithValue(repository),
+        ],
+        child: const MaterialApp(home: _BankLauncher()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Open bank'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextFormField).first, 'New Bank');
+    await tester.tap(find.byType(FilledButton));
+    await tester.pumpAndSettle();
+    expect(repository.saved?.bankName, 'New Bank');
+
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Open bank'));
+    await tester.pumpAndSettle();
+    expect(find.text('New Bank'), findsOneWidget);
+    expect(find.text('1234567890'), findsOneWidget);
+    expect(find.text('TEAM'), findsOneWidget);
+  });
+}
+
+class _BankLauncher extends StatelessWidget {
+  const _BankLauncher();
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    body: Center(
+      child: ElevatedButton(
+        onPressed: () => Navigator.of(context).push(
+          MaterialPageRoute<void>(builder: (_) => const AdminBankAccountPage()),
+        ),
+        child: const Text('Open bank'),
+      ),
+    ),
+  );
 }
 
 Widget _app(Widget home, AdminFinanceRepository repository) => EasyLocalization(
@@ -77,11 +123,13 @@ class _FinanceRepository implements AdminFinanceRepository {
   bool? approved;
 
   @override
-  Future<AdminBankAccount?> getBankAccount() async => const AdminBankAccount(
-    bankName: 'Example Bank',
-    accountNumber: '1234567890',
-    accountHolder: 'TEAM',
-  );
+  Future<AdminBankAccount?> getBankAccount() async =>
+      saved ??
+      const AdminBankAccount(
+        bankName: 'Example Bank',
+        accountNumber: '1234567890',
+        accountHolder: 'TEAM',
+      );
 
   @override
   Future<void> updateBankAccount(AdminBankAccount account) async {

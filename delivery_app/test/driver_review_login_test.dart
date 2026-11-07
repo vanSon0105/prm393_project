@@ -8,6 +8,9 @@ import 'package:delivery_app/features/auth/data/repositories/register_user_param
 import 'package:delivery_app/features/auth/domain/entities/role.dart';
 import 'package:delivery_app/features/auth/domain/repositories/authentication_repository.dart';
 import 'package:delivery_app/features/auth/login/login_page.dart';
+import 'package:delivery_app/features/auth/register/driver_resubmit_provider.dart';
+import 'package:delivery_app/features/auth/register/driver_resubmit_repository.dart';
+import 'package:delivery_app/features/auth/register/driver_resubmit_screen.dart';
 import 'package:delivery_app/routes/app_navigate.dart';
 import 'package:delivery_app/widget/app_loading.dart';
 import 'package:easy_localization/easy_localization.dart';
@@ -27,9 +30,11 @@ void main() {
     AppLoading.instance.configLoading();
   });
 
-  testWidgets('approved driver enters the app; rejected driver sees reason',
-      (tester) async {
+  testWidgets('approved driver enters the app; rejected driver can resubmit', (
+    tester,
+  ) async {
     final repository = _DriverReviewRepository();
+    final resubmitRepository = _RejectedRequestRepository();
     final router = GoRouter(
       navigatorKey: AppNavigate.instance.key,
       initialLocation: '/login',
@@ -44,27 +49,43 @@ void main() {
           name: '/map',
           builder: (_, _) => const Scaffold(body: Text('Driver map')),
         ),
+        GoRoute(
+          path: '/driver/:driverId/resubmit',
+          name: '/driver/:driverId/resubmit',
+          builder: (_, state) => DriverResubmitScreen(
+            driverId: int.parse(state.pathParameters['driverId']!),
+          ),
+        ),
       ],
     );
     addTearDown(router.dispose);
-    await tester.pumpWidget(EasyLocalization(
-      supportedLocales: const [Locale('en', 'US'), Locale('ko', 'KR')],
-      startLocale: const Locale('en', 'US'),
-      fallbackLocale: const Locale('en', 'US'),
-      path: 'resources/langs',
-      assetLoader: JsonAssetLoader(),
-      saveLocale: false,
-      child: Builder(builder: (context) => ProviderScope(
-        overrides: [authenticationRepositoryProvider.overrideWithValue(repository)],
-        child: MaterialApp.router(
-          routerConfig: router,
-          locale: context.locale,
-          supportedLocales: context.supportedLocales,
-          localizationsDelegates: context.localizationDelegates,
-          builder: (context, child) => FlutterEasyLoading(child: child),
+    await tester.pumpWidget(
+      EasyLocalization(
+        supportedLocales: const [Locale('en', 'US'), Locale('ko', 'KR')],
+        startLocale: const Locale('en', 'US'),
+        fallbackLocale: const Locale('en', 'US'),
+        path: 'resources/langs',
+        assetLoader: JsonAssetLoader(),
+        saveLocale: false,
+        child: Builder(
+          builder: (context) => ProviderScope(
+            overrides: [
+              authenticationRepositoryProvider.overrideWithValue(repository),
+              driverResubmitRepositoryProvider.overrideWithValue(
+                resubmitRepository,
+              ),
+            ],
+            child: MaterialApp.router(
+              routerConfig: router,
+              locale: context.locale,
+              supportedLocales: context.supportedLocales,
+              localizationsDelegates: context.localizationDelegates,
+              builder: (context, child) => FlutterEasyLoading(child: child),
+            ),
+          ),
         ),
-      )),
-    ));
+      ),
+    );
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('Driver'));
@@ -84,8 +105,52 @@ void main() {
     await tester.enterText(find.byType(TextField).last, 'secret123');
     await tester.tap(find.text('Sign in'));
     await tester.pumpAndSettle();
-    expect(find.text('Document is unclear'), findsOneWidget);
+    expect(find.text('Reason: Document is unclear'), findsOneWidget);
+    expect(find.text('0901234567'), findsOneWidget);
     expect(find.text('Driver map'), findsNothing);
+    await tester.tap(find.byTooltip('Go to sign in'));
+    await tester.pumpAndSettle();
+    expect(find.text('Sign in'), findsOneWidget);
+    expect(resubmitRepository.saved, isNull);
+
+    await tester.tap(find.text('Driver'));
+    await tester.pump();
+    await tester.enterText(find.byType(TextField).first, 'rejected_driver');
+    await tester.enterText(find.byType(TextField).last, 'secret123');
+    await tester.tap(find.text('Sign in'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Send for review again'));
+    await tester.pumpAndSettle();
+    expect(resubmitRepository.saved?.phoneNumber, '0901234567');
+    expect(resubmitRepository.saved?.vehicleId, 1);
+    expect(find.text('Application sent'), findsOneWidget);
+    resubmitRepository
+      ..reason = 'The new document is still blurry'
+      ..phoneNumber = '0909876543'
+      ..licensePlate = '59A1-67890';
+    await tester.tap(find.text('Go to sign in'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Driver'));
+    await tester.pump();
+    await tester.enterText(find.byType(TextField).first, 'rejected_driver');
+    await tester.enterText(find.byType(TextField).last, 'secret123');
+    await tester.tap(find.text('Sign in'));
+    await tester.pumpAndSettle();
+    expect(
+      find.text('Reason: The new document is still blurry'),
+      findsOneWidget,
+    );
+    expect(find.text('0909876543'), findsOneWidget);
+    expect(find.text('59A1-67890'), findsOneWidget);
+    expect(resubmitRepository.requestCalls, 3);
+    expect(
+      tester
+          .widget<FilledButton>(
+            find.widgetWithText(FilledButton, 'Send for review again'),
+          )
+          .onPressed,
+      isNotNull,
+    );
     expect(tester.takeException(), isNull);
   });
 }
@@ -105,18 +170,52 @@ class _DriverReviewRepository implements AuthenticationRepository {
   Future<LoginModel> login({required LoginParam param}) async {
     lastRole = param.role;
     final rejected = param.userName == 'rejected_driver';
-    return LoginModel(data: LoginData(
-      profileId: rejected ? 8 : 7,
-      userName: param.userName,
-      role: 'DRIVER',
-      status: rejected ? 'REJECTED' : 'APPROVED',
-      message: rejected ? 'Document is unclear' : 'Welcome',
-    ));
+    return LoginModel(
+      data: LoginData(
+        profileId: rejected ? 8 : 7,
+        userName: param.userName,
+        role: 'DRIVER',
+        status: rejected ? 'REJECTED' : 'APPROVED',
+        message: rejected ? 'Document is unclear' : 'Welcome',
+      ),
+    );
   }
 
   @override
-  Future<VehicleTypeModel> getVehicleTypes() => throw UnimplementedError();
+  Future<VehicleTypeModel> getVehicleTypes() async =>
+      VehicleTypeModel(data: [VehicleTypeData(id: 1, name: 'Motorbike')]);
 
   @override
   Future<Role> getRoles() => throw UnimplementedError();
+}
+
+class _RejectedRequestRepository implements DriverResubmitRepository {
+  DriverResubmitData? saved;
+  String reason = 'Document is unclear';
+  String phoneNumber = '0901234567';
+  String licensePlate = '59A1-12345';
+  int requestCalls = 0;
+
+  @override
+  Future<RejectedDriverRequest> getRequest(int driverId) async {
+    requestCalls++;
+    return RejectedDriverRequest(
+      driverId: driverId,
+      phoneNumber: phoneNumber,
+      vehicleId: 1,
+      licensePlate: licensePlate,
+      reason: reason,
+      documentUrls: const {
+        'front_side_of_the_identity_card': 'http://bad-ip/image/id-front.jpg',
+        'the_back_of_the_identity_card': 'http://bad-ip/image/id-back.jpg',
+        'driving_license_front_side': 'http://bad-ip/image/license-front.jpg',
+        'driving_license_back_side': 'http://bad-ip/image/license-back.jpg',
+      },
+    );
+  }
+
+  @override
+  Future<void> resubmit(int driverId, DriverResubmitData data) async {
+    saved = data;
+  }
 }

@@ -35,6 +35,11 @@ class AppNavigate extends Navigate {
     return await add<bool>(route: AppRoute.driverTerms) ?? false;
   }
 
+  Future<void> gotoDriverResubmit(int driverId) => replaceAndClearBackStack(
+    route: AppRoute.driverResubmit,
+    pathParameters: {'driverId': '$driverId'},
+  );
+
   Future<void> gotoAdmin() async {
     return replaceAndClearBackStack(route: AppRoute.admin);
   }

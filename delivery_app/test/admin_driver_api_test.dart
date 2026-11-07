@@ -133,6 +133,9 @@ void main() {
                             'full_name': 'Nguyễn Văn A',
                             'phone_number': '0901234567',
                             'address': 'Quận 1',
+                            'user_name': 'driver_a',
+                            'vehicle_type': 'CAR_4_SEAT',
+                            'license_plate': '59A1-12345',
                             'driving_license_front_url':
                                 'http://localhost:8080/image/license.jpg',
                             'driving_license_back_url': '',
@@ -153,6 +156,9 @@ void main() {
       final requests = await source.fetchRequests();
       expect(calls.first.path, endsWith('/api/admin/drivers/requests'));
       expect(requests.single.licenseFrontUrl, endsWith('/image/license.jpg'));
+      expect(requests.single.userName, 'driver_a');
+      expect(requests.single.vehicleType, 'CAR_4_SEAT');
+      expect(requests.single.licensePlate, '59A1-12345');
 
       await source.reviewRequest(driverId: 8, approved: true);
       expect(calls[1].method, 'POST');
@@ -197,6 +203,14 @@ void main() {
 
     expect(find.byType(AdminDriverRequestCard), findsOneWidget);
     expect(find.text('Reject'), findsOneWidget);
+    await tester.tap(find.text('View application'));
+    await tester.pumpAndSettle();
+    expect(find.text('driver_a'), findsOneWidget);
+    expect(find.text('CAR_4_SEAT'), findsOneWidget);
+    expect(find.text('59A1-12345'), findsOneWidget);
+    expect(find.text('Driver documents'), findsOneWidget);
+    tester.state<NavigatorState>(find.byType(Navigator)).pop();
+    await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(OutlinedButton, 'Reject'));
     await tester.pumpAndSettle();
     final rejectButton = find.widgetWithText(FilledButton, 'Reject');
@@ -242,6 +256,9 @@ class _RecordingAdminDriverRepository implements AdminDriverRepository {
       licenseBackUrl: '',
       identityFrontUrl: '',
       identityBackUrl: '',
+      userName: 'driver_a',
+      vehicleType: 'CAR_4_SEAT',
+      licensePlate: '59A1-12345',
     ),
   ];
   String? lastReason;

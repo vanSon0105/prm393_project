@@ -11,10 +11,16 @@ class AdminDriverRequest extends AdminDriver {
     required this.licenseBackUrl,
     required this.identityFrontUrl,
     required this.identityBackUrl,
+    this.userName = '',
+    this.vehicleType = '',
+    this.licensePlate = '',
   });
 
   final String licenseFrontUrl;
   final String licenseBackUrl;
   final String identityFrontUrl;
   final String identityBackUrl;
+  final String userName;
+  final String vehicleType;
+  final String licensePlate;
 }

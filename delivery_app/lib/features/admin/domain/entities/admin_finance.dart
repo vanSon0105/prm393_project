@@ -3,27 +3,30 @@ class AdminBankAccount {
     required this.bankName,
     required this.accountNumber,
     required this.accountHolder,
-    this.transferNote = '',
+    this.qrCode = '',
+    this.qrBytes,
+    this.qrFileName,
   });
 
   final String bankName;
   final String accountNumber;
   final String accountHolder;
-  final String transferNote;
+  final String qrCode;
+  final List<int>? qrBytes;
+  final String? qrFileName;
 
   factory AdminBankAccount.fromJson(Map<String, dynamic> json) =>
       AdminBankAccount(
         bankName: json['bank_name']?.toString() ?? '',
-        accountNumber: json['account_number']?.toString() ?? '',
-        accountHolder: json['account_holder']?.toString() ?? '',
-        transferNote: json['transfer_note']?.toString() ?? '',
+        accountNumber: json['bank_account_number']?.toString() ?? '',
+        accountHolder: json['bank_account_name']?.toString() ?? '',
+        qrCode: json['bank_qr_code']?.toString() ?? '',
       );
 
   Map<String, dynamic> toJson() => {
     'bank_name': bankName.trim(),
-    'account_number': accountNumber.trim(),
-    'account_holder': accountHolder.trim(),
-    'transfer_note': transferNote.trim(),
+    'bank_account_number': accountNumber.trim(),
+    'bank_account_name': accountHolder.trim(),
   };
 }
 

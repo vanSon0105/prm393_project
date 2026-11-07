@@ -12,6 +12,9 @@ class AdminDriverRequestModel extends AdminDriverRequest {
     required super.licenseBackUrl,
     required super.identityFrontUrl,
     required super.identityBackUrl,
+    super.userName,
+    super.vehicleType,
+    super.licensePlate,
   });
 
   factory AdminDriverRequestModel.fromJson(Map<String, dynamic> json) {
@@ -31,6 +34,9 @@ class AdminDriverRequestModel extends AdminDriverRequest {
       licenseBackUrl: imageUrl('driving_license_back_url'),
       identityFrontUrl: imageUrl('identity_card_front_url'),
       identityBackUrl: imageUrl('identity_card_back_url'),
+      userName: (json['user_name'] as String?)?.trim() ?? '',
+      vehicleType: (json['vehicle_type'] as String?)?.trim() ?? '',
+      licensePlate: (json['license_plate'] as String?)?.trim() ?? '',
     );
   }
 }

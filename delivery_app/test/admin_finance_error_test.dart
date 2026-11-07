@@ -29,7 +29,7 @@ void main() {
       find.text('The finance API is not available on this server yet.'),
       findsOneWidget,
     );
-    expect(find.byType(TextFormField), findsNWidgets(4));
+    expect(find.byType(TextFormField), findsNWidgets(3));
     expect(find.byType(CircularProgressIndicator), findsNothing);
     expect(repository.bankCalls, 1);
 
@@ -71,7 +71,7 @@ class _MissingFinanceRepository implements AdminFinanceRepository {
   @override
   Future<AdminBankAccount?> getBankAccount() async {
     bankCalls++;
-    throw ApiException(url: '/api/admin/bank-account', httpCode: 404);
+    throw ApiException(url: '/api/4/bank-info', httpCode: 404);
   }
 
   @override
