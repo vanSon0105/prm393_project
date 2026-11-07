@@ -139,6 +139,9 @@ func main() {
 	r.HandleFunc("/api/admin/drivers/requests", getDriverRequests).Methods("GET")
 	r.HandleFunc("/api/admin/drivers", getAllDrivers).Methods("GET")
 	r.HandleFunc("/api/admin/drivers/{id}/approve", approveDriver).Methods("POST")
+	r.HandleFunc("/api/admin/bank-info", getAdminBankInfo).Methods("GET")
+	r.HandleFunc("/api/admin/topup/{id}/review", reviewTopupRequest).Methods("PATCH")
+	r.HandleFunc("/api/admin/topup/requests", getAllTopupRequests).Methods("GET")
 
 	// User (Customer) APIs
 	r.HandleFunc("/api/user/trips/book", bookTrip).Methods("POST")
@@ -150,6 +153,10 @@ func main() {
 	r.HandleFunc("/api/driver/trips/{id}/complete", completeTrip).Methods("POST")
 	r.HandleFunc("/api/driver/{id}/register-info", getRegisterRequest).Methods("GET")
 	r.HandleFunc("/api/driver/{id}/register-info", resubmitDriverRegisterInfo).Methods("POST")
+	r.HandleFunc("/api/driver/topup", createTopupRequest).Methods("POST")
+	r.HandleFunc("/api/driver/{id}/topup/requests", getDriverTopupRequests).Methods("GET")
+	r.HandleFunc("/api/topup/{id}", getTopupRequestDetail).Methods("GET")
+	r.HandleFunc("/api/driver/topup/{id}/update", updateTopupRequest).Methods("PUT", "POST")
 
 	// For Driver, User, Admin
 	r.HandleFunc("/api/user/login", loginUser).Methods("POST")
@@ -2234,4 +2241,631 @@ func updateUserProfile(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	getUserProfile(w, r)
+}
+
+type TopupRequestResponse struct {
+	TransactionID    int     `json:"transaction_id"`
+	DriverID         int     `json:"driver_id"`
+	DriverName       string  `json:"driver_name"`
+	Balance          float64 `json:"balance"`
+	ImageTransaction string  `json:"image_transaction"`
+	Active           int     `json:"active"`
+	Status           string  `json:"status"`
+	Time             string  `json:"time"`
+	RejectReason     string  `json:"reject_reason"`
+}
+
+type topupRowScanner interface {
+	Scan(dest ...interface{}) error
+}
+
+const topupSelectQuery = "SELECT t.transaction_id, t.driver_id, p.full_name, t.balance, " +
+	"t.image_transaction, t.active, t.`time`, t.reject_reason " +
+	"FROM DiverTransaction t " +
+	"INNER JOIN Profile p ON p.profile_id = t.driver_id "
+
+func topupError(w http.ResponseWriter, status int, msg string) {
+	w.WriteHeader(status)
+	json.NewEncoder(w).Encode(map[string]string{"error": msg})
+}
+
+func topupStatus(active int, rejectReason string) string {
+	if active == 1 {
+		return "APPROVED"
+	}
+	if rejectReason != "" {
+		return "REJECTED"
+	}
+	return "PENDING"
+}
+
+func topupStatusClause(status string) (string, bool) {
+	switch strings.ToLower(strings.TrimSpace(status)) {
+	case "":
+		return "", true
+	case "pending":
+		return "t.active = 0 AND (t.reject_reason IS NULL OR t.reject_reason = '')", true
+	case "approved":
+		return "t.active = 1", true
+	case "rejected":
+		return "t.active = 0 AND t.reject_reason <> ''", true
+	}
+	return "", false
+}
+
+func scanTopupRequest(sc topupRowScanner) (TopupRequestResponse, error) {
+	var t TopupRequestResponse
+	var driverName, image, rejectReason sql.NullString
+	var createdAt time.Time
+
+	err := sc.Scan(
+		&t.TransactionID, &t.DriverID, &driverName, &t.Balance,
+		&image, &t.Active, &createdAt, &rejectReason,
+	)
+	if err != nil {
+		return t, err
+	}
+
+	t.DriverName = parseNullString(driverName)
+	if img := parseNullString(image); img != "" {
+		t.ImageTransaction = fmt.Sprintf("http://%s:8080/image/%s", getLocalIP(), img)
+	}
+	t.Time = createdAt.Format("2006-01-02 15:04:05")
+	t.RejectReason = parseNullString(rejectReason)
+	t.Status = topupStatus(t.Active, t.RejectReason)
+	return t, nil
+}
+
+func loadTopupRequest(transactionID int) (TopupRequestResponse, error) {
+	return scanTopupRequest(
+		db.QueryRow(topupSelectQuery+"WHERE t.transaction_id = ?", transactionID),
+	)
+}
+
+func saveTopupTempImage(src io.Reader, filename string) (string, int, string) {
+	ext := strings.ToLower(filepath.Ext(filename))
+	if ext != ".jpg" && ext != ".jpeg" && ext != ".png" && ext != ".webp" {
+		return "", http.StatusBadRequest, "Chỉ hỗ trợ ảnh JPG, JPEG, PNG hoặc WEBP"
+	}
+
+	if err := os.MkdirAll("image", os.ModePerm); err != nil {
+		log.Printf("Lỗi tạo thư mục image: %v", err)
+		return "", http.StatusInternalServerError, "Không thể tạo thư mục lưu ảnh"
+	}
+
+	tmp, err := os.CreateTemp("image", "transaction_tmp_*")
+	if err != nil {
+		log.Printf("Lỗi tạo file tạm: %v", err)
+		return "", http.StatusInternalServerError, "Không thể lưu ảnh"
+	}
+
+	_, copyErr := io.Copy(tmp, src)
+	closeErr := tmp.Close()
+	if copyErr != nil || closeErr != nil {
+		log.Printf("Lỗi ghi ảnh: copy=%v close=%v", copyErr, closeErr)
+		os.Remove(tmp.Name())
+		return "", http.StatusInternalServerError, "Không thể lưu ảnh"
+	}
+
+	return tmp.Name(), 0, ""
+}
+
+func createTopupRequest(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	r.Body = http.MaxBytesReader(w, r.Body, 10<<20)
+	if err := r.ParseMultipartForm(10 << 20); err != nil {
+		topupError(w, http.StatusBadRequest, "Dữ liệu không hợp lệ hoặc file vượt quá dung lượng cho phép")
+		return
+	}
+
+	driverID, err := strconv.Atoi(strings.TrimSpace(r.FormValue("driver_id")))
+	if err != nil || driverID <= 0 {
+		topupError(w, http.StatusBadRequest, "driver_id không hợp lệ")
+		return
+	}
+
+	balance64, err := strconv.ParseInt(strings.TrimSpace(r.FormValue("balance")), 10, 32)
+	if err != nil || balance64 <= 0 {
+		topupError(w, http.StatusBadRequest, "balance phải là số nguyên dương")
+		return
+	}
+	balance := int(balance64)
+
+	imageFile, imageHeader, err := r.FormFile("image_transaction")
+	if err != nil {
+		topupError(w, http.StatusBadRequest, "Vui lòng gửi ảnh chuyển khoản (image_transaction)")
+		return
+	}
+	defer imageFile.Close()
+
+	var driverActive int
+	err = db.QueryRow("SELECT active FROM Driver WHERE driver_id = ?", driverID).Scan(&driverActive)
+	if err == sql.ErrNoRows {
+		topupError(w, http.StatusNotFound, "Không tìm thấy tài xế")
+		return
+	}
+	if err != nil {
+		log.Printf("Lỗi kiểm tra tài xế: %v", err)
+		topupError(w, http.StatusInternalServerError, "Lỗi hệ thống")
+		return
+	}
+	if driverActive != 1 {
+		topupError(w, http.StatusForbidden, "Tài xế chưa được phê duyệt")
+		return
+	}
+
+	tempPath, status, msg := saveTopupTempImage(imageFile, imageHeader.Filename)
+	if status != 0 {
+		topupError(w, status, msg)
+		return
+	}
+	defer func() {
+		if tempPath != "" {
+			os.Remove(tempPath)
+		}
+	}()
+
+	tx, err := db.Begin()
+	if err != nil {
+		log.Printf("Lỗi Begin Transaction: %v", err)
+		topupError(w, http.StatusInternalServerError, "Không thể khởi tạo tiến trình xử lý dữ liệu")
+		return
+	}
+	defer tx.Rollback()
+
+	res, err := tx.Exec(
+		"INSERT INTO DiverTransaction (balance, image_transaction, active, reject_reason, driver_id, `time`) "+
+			"VALUES (?, '', 0, '', ?, NOW())",
+		balance, driverID,
+	)
+	if err != nil {
+		log.Printf("Lỗi tạo yêu cầu nạp tiền: %v", err)
+		topupError(w, http.StatusInternalServerError, "Lỗi hệ thống khi tạo yêu cầu nạp tiền")
+		return
+	}
+
+	transactionID64, err := res.LastInsertId()
+	if err != nil {
+		log.Printf("Lỗi lấy transaction_id: %v", err)
+		topupError(w, http.StatusInternalServerError, "Lỗi hệ thống khi tạo yêu cầu nạp tiền")
+		return
+	}
+	transactionID := int(transactionID64)
+
+	imageName := fmt.Sprintf("%d_transaction_%d.jpg", driverID, transactionID)
+
+	_, err = tx.Exec(
+		"UPDATE DiverTransaction SET image_transaction = ? WHERE transaction_id = ?",
+		imageName, transactionID,
+	)
+	if err != nil {
+		log.Printf("Lỗi lưu tên ảnh giao dịch: %v", err)
+		topupError(w, http.StatusInternalServerError, "Lỗi hệ thống khi lưu ảnh giao dịch")
+		return
+	}
+
+	finalPath := filepath.Join("image", imageName)
+	if err := os.Rename(tempPath, finalPath); err != nil {
+		log.Printf("Lỗi đổi tên ảnh giao dịch: %v", err)
+		topupError(w, http.StatusInternalServerError, "Không thể lưu ảnh giao dịch")
+		return
+	}
+	tempPath = ""
+
+	if err := tx.Commit(); err != nil {
+		os.Remove(finalPath)
+		log.Printf("Lỗi Commit Transaction: %v", err)
+		topupError(w, http.StatusInternalServerError, "Lỗi hệ thống khi xác nhận dữ liệu")
+		return
+	}
+
+	created, err := loadTopupRequest(transactionID)
+	if err != nil {
+		log.Printf("Lỗi đọc lại yêu cầu nạp tiền: %v", err)
+		topupError(w, http.StatusInternalServerError, "Đã tạo yêu cầu nhưng không thể đọc lại dữ liệu")
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(struct {
+		Data TopupRequestResponse `json:"data"`
+	}{Data: created})
+}
+
+func reviewTopupRequest(w http.ResponseWriter, r *http.Request) {
+	type ReviewTopupRequest struct {
+		Status bool   `json:"status"`
+		Reason string `json:"reason"`
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+
+	transactionID, err := strconv.Atoi(mux.Vars(r)["id"])
+	if err != nil || transactionID <= 0 {
+		topupError(w, http.StatusBadRequest, "transaction_id không hợp lệ")
+		return
+	}
+
+	var req ReviewTopupRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		topupError(w, http.StatusBadRequest, "Dữ liệu JSON không hợp lệ")
+		return
+	}
+	req.Reason = strings.TrimSpace(req.Reason)
+
+	if !req.Status {
+		if req.Reason == "" {
+			topupError(w, http.StatusBadRequest, "Vui lòng cung cấp lý do từ chối (reason)")
+			return
+		}
+		if len([]rune(req.Reason)) > 255 {
+			topupError(w, http.StatusBadRequest, "reason tối đa 255 ký tự")
+			return
+		}
+	}
+
+	tx, err := db.Begin()
+	if err != nil {
+		log.Printf("Lỗi Begin Transaction: %v", err)
+		topupError(w, http.StatusInternalServerError, "Không thể khởi tạo tiến trình xử lý dữ liệu")
+		return
+	}
+	defer tx.Rollback()
+
+	var driverID, active int
+	var balance float64
+	var rejectReason sql.NullString
+
+	err = tx.QueryRow(
+		"SELECT driver_id, balance, active, reject_reason FROM DiverTransaction WHERE transaction_id = ? FOR UPDATE",
+		transactionID,
+	).Scan(&driverID, &balance, &active, &rejectReason)
+	if err == sql.ErrNoRows {
+		topupError(w, http.StatusNotFound, "Không tìm thấy yêu cầu nạp tiền")
+		return
+	}
+	if err != nil {
+		log.Printf("Lỗi lấy yêu cầu nạp tiền: %v", err)
+		topupError(w, http.StatusInternalServerError, "Lỗi hệ thống")
+		return
+	}
+
+	if topupStatus(active, parseNullString(rejectReason)) != "PENDING" {
+		topupError(w, http.StatusConflict, "Yêu cầu nạp tiền này đã được xử lý")
+		return
+	}
+
+	if req.Status {
+		moneyAdd := int64(balance + 0.5)
+
+		_, err = tx.Exec("UPDATE DiverTransaction SET active = 1 WHERE transaction_id = ?", transactionID)
+		if err != nil {
+			log.Printf("Lỗi duyệt yêu cầu nạp tiền: %v", err)
+			topupError(w, http.StatusInternalServerError, "Lỗi hệ thống khi duyệt yêu cầu")
+			return
+		}
+
+		_, err = tx.Exec(
+			"INSERT INTO DriverWallet (driver_id, money) VALUES (?, ?) "+
+				"ON DUPLICATE KEY UPDATE money = IFNULL(money, 0) + ?",
+			driverID, moneyAdd, moneyAdd,
+		)
+		if err != nil {
+			log.Printf("Lỗi cộng tiền vào ví: %v", err)
+			topupError(w, http.StatusInternalServerError, "Lỗi hệ thống khi cộng tiền vào ví")
+			return
+		}
+	} else {
+		_, err = tx.Exec("UPDATE DiverTransaction SET reject_reason = ? WHERE transaction_id = ?", req.Reason, transactionID)
+		if err != nil {
+			log.Printf("Lỗi từ chối yêu cầu nạp tiền: %v", err)
+			topupError(w, http.StatusInternalServerError, "Lỗi hệ thống khi từ chối yêu cầu")
+			return
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		log.Printf("Lỗi Commit Transaction: %v", err)
+		topupError(w, http.StatusInternalServerError, "Lỗi hệ thống khi xác nhận dữ liệu")
+		return
+	}
+
+	updated, err := loadTopupRequest(transactionID)
+	if err != nil {
+		log.Printf("Lỗi đọc lại yêu cầu nạp tiền: %v", err)
+		topupError(w, http.StatusInternalServerError, "Đã xử lý nhưng không thể đọc lại dữ liệu")
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(struct {
+		Data TopupRequestResponse `json:"data"`
+	}{Data: updated})
+}
+
+func getAllTopupRequests(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	clause, ok := topupStatusClause(r.URL.Query().Get("status"))
+	if !ok {
+		topupError(w, http.StatusBadRequest, "status chỉ nhận pending, approved hoặc rejected")
+		return
+	}
+
+	query := topupSelectQuery
+	if clause != "" {
+		query += "WHERE " + clause + " "
+	}
+	query += "ORDER BY t.`time` DESC, t.transaction_id DESC"
+
+	rows, err := db.Query(query)
+	if err != nil {
+		log.Printf("Lỗi lấy danh sách nạp tiền: %v", err)
+		topupError(w, http.StatusInternalServerError, "Lỗi hệ thống khi lấy danh sách nạp tiền")
+		return
+	}
+	defer rows.Close()
+
+	list := []TopupRequestResponse{}
+	for rows.Next() {
+		t, err := scanTopupRequest(rows)
+		if err != nil {
+			log.Printf("Lỗi đọc dòng nạp tiền: %v", err)
+			topupError(w, http.StatusInternalServerError, "Đã xảy ra lỗi server")
+			return
+		}
+		list = append(list, t)
+	}
+	if err := rows.Err(); err != nil {
+		log.Printf("Lỗi duyệt danh sách nạp tiền: %v", err)
+		topupError(w, http.StatusInternalServerError, "Đã xảy ra lỗi server")
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(list)
+}
+
+func getDriverTopupRequests(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	driverID, err := strconv.Atoi(mux.Vars(r)["id"])
+	if err != nil || driverID <= 0 {
+		topupError(w, http.StatusBadRequest, "driver_id không hợp lệ")
+		return
+	}
+
+	clause, ok := topupStatusClause(r.URL.Query().Get("status"))
+	if !ok {
+		topupError(w, http.StatusBadRequest, "status chỉ nhận pending, approved hoặc rejected")
+		return
+	}
+
+	query := topupSelectQuery + "WHERE t.driver_id = ? "
+	if clause != "" {
+		query += "AND " + clause + " "
+	}
+	query += "ORDER BY t.`time` DESC, t.transaction_id DESC"
+
+	rows, err := db.Query(query, driverID)
+	if err != nil {
+		log.Printf("Lỗi lấy danh sách nạp tiền của tài xế: %v", err)
+		topupError(w, http.StatusInternalServerError, "Lỗi hệ thống khi lấy danh sách nạp tiền")
+		return
+	}
+	defer rows.Close()
+
+	list := []TopupRequestResponse{}
+	for rows.Next() {
+		t, err := scanTopupRequest(rows)
+		if err != nil {
+			log.Printf("Lỗi đọc dòng nạp tiền: %v", err)
+			topupError(w, http.StatusInternalServerError, "Đã xảy ra lỗi server")
+			return
+		}
+		list = append(list, t)
+	}
+	if err := rows.Err(); err != nil {
+		log.Printf("Lỗi duyệt danh sách nạp tiền: %v", err)
+		topupError(w, http.StatusInternalServerError, "Đã xảy ra lỗi server")
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(list)
+}
+
+func getTopupRequestDetail(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	transactionID, err := strconv.Atoi(mux.Vars(r)["id"])
+	if err != nil || transactionID <= 0 {
+		topupError(w, http.StatusBadRequest, "transaction_id không hợp lệ")
+		return
+	}
+
+	detail, err := loadTopupRequest(transactionID)
+	if err == sql.ErrNoRows {
+		topupError(w, http.StatusNotFound, "Không tìm thấy yêu cầu nạp tiền")
+		return
+	}
+	if err != nil {
+		log.Printf("Lỗi lấy chi tiết nạp tiền: %v", err)
+		topupError(w, http.StatusInternalServerError, "Lỗi hệ thống khi lấy chi tiết yêu cầu")
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(struct {
+		Data TopupRequestResponse `json:"data"`
+	}{Data: detail})
+}
+
+func updateTopupRequest(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	transactionID, err := strconv.Atoi(mux.Vars(r)["id"])
+	if err != nil || transactionID <= 0 {
+		topupError(w, http.StatusBadRequest, "transaction_id không hợp lệ")
+		return
+	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, 10<<20)
+	if err := r.ParseMultipartForm(10 << 20); err != nil {
+		topupError(w, http.StatusBadRequest, "Dữ liệu không hợp lệ hoặc file vượt quá dung lượng cho phép")
+		return
+	}
+
+	driverID, err := strconv.Atoi(strings.TrimSpace(r.FormValue("driver_id")))
+	if err != nil || driverID <= 0 {
+		topupError(w, http.StatusBadRequest, "driver_id không hợp lệ")
+		return
+	}
+
+	var setClauses []string
+	var args []interface{}
+
+	balanceStr := strings.TrimSpace(r.FormValue("balance"))
+	if balanceStr != "" {
+		balance64, err := strconv.ParseInt(balanceStr, 10, 32)
+		if err != nil || balance64 <= 0 {
+			topupError(w, http.StatusBadRequest, "balance phải là số nguyên dương")
+			return
+		}
+		setClauses = append(setClauses, "balance = ?")
+		args = append(args, int(balance64))
+	}
+
+	imageFile, imageHeader, imgErr := r.FormFile("image_transaction")
+	hasImage := imgErr == nil
+	if hasImage {
+		defer imageFile.Close()
+	} else if imgErr != http.ErrMissingFile {
+		topupError(w, http.StatusBadRequest, "Không thể đọc file ảnh")
+		return
+	}
+
+	if len(setClauses) == 0 && !hasImage {
+		topupError(w, http.StatusBadRequest, "Không có trường nào để cập nhật (balance, image_transaction)")
+		return
+	}
+
+	tx, err := db.Begin()
+	if err != nil {
+		log.Printf("Lỗi Begin Transaction: %v", err)
+		topupError(w, http.StatusInternalServerError, "Không thể khởi tạo tiến trình xử lý dữ liệu")
+		return
+	}
+	defer tx.Rollback()
+
+	var ownerID, active int
+	err = tx.QueryRow(
+		"SELECT driver_id, active FROM DiverTransaction WHERE transaction_id = ? FOR UPDATE",
+		transactionID,
+	).Scan(&ownerID, &active)
+	if err == sql.ErrNoRows {
+		topupError(w, http.StatusNotFound, "Không tìm thấy yêu cầu nạp tiền")
+		return
+	}
+	if err != nil {
+		log.Printf("Lỗi lấy yêu cầu nạp tiền: %v", err)
+		topupError(w, http.StatusInternalServerError, "Lỗi hệ thống")
+		return
+	}
+	if ownerID != driverID {
+		topupError(w, http.StatusForbidden, "Bạn không có quyền chỉnh sửa yêu cầu này")
+		return
+	}
+	if active == 1 {
+		topupError(w, http.StatusConflict, "Yêu cầu đã được duyệt, không thể chỉnh sửa")
+		return
+	}
+
+	var tempPath, finalPath string
+	if hasImage {
+		var status int
+		var msg string
+		tempPath, status, msg = saveTopupTempImage(imageFile, imageHeader.Filename)
+		if status != 0 {
+			topupError(w, status, msg)
+			return
+		}
+		defer func() {
+			if tempPath != "" {
+				os.Remove(tempPath)
+			}
+		}()
+
+		imageName := fmt.Sprintf("%d_transaction_%d.jpg", driverID, transactionID)
+		finalPath = filepath.Join("image", imageName)
+		setClauses = append(setClauses, "image_transaction = ?")
+		args = append(args, imageName)
+	}
+
+	setClauses = append(setClauses, "reject_reason = ''")
+	args = append(args, transactionID)
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE DiverTransaction SET %s WHERE transaction_id = ?",
+		strings.Join(setClauses, ", "),
+	)
+	if _, err = tx.Exec(updateQuery, args...); err != nil {
+		log.Printf("Lỗi cập nhật yêu cầu nạp tiền: %v", err)
+		topupError(w, http.StatusInternalServerError, "Lỗi hệ thống khi cập nhật yêu cầu nạp tiền")
+		return
+	}
+
+	if err := tx.Commit(); err != nil {
+		log.Printf("Lỗi Commit Transaction: %v", err)
+		topupError(w, http.StatusInternalServerError, "Lỗi hệ thống khi xác nhận dữ liệu")
+		return
+	}
+
+	if tempPath != "" {
+		if err := os.Rename(tempPath, finalPath); err != nil {
+			log.Printf("Lỗi đổi tên ảnh giao dịch: %v", err)
+		} else {
+			tempPath = ""
+		}
+	}
+
+	updated, err := loadTopupRequest(transactionID)
+	if err != nil {
+		log.Printf("Lỗi đọc lại yêu cầu nạp tiền: %v", err)
+		topupError(w, http.StatusInternalServerError, "Đã cập nhật nhưng không thể đọc lại dữ liệu")
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(struct {
+		Data TopupRequestResponse `json:"data"`
+	}{Data: updated})
+}
+
+func getAdminBankInfo(w http.ResponseWriter, r *http.Request) {
+	var adminID int
+
+	err := db.QueryRow(`
+		SELECT p.profile_id
+		FROM Profile p
+		INNER JOIN Role ro ON p.role_id = ro.role_id
+		WHERE ro.role_value = 'ADMIN'
+		ORDER BY p.profile_id
+		LIMIT 1
+	`).Scan(&adminID)
+
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		if err == sql.ErrNoRows {
+			topupError(w, http.StatusNotFound, "Không tìm thấy tài khoản admin")
+			return
+		}
+		log.Printf("Lỗi tìm tài khoản admin: %v", err)
+		topupError(w, http.StatusInternalServerError, "Lỗi hệ thống khi lấy thông tin ngân hàng")
+		return
+	}
+
+	r = mux.SetURLVars(r, map[string]string{"id": strconv.Itoa(adminID)})
+	getBankInfo(w, r)
 }
