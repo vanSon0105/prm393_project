@@ -18,6 +18,7 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   final userController = TextEditingController();
   final passController = TextEditingController();
+  bool _obscurePassword = true;
 
   @override
   void dispose() {
@@ -123,7 +124,7 @@ class _LoginPageState extends State<LoginPage> {
               ),
               const SizedBox(height: 8),
               _buildTextField(
-                hintText: 'driver, customer, admin',
+                hintText: LocaleKeys.login_username_hint.tr(),
                 icon: Icons.account_circle_outlined,
                 controller: userController,
               ),
@@ -137,10 +138,23 @@ class _LoginPageState extends State<LoginPage> {
               ),
               const SizedBox(height: 8),
               _buildTextField(
-                hintText: '********',
+                hintText: LocaleKeys.login_password_hint.tr(),
                 controller: passController,
                 icon: Icons.lock_person_outlined,
-                obscureText: true,
+                obscureText: _obscurePassword,
+                suffixIcon: IconButton(
+                  tooltip: _obscurePassword
+                      ? LocaleKeys.login_show_password.tr()
+                      : LocaleKeys.login_hide_password.tr(),
+                  icon: Icon(
+                    _obscurePassword
+                        ? Icons.visibility_outlined
+                        : Icons.visibility_off_outlined,
+                  ),
+                  onPressed: () => setState(() {
+                    _obscurePassword = !_obscurePassword;
+                  }),
+                ),
               ),
               const SizedBox(height: 32),
               SizedBox(
@@ -284,17 +298,21 @@ class _LoginPageState extends State<LoginPage> {
     required IconData icon,
     required TextEditingController controller,
     bool obscureText = false,
+    Widget? suffixIcon,
   }) {
     return TextField(
       obscureText: obscureText,
+      autocorrect: false,
+      enableSuggestions: !obscureText,
       controller: controller,
       decoration: InputDecoration(
         hintText: hintText,
         hintStyle: const TextStyle(
-          color: Colors.black87,
-          fontWeight: FontWeight.w500,
+          color: Colors.black45,
+          fontWeight: FontWeight.w400,
         ),
         prefixIcon: Icon(icon, color: Colors.grey),
+        suffixIcon: suffixIcon,
         filled: true,
         fillColor: Colors.white,
         contentPadding: const EdgeInsets.symmetric(

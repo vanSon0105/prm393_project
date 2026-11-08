@@ -13,6 +13,10 @@ abstract class  LocaleKeys {
   static const login_sub_title_role = 'login_sub_title_role';
   static const login_phone_label = 'login_phone_label';
   static const login_password_label = 'login_password_label';
+  static const login_username_hint = 'login_username_hint';
+  static const login_password_hint = 'login_password_hint';
+  static const login_show_password = 'login_show_password';
+  static const login_hide_password = 'login_hide_password';
   static const login_btn_login = 'login_btn_login';
   static const login_no_account_txt = 'login_no_account_txt';
   static const login_btn_register = 'login_btn_register';

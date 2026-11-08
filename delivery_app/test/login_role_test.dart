@@ -60,11 +60,33 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    expect(find.text('Enter your username'), findsOneWidget);
+    expect(find.text('Enter your password'), findsOneWidget);
 
     await tester.tap(find.text('Driver'));
     await tester.pump();
     await tester.enterText(find.byType(TextField).first, 'driver');
     await tester.enterText(find.byType(TextField).last, 'qwer1212!');
+    expect(
+      tester.widget<TextField>(find.byType(TextField).last).obscureText,
+      isTrue,
+    );
+    await tester.tap(find.byTooltip('Show password'));
+    await tester.pump();
+    expect(
+      tester.widget<TextField>(find.byType(TextField).last).obscureText,
+      isFalse,
+    );
+    expect(
+      tester.widget<TextField>(find.byType(TextField).last).controller?.text,
+      'qwer1212!',
+    );
+    await tester.tap(find.byTooltip('Hide password'));
+    await tester.pump();
+    expect(
+      tester.widget<TextField>(find.byType(TextField).last).obscureText,
+      isTrue,
+    );
     await tester.tap(find.text('Sign in'));
 
     expect(viewModel.submittedRole, Role.driver);
