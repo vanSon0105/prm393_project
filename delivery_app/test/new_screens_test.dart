@@ -1,11 +1,14 @@
 import 'dart:convert';
 
+import 'package:delivery_app/features/app_view_model.dart';
+import 'package:delivery_app/features/auth/domain/entities/role.dart';
 import 'package:delivery_app/features/driver_rating/driver_rating_screen.dart';
 import 'package:delivery_app/features/payment/trip_payment_screen.dart';
 import 'package:delivery_app/features/profile/edit_profile_screen.dart';
 import 'package:delivery_app/routes/app_router.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -34,12 +37,14 @@ Future<void> pumpScreen(WidgetTester tester, Widget screen) async {
       path: 'resources/langs',
       assetLoader: const _TestTranslations(),
       saveLocale: false,
-      child: Builder(
-        builder: (context) => MaterialApp(
-          locale: context.locale,
-          supportedLocales: context.supportedLocales,
-          localizationsDelegates: context.localizationDelegates,
-          home: screen,
+      child: ProviderScope(
+        child: Builder(
+          builder: (context) => MaterialApp(
+            locale: context.locale,
+            supportedLocales: context.supportedLocales,
+            localizationsDelegates: context.localizationDelegates,
+            home: screen,
+          ),
         ),
       ),
     ),
@@ -57,14 +62,25 @@ void main() {
       final data = await rootBundle.loadString(
         'resources/langs/${locale.languageCode}-${locale.countryCode}.json',
       );
-      _translations[locale] = Map<String, dynamic>.from(jsonDecode(data) as Map);
+      _translations[locale] = Map<String, dynamic>.from(
+        jsonDecode(data) as Map,
+      );
     }
   });
 
   test('New screens have named routes', () {
-    expect(appRouter.namedLocation(AppRoute.driverRating.rawValue), '/driver-rating');
-    expect(appRouter.namedLocation(AppRoute.tripPayment.rawValue), '/trip-payment');
-    expect(appRouter.namedLocation(AppRoute.editProfile.rawValue), '/edit-profile');
+    expect(
+      appRouter.namedLocation(AppRoute.driverRating.rawValue),
+      '/driver-rating',
+    );
+    expect(
+      appRouter.namedLocation(AppRoute.tripPayment.rawValue),
+      '/trip-payment',
+    );
+    expect(
+      appRouter.namedLocation(AppRoute.editProfile.rawValue),
+      '/edit-profile',
+    );
   });
 
   testWidgets('Rating tags translate and can be selected', (tester) async {
@@ -82,17 +98,27 @@ void main() {
     await pumpScreen(tester, const TripPaymentScreen());
     await tester.tap(find.text('Bank QR'));
     await tester.pumpAndSettle();
-    expect(find.text('QR illustration — not available for payment'), findsOneWidget);
+    expect(
+      find.text('QR illustration — not available for payment'),
+      findsOneWidget,
+    );
     expect(tester.takeException(), isNull);
   });
 
   testWidgets('Profile can enter edit mode', (tester) async {
     await pumpScreen(tester, const EditProfileScreen());
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(EditProfileScreen)),
+    );
+    container.read(appViewModelProvider.notifier).updateAppData(Role.driver);
+    await tester.pump();
+    expect(find.text('Driver'), findsWidgets);
     final edit = find.text('Edit profile');
     await tester.ensureVisible(edit);
     await tester.tap(edit);
     await tester.pumpAndSettle();
     expect(find.text('Save profile'), findsOneWidget);
+    expect(find.byType(DropdownButtonFormField<String>), findsNothing);
     expect(tester.takeException(), isNull);
   });
 }

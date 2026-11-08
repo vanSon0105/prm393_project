@@ -1,19 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../generated/locale_keys.g.dart';
+import '../app_view_model.dart';
+import '../auth/domain/entities/role.dart';
 
 import '../../core/theme/app_theme.dart';
 import '../../gen/assets.gen.dart';
 
-class EditProfileScreen extends StatefulWidget {
+class EditProfileScreen extends ConsumerStatefulWidget {
   const EditProfileScreen({super.key});
 
   @override
-  State<EditProfileScreen> createState() => _EditProfileScreenState();
+  ConsumerState<EditProfileScreen> createState() => _EditProfileScreenState();
 }
 
-class _EditProfileScreenState extends State<EditProfileScreen> {
+class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   static const blue = AppColors.blue;
 
   final nameController = TextEditingController(text: 'Nguyễn Văn An');
@@ -22,7 +25,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final addressController = TextEditingController(text: 'Hà Nội, Việt Nam');
 
   bool isEditing = false;
-  String role = 'Khách hàng';
 
   @override
   void dispose() {
@@ -81,6 +83,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final accountRole = ref.watch(
+      appViewModelProvider.select((app) => app.role),
+    );
+    final roleLabel = switch (accountRole) {
+      Role.admin => LocaleKeys.users_role_admin.tr(),
+      Role.driver => LocaleKeys.profile_driver.tr(),
+      Role.customer => LocaleKeys.profile_customer.tr(),
+      null => '—',
+    };
+
     return Theme(
       data: AppTheme.light(),
       child: Scaffold(
@@ -154,9 +166,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
-                    role == 'Khách hàng'
-                        ? LocaleKeys.profile_customer.tr()
-                        : LocaleKeys.profile_driver.tr(),
+                    roleLabel,
                     style: const TextStyle(
                       color: blue,
                       fontWeight: FontWeight.w600,
@@ -204,14 +214,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       icon: Assets.images.icLocation,
                       controller: addressController,
                     ),
-                    Text(
-                      LocaleKeys.profile_role.tr(),
-                      style: const TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                    const SizedBox(height: 8),
-                    DropdownButtonFormField<String>(
-                      initialValue: role,
+                    InputDecorator(
                       decoration: InputDecoration(
+                        labelText: LocaleKeys.profile_role.tr(),
                         filled: true,
                         fillColor: AppColors.surface,
                         border: OutlineInputBorder(
@@ -219,23 +224,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           borderSide: BorderSide.none,
                         ),
                       ),
-                      items: [
-                        DropdownMenuItem(
-                          value: 'Khách hàng',
-                          child: Text(LocaleKeys.profile_customer.tr()),
-                        ),
-                        DropdownMenuItem(
-                          value: 'Tài xế',
-                          child: Text(LocaleKeys.profile_driver.tr()),
-                        ),
-                      ],
-                      onChanged: isEditing
-                          ? (value) {
-                              if (value != null) {
-                                setState(() => role = value);
-                              }
-                            }
-                          : null,
+                      child: Text(roleLabel),
                     ),
                   ],
                 ),
@@ -257,17 +246,18 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       );
                     }
                   },
-                  icon: (isEditing
-                          ? Assets.images.icSave
-                          : Assets.images.icUserEdit)
-                      .svg(
-                        width: 22,
-                        height: 22,
-                        colorFilter: const ColorFilter.mode(
-                          AppColors.white,
-                          BlendMode.srcIn,
-                        ),
-                      ),
+                  icon:
+                      (isEditing
+                              ? Assets.images.icSave
+                              : Assets.images.icUserEdit)
+                          .svg(
+                            width: 22,
+                            height: 22,
+                            colorFilter: const ColorFilter.mode(
+                              AppColors.white,
+                              BlendMode.srcIn,
+                            ),
+                          ),
                   label: Text(
                     isEditing
                         ? LocaleKeys.profile_save.tr()
