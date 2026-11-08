@@ -10,6 +10,7 @@ class RegisterDriverParam extends ApiParam {
   final String phoneNumber;
   final int vehicleId;
   final String licensePlate;
+  final String licensePlateExpiredDate;
   final Map<String, RegisterDocument> documents;
 
   RegisterDriverParam({
@@ -19,6 +20,7 @@ class RegisterDriverParam extends ApiParam {
     required this.phoneNumber,
     required this.vehicleId,
     required this.licensePlate,
+    required this.licensePlateExpiredDate,
     required this.documents,
   });
 
@@ -47,6 +49,7 @@ class RegisterDriverParam extends ApiParam {
       'role': Role.driver.value,
       'vehicle_id': vehicleId,
       'license_plate': licensePlate.trim(),
+      'license_plate_expired_date': licensePlateExpiredDate.trim(),
       for (final entry in documents.entries)
         entry.key: MultipartFile.fromBytes(
           entry.value.bytes,

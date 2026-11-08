@@ -165,6 +165,10 @@ class _AdminDriverApplicationSheetState
               LocaleKeys.register_license_plate.tr(),
               widget.request.licensePlate,
             ),
+            _detailRow(
+              LocaleKeys.register_license_expiry.tr(),
+              widget.request.licensePlateExpiredDate,
+            ),
             const SizedBox(height: 8),
             Text(
               LocaleKeys.register_documents_title.tr(),

@@ -7,6 +7,7 @@ import 'package:delivery_app/features/auth/register/driver_resubmit_screen.dart'
 import 'package:delivery_app/features/auth/register/register_screen.dart';
 import 'package:delivery_app/features/detail_delivery/detail_delivery_page.dart';
 import 'package:delivery_app/features/driver/presentation/screens/driver_earnings_page.dart';
+import 'package:delivery_app/features/driver/presentation/screens/driver_topup_page.dart';
 import 'package:delivery_app/features/driver_rating/driver_rating_screen.dart';
 import 'package:delivery_app/features/map/map_page.dart';
 import 'package:delivery_app/features/payment/trip_payment_screen.dart';
@@ -29,6 +30,7 @@ enum AppRoute {
   adminBankAccount(rawValue: '/admin/bank-account'),
   adminTopUpRequests(rawValue: '/admin/top-up-requests'),
   driverEarnings(rawValue: '/driver-earnings'),
+  driverTopup(rawValue: '/driver/top-up'),
   driverRating(rawValue: '/driver-rating'),
   tripPayment(rawValue: '/trip-payment'),
   editProfile(rawValue: '/edit-profile'),
@@ -113,6 +115,11 @@ GoRouter createAppRouter({String? initialLocation}) => GoRouter(
       path: AppRoute.driverEarnings.rawValue,
       name: AppRoute.driverEarnings.rawValue,
       builder: (context, state) => const DriverEarningsPage(),
+    ),
+    GoRoute(
+      path: AppRoute.driverTopup.rawValue,
+      name: AppRoute.driverTopup.rawValue,
+      builder: (context, state) => const DriverTopupPage(),
     ),
 
     StatefulShellRoute.indexedStack(

@@ -13,6 +13,7 @@ import '../../../shared/theme/app_theme.dart';
 import '../../../shared/widgets/common.dart';
 import '../../../shared/widgets/responsive_auth_layout.dart';
 import 'driver_documents_field.dart';
+import 'driver_license_expiry_field.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key, required this.role});
@@ -29,6 +30,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _userNameCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
   final _plateCtrl = TextEditingController();
+  final _licenseExpiryCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
   final _confirmCtrl = TextEditingController();
   final _documentsKey =
@@ -56,6 +58,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       _userNameCtrl,
       _phoneCtrl,
       _plateCtrl,
+      _licenseExpiryCtrl,
       _passCtrl,
       _confirmCtrl,
     ]) {
@@ -128,6 +131,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           role: widget.role,
           vehicleId: _vehicleId,
           licensePlate: widget.role == Role.driver ? _plateCtrl.text : null,
+          licensePlateExpiredDate: widget.role == Role.driver
+              ? _licenseExpiryCtrl.text
+              : null,
           documents: documents,
         ),
       );
@@ -305,6 +311,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   ),
                 ),
               ),
+              const SizedBox(height: 16),
+              DriverLicenseExpiryField(controller: _licenseExpiryCtrl),
               const Divider(height: 32),
               Text(
                 LocaleKeys.register_documents_title.tr(),

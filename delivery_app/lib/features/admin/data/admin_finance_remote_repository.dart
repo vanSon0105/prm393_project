@@ -1,3 +1,4 @@
+import 'package:delivery_app/config/environment.dart';
 import 'package:delivery_app/data/network/base/param.dart';
 import 'package:delivery_app/data/network/base/provider.dart';
 import 'package:dio/dio.dart';
@@ -39,19 +40,15 @@ class AdminFinanceRemoteRepository implements AdminFinanceRepository {
   @override
   Future<List<DriverTopUpRequest>> getTopUpRequests() async {
     final response = await _api.requestApi(
-      param: _FinanceParam(
-        '/api/admin/top-up-requests',
-        query: {'status': 'pending'},
-      ),
+      param: _FinanceParam('/api/admin/topup/requests'),
     );
-    final data = _data(response);
-    if (data is! List) {
+    if (response is! List) {
       throw const FormatException('Invalid top-up requests response');
     }
-    return data
+    return response
         .map(
           (item) => DriverTopUpRequest.fromJson(
-            Map<String, dynamic>.from(item as Map),
+            _withReachableImage(Map<String, dynamic>.from(item as Map)),
           ),
         )
         .toList(growable: false);
@@ -70,14 +67,26 @@ class AdminFinanceRemoteRepository implements AdminFinanceRepository {
         'A rejection reason is required',
       );
     }
-    final action = approved ? 'approve' : 'reject';
     return _api.requestApi(
       param: _FinanceParam(
-        '/api/admin/top-up-requests/$requestId/$action',
-        method: Method.post,
-        body: approved ? {} : {'reason': reason.trim()},
+        '/api/admin/topup/$requestId/review',
+        method: Method.patch,
+        body: approved
+            ? {'status': true}
+            : {'status': false, 'reason': reason.trim()},
       ),
     );
+  }
+
+  Map<String, dynamic> _withReachableImage(Map<String, dynamic> json) {
+    final raw = json['image_transaction']?.toString() ?? '';
+    final uri = Uri.tryParse(raw);
+    if (uri != null && uri.pathSegments.isNotEmpty && raw.isNotEmpty) {
+      json['image_transaction'] = Uri.parse(Environment.baseUrl)
+          .resolve('/image/${Uri.encodeComponent(uri.pathSegments.last)}')
+          .toString();
+    }
+    return json;
   }
 
   dynamic _data(dynamic response) {
@@ -118,23 +127,14 @@ class _BankUpdateParam extends ApiParam {
 }
 
 class _FinanceParam extends ApiParam {
-  _FinanceParam(
-    this.path, {
-    this.method = Method.get,
-    this.body = const {},
-    this.query = const {},
-  });
+  _FinanceParam(this.path, {this.method = Method.get, this.body = const {}});
 
   @override
   final String path;
   @override
   final String method;
   final Map<String, dynamic> body;
-  final Map<String, dynamic> query;
 
   @override
   Map<String, dynamic> get bodyParams => {...body};
-
-  @override
-  Map<String, dynamic> get queryParameters => {...query};
 }

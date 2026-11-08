@@ -1,5 +1,9 @@
 import 'package:delivery_app/generated/locale_keys.g.dart';
 import 'package:delivery_app/routes/app_navigate.dart';
+import 'package:delivery_app/routes/app_router.dart';
+import 'package:delivery_app/features/app_view_model.dart';
+import 'package:delivery_app/features/auth/domain/entities/role.dart';
+import 'package:go_router/go_router.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -19,6 +23,9 @@ class SettingPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final setting = ref.watch(settingUiProvider);
     final notifier = ref.read(settingUiProvider.notifier);
+    final isDriver =
+        ref.watch(appViewModelProvider.select((app) => app.role)) ==
+        Role.driver;
 
     return Theme(
       data: AppTheme.light(),
@@ -83,6 +90,14 @@ class SettingPage extends ConsumerWidget {
               SettingSection(
                 title: LocaleKeys.settings_account_app.tr(),
                 children: [
+                  if (isDriver)
+                    SettingOptionTile(
+                      icon: Assets.images.icUserEdit,
+                      title: LocaleKeys.driver_topup_title.tr(),
+                      subtitle: LocaleKeys.driver_topup_shortcut.tr(),
+                      onTap: () => context.push(AppRoute.driverTopup.rawValue),
+                      trailing: const Icon(Icons.chevron_right_rounded),
+                    ),
                   SettingOptionTile(
                     icon: Assets.images.icUserEdit,
                     title: LocaleKeys.settings_update_info.tr(),
@@ -171,12 +186,6 @@ class SettingPage extends ConsumerWidget {
         ),
       ),
     );
-  }
-
-  void _showMessage(BuildContext context, String message) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(message)));
   }
 
   Future<void> _showLogoutDialog(BuildContext context) {

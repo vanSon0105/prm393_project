@@ -55,6 +55,7 @@ class RegisterViewModel extends _$RegisterViewModel {
         case Role.driver:
           if (request.vehicleId == null ||
               request.licensePlate?.trim().isEmpty != false ||
+              request.licensePlateExpiredDate?.trim().isEmpty != false ||
               !{
                 'driving_license_front_side',
                 'driving_license_back_side',
@@ -73,6 +74,7 @@ class RegisterViewModel extends _$RegisterViewModel {
               phoneNumber: request.phoneNumber,
               vehicleId: request.vehicleId!,
               licensePlate: request.licensePlate!,
+              licensePlateExpiredDate: request.licensePlateExpiredDate!,
               documents: request.documents,
             ),
           );

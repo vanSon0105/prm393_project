@@ -22,111 +22,109 @@ void main() {
     );
     expect(
       () => DriverTopUpRequest.fromJson({
-        'id': 1,
+        'transaction_id': 1,
         'driver_id': 2,
         'driver_name': 'Driver A',
-        'amount': 0,
+        'balance': 0,
         'status': 'pending',
-        'created_at': '2026-11-03T10:00:00Z',
+        'time': '2026-11-03 10:00:00',
       }),
       throwsFormatException,
     );
   });
 
-  test(
-    'bank details and pending top-ups use the documented API contract',
-    () async {
-      final calls = <RequestOptions>[];
-      final dio = Dio()
-        ..interceptors.add(
-          InterceptorsWrapper(
-            onRequest: (options, handler) {
-              calls.add(options);
-              final data = switch (Uri.parse(options.path).path) {
-                '/api/4/bank-info' when options.method == 'GET' => {
-                  'data': {
-                    'bank_name': 'Example Bank',
-                    'bank_account_number': '1234567890',
-                    'bank_account_name': 'TEAM',
-                    'bank_qr_code': '4_bank.png',
-                  },
+  test('bank details and top-ups use the server API contract', () async {
+    final calls = <RequestOptions>[];
+    final dio = Dio()
+      ..interceptors.add(
+        InterceptorsWrapper(
+          onRequest: (options, handler) {
+            calls.add(options);
+            final data = switch (Uri.parse(options.path).path) {
+              '/api/4/bank-info' when options.method == 'GET' => {
+                'data': {
+                  'bank_name': 'Example Bank',
+                  'bank_account_number': '1234567890',
+                  'bank_account_name': 'TEAM',
+                  'bank_qr_code': '4_bank.png',
                 },
-                '/api/admin/top-up-requests' => {
-                  'data': [
-                    {
-                      'id': 7,
-                      'driver_id': 5,
-                      'driver_name': 'Driver A',
-                      'amount': 50000,
-                      'status': 'pending',
-                      'transfer_reference': 'TX-7',
-                      'proof_url': '',
-                      'created_at': '2026-11-03T10:00:00Z',
-                    },
-                  ],
+              },
+              '/api/admin/topup/requests' => [
+                {
+                  'transaction_id': 7,
+                  'driver_id': 5,
+                  'driver_name': 'Driver A',
+                  'balance': 50000.0,
+                  'active': 0,
+                  'status': 'PENDING',
+                  'image_transaction': '',
+                  'reject_reason': '',
+                  'time': '2026-11-03 10:00:00',
                 },
-                _ => {'data': {}},
-              };
-              handler.resolve(
-                Response(requestOptions: options, statusCode: 200, data: data),
-              );
-            },
-          ),
-        );
-      final repository = AdminFinanceRemoteRepository(
-        ApiProvider(dio),
-        profileId: 4,
-      );
-
-      final bank = await repository.getBankAccount();
-      expect(bank?.accountNumber, '1234567890');
-      expect(bank?.qrCode, '4_bank.png');
-      await repository.updateBankAccount(
-        const AdminBankAccount(
-          bankName: 'Example Bank',
-          accountNumber: '1234567890',
-          accountHolder: 'TEAM',
-          qrBytes: [1, 2, 3],
-          qrFileName: 'bank.png',
+              ],
+              _ => {'data': {}},
+            };
+            handler.resolve(
+              Response(requestOptions: options, statusCode: 200, data: data),
+            );
+          },
         ),
       );
-      expect(calls[0].uri.path, '/api/4/bank-info');
-      expect(calls[1].method, 'POST');
-      expect(
-        (calls[1].data as FormData).fields
-            .singleWhere((field) => field.key == 'bank_account_number')
-            .value,
-        '1234567890',
-      );
-      expect((calls[1].data as FormData).files.single.key, 'bank_qr_code');
+    final repository = AdminFinanceRemoteRepository(
+      ApiProvider(dio),
+      profileId: 4,
+    );
 
-      final requests = await repository.getTopUpRequests();
-      expect(calls[2].queryParameters['status'], 'pending');
-      expect(requests.single.amount, 50000);
-      expect(requests.single.status, TopUpStatus.pending);
+    final bank = await repository.getBankAccount();
+    expect(bank?.accountNumber, '1234567890');
+    expect(bank?.qrCode, '4_bank.png');
+    await repository.updateBankAccount(
+      const AdminBankAccount(
+        bankName: 'Example Bank',
+        accountNumber: '1234567890',
+        accountHolder: 'TEAM',
+        qrBytes: [1, 2, 3],
+        qrFileName: 'bank.png',
+      ),
+    );
+    expect(calls[0].uri.path, '/api/4/bank-info');
+    expect(calls[1].method, 'POST');
+    expect(
+      (calls[1].data as FormData).fields
+          .singleWhere((field) => field.key == 'bank_account_number')
+          .value,
+      '1234567890',
+    );
+    expect((calls[1].data as FormData).files.single.key, 'bank_qr_code');
 
-      await repository.reviewTopUpRequest(requestId: 7, approved: true);
-      expect(calls[3].path, endsWith('/api/admin/top-up-requests/7/approve'));
-      expect(jsonDecode(calls[3].data as String), isEmpty);
+    final requests = await repository.getTopUpRequests();
+    expect(calls[2].uri.path, '/api/admin/topup/requests');
+    expect(requests.single.amount, 50000);
+    expect(requests.single.status, TopUpStatus.pending);
 
-      await repository.reviewTopUpRequest(
+    await repository.reviewTopUpRequest(requestId: 7, approved: true);
+    expect(calls[3].uri.path, '/api/admin/topup/7/review');
+    expect(calls[3].method, 'PATCH');
+    expect(jsonDecode(calls[3].data as String), {'status': true});
+
+    await repository.reviewTopUpRequest(
+      requestId: 7,
+      approved: false,
+      reason: '  No transfer received  ',
+    );
+    expect(calls[4].uri.path, '/api/admin/topup/7/review');
+    expect(jsonDecode(calls[4].data as String), {
+      'status': false,
+      'reason': 'No transfer received',
+    });
+    expect(
+      () => repository.reviewTopUpRequest(
         requestId: 7,
         approved: false,
-        reason: '  No transfer received  ',
-      );
-      expect(calls[4].path, endsWith('/api/admin/top-up-requests/7/reject'));
-      expect(jsonDecode(calls[4].data as String), {
-        'reason': 'No transfer received',
-      });
-      expect(
-        () => repository.reviewTopUpRequest(
-          requestId: 7,
-          approved: false,
-          reason: '  ',
-        ),
-        throwsArgumentError,
-      );
-      expect(calls, hasLength(5));
-    },
-  );
+        reason: '  ',
+      ),
+      throwsArgumentError,
+    );
+    expect(calls, hasLength(5));
+  });
 }
