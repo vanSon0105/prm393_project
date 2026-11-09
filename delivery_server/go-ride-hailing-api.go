@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math"
 	"net"
 	"net/http"
 	"os"
@@ -114,7 +115,16 @@ func parseNullString(ns sql.NullString) string {
 
 func main() {
 	var err error
-	dsn := "root:root@tcp(127.0.0.1:3306)/mydb?parseTime=true"
+	dsn := os.Getenv("DB_DSN")
+	if dsn == "" {
+		dsn = "root:root@tcp(127.0.0.1:3306)/mydb?parseTime=true"
+	} else if !strings.Contains(dsn, "parseTime=") {
+		if strings.Contains(dsn, "?") {
+			dsn += "&parseTime=true"
+		} else {
+			dsn += "?parseTime=true"
+		}
+	}
 	db, err = sql.Open("mysql", dsn)
 	if err != nil {
 		log.Fatal(err)
@@ -944,6 +954,17 @@ func loginUser(w http.ResponseWriter, r *http.Request) {
 	w.Write(jsonData)
 }
 
+func parseDriverCoordinates(latitudeText, longitudeText string) (float64, float64, error) {
+	latitude, latitudeErr := strconv.ParseFloat(strings.TrimSpace(latitudeText), 64)
+	longitude, longitudeErr := strconv.ParseFloat(strings.TrimSpace(longitudeText), 64)
+	if latitudeErr != nil || longitudeErr != nil ||
+		math.IsNaN(latitude) || math.IsInf(latitude, 0) || latitude < -90 || latitude > 90 ||
+		math.IsNaN(longitude) || math.IsInf(longitude, 0) || longitude < -180 || longitude > 180 {
+		return 0, 0, fmt.Errorf("invalid driver coordinates")
+	}
+	return latitude, longitude, nil
+}
+
 func registerUser(w http.ResponseWriter, r *http.Request) {
 	type RegisterRequest struct {
 		UserName                   string `json:"user_name"`
@@ -989,6 +1010,15 @@ func registerUser(w http.ResponseWriter, r *http.Request) {
 	password := r.FormValue("password")
 	role := r.FormValue("role")
 	phoneNumber := r.FormValue("phone_number")
+	var latitude, longitude float64
+	if role == "DRIVER" {
+		latitude, longitude, err = parseDriverCoordinates(r.FormValue("latitude"), r.FormValue("longitude"))
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(map[string]string{"error": "Tọa độ latitude/longitude của tài xế không hợp lệ"})
+			return
+		}
+	}
 
 	if userName == "" || password == "" || role == "" || phoneNumber == "" {
 		w.WriteHeader(http.StatusBadRequest)
@@ -1126,12 +1156,12 @@ func registerUser(w http.ResponseWriter, r *http.Request) {
 
 		driverQuery := `
 			INSERT INTO Driver (
-				driver_id, vehicleType_id, licensePlate, driving_license_front_side,
+				driver_id, latitude, longitude, vehicleType_id, licensePlate, driving_license_front_side,
 				driving_license_back_side, front_side_of_the_identity_card, 
 				the_back_of_the_identity_card, active, licensePlateExpiredDate
-			) VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?)
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)
 		`
-		_, err = tx.ExecContext(ctx, driverQuery, newID, vehicleID, licensePlate, licenseFrontName, licenseBackName, idFrontName, idBackName, licensePlateExpiredDate)
+		_, err = tx.ExecContext(ctx, driverQuery, newID, latitude, longitude, vehicleID, licensePlate, licenseFrontName, licenseBackName, idFrontName, idBackName, licensePlateExpiredDate)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			json.NewEncoder(w).Encode(map[string]string{"error": "Lỗi lưu hồ sơ tài xế và phương tiện vào cơ sở dữ liệu"})

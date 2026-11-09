@@ -352,6 +352,9 @@ abstract class  LocaleKeys {
   static const register_go_login = 'register_go_login';
   static const register_conflict_error = 'register_conflict_error';
   static const register_submit_error = 'register_submit_error';
+  static const register_location_permission_required = 'register_location_permission_required';
+  static const register_location_services_disabled = 'register_location_services_disabled';
+  static const register_location_unavailable = 'register_location_unavailable';
   static const register_have_account = 'register_have_account';
   static const register_full_name_hint = 'register_full_name_hint';
   static const register_full_name_error = 'register_full_name_error';

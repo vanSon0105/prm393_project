@@ -14,9 +14,16 @@ curl -i -X POST http://localhost:8080/api/admin/drivers/1/approve \
 
 Register Driver
 curl -i -X POST http://localhost:8080/api/user/register \
+  -F "full_name=Driver Test" \
   -F "user_name=driver_test_99" \
   -F "password=driver_password" \
+  -F "phone_number=0901234567" \
   -F "role=DRIVER" \
+  -F "vehicle_id=1" \
+  -F "license_plate=59A1-12345" \
+  -F "license_plate_expired_date=2027-12-31" \
+  -F "latitude=10.776889" \
+  -F "longitude=106.700806" \
   -F "driving_license_front_side=@/Users/nguyenlinh/Desktop/prm393_project/delivery_server/sample_driver_front_side.jpg" \
   -F "driving_license_back_side=@/Users/nguyenlinh/Desktop/prm393_project/delivery_server/sample_driver_back_side.png" \
   -F "front_side_of_the_identity_card=@/Users/nguyenlinh/Desktop/prm393_project/delivery_server/sample_driver_front_side.jpg" \
@@ -26,6 +33,8 @@ FormData formData = FormData.fromMap({
     "user_name": "tai_xe_cong_nghe",
     "password": "password123",
     "role": "DRIVER",
+    "latitude": 10.776889,
+    "longitude": 106.700806,
     
     // Đính kèm file vật lý từ bộ nhớ điện thoại sử dụng MultipartFile
     "driving_license_front_side": await MultipartFile.fromFile(
