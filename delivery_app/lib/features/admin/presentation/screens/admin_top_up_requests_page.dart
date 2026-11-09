@@ -204,15 +204,12 @@ class _TopUpCard extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 8),
-            Text(
-              LocaleKeys.admin_transfer_reference.tr(
-                namedArgs: {
-                  'value': request.transferReference.isEmpty
-                      ? LocaleKeys.admin_not_provided.tr()
-                      : request.transferReference,
-                },
+            if (request.rejectReason.isNotEmpty)
+              Text(
+                LocaleKeys.driver_resubmit_reason.tr(
+                  namedArgs: {'reason': request.rejectReason},
+                ),
               ),
-            ),
             const SizedBox(height: 12),
             if (request.proofUrl.isNotEmpty)
               OutlinedButton.icon(
@@ -238,7 +235,13 @@ class _TopUpCard extends StatelessWidget {
             else
               Text(LocaleKeys.admin_no_transfer_proof.tr()),
             const SizedBox(height: 16),
-            if (busy)
+            if (request.status != TopUpStatus.pending)
+              Text(switch (request.status) {
+                TopUpStatus.approved => LocaleKeys.admin_top_up_approved.tr(),
+                TopUpStatus.rejected => LocaleKeys.admin_top_up_rejected.tr(),
+                TopUpStatus.pending => '',
+              })
+            else if (busy)
               const Center(child: CircularProgressIndicator())
             else
               Row(

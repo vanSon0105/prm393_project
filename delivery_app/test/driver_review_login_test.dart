@@ -204,6 +204,7 @@ class _RejectedRequestRepository implements DriverResubmitRepository {
       phoneNumber: phoneNumber,
       vehicleId: 1,
       licensePlate: licensePlate,
+      licensePlateExpiredDate: '2028-12-31',
       reason: reason,
       documentUrls: const {
         'front_side_of_the_identity_card': 'http://bad-ip/image/id-front.jpg',

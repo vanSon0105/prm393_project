@@ -14,6 +14,7 @@ class AdminDriverRequest extends AdminDriver {
     this.userName = '',
     this.vehicleType = '',
     this.licensePlate = '',
+    this.licensePlateExpiredDate = '',
   });
 
   final String licenseFrontUrl;
@@ -23,4 +24,5 @@ class AdminDriverRequest extends AdminDriver {
   final String userName;
   final String vehicleType;
   final String licensePlate;
+  final String licensePlateExpiredDate;
 }

@@ -1,27 +1,24 @@
-﻿# Admin APIs and finance screens
+# Admin and driver finance APIs
 
-## Available in delivery_server
+The Flutter screens use the routes currently registered in `delivery_server/go-ride-hailing-api.go`.
 
 | Screen | Method and path | Purpose |
 | --- | --- | --- |
 | Drivers | `GET /api/admin/drivers` | Approved drivers and documents |
 | Driver account requests | `GET /api/admin/drivers/requests` | Pending registrations |
 | Driver account requests | `POST /api/admin/drivers/{id}/approve` | Approve or reject with a reason |
-| Admin bank details | `GET /api/{profile_id}/bank-info` | Read the signed-in admin's bank details |
-| Admin bank details | `POST /api/{profile_id}/bank-info` | Update bank details with multipart form data |
+| Admin bank account | `GET /api/{admin_profile_id}/bank-info` | Read saved bank details |
+| Admin bank account | `POST /api/{admin_profile_id}/bank-info` | Save multipart bank details and optional QR image |
+| Driver top-up | `GET /api/admin/bank-info` | Show the first admin bank account to the driver |
+| Driver top-up | `POST /api/driver/topup` | Submit a request and receipt |
+| Driver top-up | `GET /api/driver/{driver_id}/topup/requests` | List that driver's requests |
+| Driver top-up | `GET /api/topup/{transaction_id}` | Read one request |
+| Driver top-up | `PUT /api/driver/topup/{transaction_id}/update` | Update a rejected request |
+| Admin top-up | `GET /api/admin/topup/requests` | List all requests; optional `status` filter |
+| Admin top-up | `PATCH /api/admin/topup/{transaction_id}/review` | Approve or reject |
 
-The bank response uses `data.bank_name`, `data.bank_account_number`, `data.bank_account_name`, and `data.bank_qr_code`. The update request uses the same field names; `bank_qr_code` is an optional image file. The admin profile ID comes from the login response.
+Top-up list responses are JSON arrays. Detail, create, update, review and bank responses wrap the result in `data`. A top-up row contains `transaction_id`, `driver_id`, `driver_name`, `balance`, `image_transaction`, `active`, `status`, `time`, and `reject_reason`. Status is `PENDING`, `APPROVED`, or `REJECTED`.
 
-## Still needed for top-up requests
-
-The current backend does not provide these endpoints. The top-up screen shows an error and retry action until they are implemented.
-
-| Method and path | Request | Response |
-| --- | --- | --- |
-| `GET /api/admin/top-up-requests?status=pending` | None | `{"data":[{"id":1,"driver_id":5,"driver_name":"...","amount":50000,"status":"pending","transfer_reference":"...","proof_url":"...","created_at":"2026-11-03T10:00:00Z"}]}` |
-| `POST /api/admin/top-up-requests/{id}/approve` | `{}` | Updated request |
-| `POST /api/admin/top-up-requests/{id}/reject` | `{"reason":"..."}` | Updated request |
-
-Amounts are integer VND. Approval must verify a real bank transfer and atomically mark the request approved and credit DriverWallet. Repeated approval must not credit twice. Rejection requires a reason and must not change the wallet. These endpoints also need admin authorization and an audit trail.
+To create or update a request, send multipart fields `driver_id`, integer `balance`, and `image_transaction`. To review, send `{"status":true}` for approval or `{"status":false,"reason":"..."}` for rejection. Driver registration and resubmission send `license_plate_expired_date` as `YYYY-MM-DD`.
 
 The Admin overview and Users tab still contain sample/local data. Flutter web requires CORS support from the server origin.

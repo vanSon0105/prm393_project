@@ -136,6 +136,7 @@ void main() {
                             'user_name': 'driver_a',
                             'vehicle_type': 'CAR_4_SEAT',
                             'license_plate': '59A1-12345',
+                            'license_plate_expired_date': '2028-12-31',
                             'driving_license_front_url':
                                 'http://localhost:8080/image/license.jpg',
                             'driving_license_back_url': '',
@@ -159,6 +160,7 @@ void main() {
       expect(requests.single.userName, 'driver_a');
       expect(requests.single.vehicleType, 'CAR_4_SEAT');
       expect(requests.single.licensePlate, '59A1-12345');
+      expect(requests.single.licensePlateExpiredDate, '2028-12-31');
 
       await source.reviewRequest(driverId: 8, approved: true);
       expect(calls[1].method, 'POST');

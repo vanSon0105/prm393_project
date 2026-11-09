@@ -18,6 +18,7 @@ class RegisterAccountRequest {
     required this.role,
     this.vehicleId,
     this.licensePlate,
+    this.licensePlateExpiredDate,
     this.documents = const {},
   });
 
@@ -28,5 +29,6 @@ class RegisterAccountRequest {
   final Role role;
   final int? vehicleId;
   final String? licensePlate;
+  final String? licensePlateExpiredDate;
   final Map<String, RegisterDocument> documents;
 }

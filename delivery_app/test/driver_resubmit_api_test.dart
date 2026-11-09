@@ -30,6 +30,7 @@ void main() {
                             'phone_number': '0901234567',
                             'vehicle_id': 1,
                             'license_plate': '59A1-12345',
+                            'license_plate_expired_date': '2027-12-31',
                             'reason': 'Document is unclear',
                             'driving_license_front_side':
                                 'http://bad-ip/image/a.jpg',
@@ -48,6 +49,7 @@ void main() {
       final request = await repository.getRequest(8);
       expect(request.reason, 'Document is unclear');
       expect(request.vehicleId, 1);
+      expect(request.licensePlateExpiredDate, '2027-12-31');
       expect(calls.single.uri.path, '/api/driver/8/register-info');
 
       await repository.resubmit(
@@ -56,6 +58,7 @@ void main() {
           phoneNumber: '0901234567',
           vehicleId: 2,
           licensePlate: '59A1-67890',
+          licensePlateExpiredDate: '2028-12-31',
           documents: {
             'driving_license_front_side': RegisterDocument(
               name: 'new.jpg',
@@ -72,6 +75,7 @@ void main() {
           'phone_number': '0901234567',
           'vehicle_id': '2',
           'license_plate': '59A1-67890',
+          'license_plate_expired_date': '2028-12-31',
         },
       );
       expect(form.files.single.key, 'driving_license_front_side');

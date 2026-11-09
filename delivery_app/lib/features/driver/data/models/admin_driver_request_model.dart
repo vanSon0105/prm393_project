@@ -15,6 +15,7 @@ class AdminDriverRequestModel extends AdminDriverRequest {
     super.userName,
     super.vehicleType,
     super.licensePlate,
+    super.licensePlateExpiredDate,
   });
 
   factory AdminDriverRequestModel.fromJson(Map<String, dynamic> json) {
@@ -37,6 +38,8 @@ class AdminDriverRequestModel extends AdminDriverRequest {
       userName: (json['user_name'] as String?)?.trim() ?? '',
       vehicleType: (json['vehicle_type'] as String?)?.trim() ?? '',
       licensePlate: (json['license_plate'] as String?)?.trim() ?? '',
+      licensePlateExpiredDate:
+          (json['license_plate_expired_date'] as String?)?.trim() ?? '',
     );
   }
 }

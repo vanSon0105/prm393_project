@@ -40,8 +40,8 @@ class DriverTopUpRequest {
     required this.amount,
     required this.createdAt,
     required this.status,
-    this.transferReference = '',
     this.proofUrl = '',
+    this.rejectReason = '',
   });
 
   final int id;
@@ -50,13 +50,13 @@ class DriverTopUpRequest {
   final int amount;
   final DateTime createdAt;
   final TopUpStatus status;
-  final String transferReference;
   final String proofUrl;
+  final String rejectReason;
 
   factory DriverTopUpRequest.fromJson(Map<String, dynamic> json) {
-    final id = json['id'] as int;
-    final driverId = json['driver_id'] as int;
-    final amount = json['amount'] as int;
+    final id = (json['transaction_id'] as num).toInt();
+    final driverId = (json['driver_id'] as num).toInt();
+    final amount = (json['balance'] as num).toInt();
     if (id <= 0 || driverId <= 0 || amount <= 0) {
       throw const FormatException(
         'Invalid top-up request identifiers or amount',
@@ -68,13 +68,13 @@ class DriverTopUpRequest {
       driverId: driverId,
       driverName: json['driver_name']?.toString() ?? '',
       amount: amount,
-      createdAt: DateTime.parse(json['created_at'] as String),
+      createdAt: DateTime.parse(json['time'] as String),
       status: TopUpStatus.values.firstWhere(
         (value) => value.name == status,
         orElse: () => throw const FormatException('Invalid top-up status'),
       ),
-      transferReference: json['transfer_reference']?.toString() ?? '',
-      proofUrl: json['proof_url']?.toString() ?? '',
+      proofUrl: json['image_transaction']?.toString() ?? '',
+      rejectReason: json['reject_reason']?.toString() ?? '',
     );
   }
 }

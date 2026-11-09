@@ -130,6 +130,7 @@ void main() {
         phoneNumber: '0901234567',
         vehicleId: 1,
         licensePlate: '59A1 234.56',
+        licensePlateExpiredDate: '2027-12-31',
         documents: {
           'driving_license_front_side': document,
           'driving_license_back_side': document,
@@ -144,6 +145,7 @@ void main() {
     expect(fields['role'], 'DRIVER');
     expect(fields['vehicle_id'], '1');
     expect(fields['license_plate'], '59A1 234.56');
+    expect(fields['license_plate_expired_date'], '2027-12-31');
     expect(submitted!.files.map((entry) => entry.key).toSet(), {
       'driving_license_front_side',
       'driving_license_back_side',

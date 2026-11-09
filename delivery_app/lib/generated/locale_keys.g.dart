@@ -13,6 +13,10 @@ abstract class  LocaleKeys {
   static const login_sub_title_role = 'login_sub_title_role';
   static const login_phone_label = 'login_phone_label';
   static const login_password_label = 'login_password_label';
+  static const login_username_hint = 'login_username_hint';
+  static const login_password_hint = 'login_password_hint';
+  static const login_show_password = 'login_show_password';
+  static const login_hide_password = 'login_hide_password';
   static const login_btn_login = 'login_btn_login';
   static const login_no_account_txt = 'login_no_account_txt';
   static const login_btn_register = 'login_btn_register';
@@ -315,6 +319,10 @@ abstract class  LocaleKeys {
   static const register_vehicle_required = 'register_vehicle_required';
   static const register_vehicle_load_error = 'register_vehicle_load_error';
   static const register_license_plate = 'register_license_plate';
+  static const register_license_expiry = 'register_license_expiry';
+  static const register_license_expiry_hint = 'register_license_expiry_hint';
+  static const register_license_expiry_error = 'register_license_expiry_error';
+  static const register_license_expiry_past = 'register_license_expiry_past';
   static const register_plate_required = 'register_plate_required';
   static const register_documents_title = 'register_documents_title';
   static const register_documents_description = 'register_documents_description';
@@ -373,5 +381,25 @@ abstract class  LocaleKeys {
   static const driver_terms_scroll_hint = 'driver_terms_scroll_hint';
   static const driver_terms_agree = 'driver_terms_agree';
   static const driver_terms_continue = 'driver_terms_continue';
+  static const driver_topup_title = 'driver_topup_title';
+  static const driver_topup_shortcut = 'driver_topup_shortcut';
+  static const driver_topup_bank_title = 'driver_topup_bank_title';
+  static const driver_topup_new = 'driver_topup_new';
+  static const driver_topup_edit = 'driver_topup_edit';
+  static const driver_topup_amount = 'driver_topup_amount';
+  static const driver_topup_amount_error = 'driver_topup_amount_error';
+  static const driver_topup_choose_proof = 'driver_topup_choose_proof';
+  static const driver_topup_proof_required = 'driver_topup_proof_required';
+  static const driver_topup_image_size = 'driver_topup_image_size';
+  static const driver_topup_send = 'driver_topup_send';
+  static const driver_topup_sent = 'driver_topup_sent';
+  static const driver_topup_submit_error = 'driver_topup_submit_error';
+  static const driver_topup_load_error = 'driver_topup_load_error';
+  static const driver_topup_history = 'driver_topup_history';
+  static const driver_topup_empty = 'driver_topup_empty';
+  static const driver_topup_detail = 'driver_topup_detail';
+  static const driver_topup_pending = 'driver_topup_pending';
+  static const driver_topup_approved = 'driver_topup_approved';
+  static const driver_topup_rejected = 'driver_topup_rejected';
 
 }

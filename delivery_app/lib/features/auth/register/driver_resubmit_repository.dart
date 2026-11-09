@@ -9,6 +9,7 @@ class RejectedDriverRequest {
     required this.phoneNumber,
     required this.vehicleId,
     required this.licensePlate,
+    this.licensePlateExpiredDate = '',
     required this.reason,
     required this.documentUrls,
   });
@@ -17,6 +18,7 @@ class RejectedDriverRequest {
   final String phoneNumber;
   final int vehicleId;
   final String licensePlate;
+  final String licensePlateExpiredDate;
   final String reason;
   final Map<String, String> documentUrls;
 
@@ -32,6 +34,8 @@ class RejectedDriverRequest {
       phoneNumber: json['phone_number']?.toString() ?? '',
       vehicleId: (json['vehicle_id'] as num).toInt(),
       licensePlate: json['license_plate']?.toString() ?? '',
+      licensePlateExpiredDate:
+          json['license_plate_expired_date']?.toString() ?? '',
       reason: json['reason']?.toString() ?? '',
       documentUrls: {
         for (final key in documentKeys) key: json[key]?.toString() ?? '',
@@ -45,12 +49,14 @@ class DriverResubmitData {
     required this.phoneNumber,
     required this.vehicleId,
     required this.licensePlate,
+    required this.licensePlateExpiredDate,
     this.documents = const {},
   });
 
   final String phoneNumber;
   final int vehicleId;
   final String licensePlate;
+  final String licensePlateExpiredDate;
   final Map<String, RegisterDocument> documents;
 }
 
@@ -108,6 +114,7 @@ class _DriverRequestParam extends ApiParam {
     'phone_number': data!.phoneNumber.replaceAll(' ', ''),
     'vehicle_id': data!.vehicleId,
     'license_plate': data!.licensePlate.trim(),
+    'license_plate_expired_date': data!.licensePlateExpiredDate.trim(),
     for (final entry in data!.documents.entries)
       entry.key: MultipartFile.fromBytes(
         entry.value.bytes,

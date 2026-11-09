@@ -3,6 +3,7 @@ import 'package:delivery_app/features/auth/domain/entities/register_account.dart
 import 'package:delivery_app/features/auth/register/driver_documents_field.dart';
 import 'package:delivery_app/features/auth/register/driver_resubmit_provider.dart';
 import 'package:delivery_app/features/auth/register/driver_resubmit_repository.dart';
+import 'package:delivery_app/features/auth/register/driver_license_expiry_field.dart';
 import 'package:delivery_app/generated/locale_keys.g.dart';
 import 'package:delivery_app/routes/app_navigate.dart';
 import 'package:easy_localization/easy_localization.dart';
@@ -24,6 +25,7 @@ class _DriverResubmitScreenState extends ConsumerState<DriverResubmitScreen> {
   final _formKey = GlobalKey<FormState>();
   final _phone = TextEditingController();
   final _plate = TextEditingController();
+  final _licenseExpiry = TextEditingController();
   final _replacements = <String, RegisterDocument>{};
   int? _vehicleId;
   bool _filled = false;
@@ -41,6 +43,7 @@ class _DriverResubmitScreenState extends ConsumerState<DriverResubmitScreen> {
   void dispose() {
     _phone.dispose();
     _plate.dispose();
+    _licenseExpiry.dispose();
     super.dispose();
   }
 
@@ -50,6 +53,7 @@ class _DriverResubmitScreenState extends ConsumerState<DriverResubmitScreen> {
     _originalRequest = request;
     _phone.text = request.phoneNumber;
     _plate.text = request.licensePlate;
+    _licenseExpiry.text = request.licensePlateExpiredDate;
     _vehicleId = request.vehicleId;
     setState(() {});
   }
@@ -103,6 +107,7 @@ class _DriverResubmitScreenState extends ConsumerState<DriverResubmitScreen> {
               phoneNumber: _phone.text,
               vehicleId: _vehicleId!,
               licensePlate: _plate.text,
+              licensePlateExpiredDate: _licenseExpiry.text,
               documents: {..._replacements},
             ),
           );
@@ -262,6 +267,8 @@ class _DriverResubmitScreenState extends ConsumerState<DriverResubmitScreen> {
                           ? LocaleKeys.register_plate_required.tr()
                           : null,
                     ),
+                    const SizedBox(height: 16),
+                    DriverLicenseExpiryField(controller: _licenseExpiry),
                     const SizedBox(height: 24),
                     Text(
                       LocaleKeys.register_documents_title.tr(),
