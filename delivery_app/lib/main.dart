@@ -1,6 +1,7 @@
 import 'package:delivery_app/routes/app_router.dart';
 import 'package:delivery_app/widget/app_loading.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:delivery_app/generated/locale_keys.g.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
@@ -11,7 +12,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp.router(
-      title: 'Flutter Bloc',
+      title: LocaleKeys.app_name.tr(),
       debugShowCheckedModeBanner: true,
       locale: context.locale,
       supportedLocales: context.supportedLocales,
