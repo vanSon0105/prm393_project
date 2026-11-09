@@ -21,7 +21,12 @@ void main() async {
   MapboxOptions.setAccessToken(Utils.token);
   runApp(
     EasyLocalization(
-      supportedLocales: [Locale('en', 'US'), Locale('ko', 'KR')],
+      supportedLocales: const [
+        Locale('en', 'US'),
+        Locale('ko', 'KR'),
+        Locale('vi', 'VN'),
+        Locale('ja', 'JP'),
+      ],
       fallbackLocale: Locale('en', 'US'),
       path: 'resources/langs',
       assetLoader: JsonAssetLoader(),
