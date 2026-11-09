@@ -96,7 +96,7 @@ class TripDetailsBody extends StatelessWidget {
                           ? (stage == 0
                                 ? LocaleKeys.trip_arrive_six_minutes.tr()
                                 : LocaleKeys.trip_deliver_eighteen_minutes.tr())
-                          : t.date,
+                          : t.dateLabel,
                       style: const TextStyle(fontSize: 12, color: muted),
                     ),
                   ],
@@ -201,7 +201,7 @@ class TripDetailsBody extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      driver ? 'Nguyễn Minh An' : t.driver,
+                      driver ? 'Nguyễn Minh An' : t.driverLabel,
                       style: const TextStyle(
                         fontWeight: FontWeight.w700,
                         fontSize: 15,
@@ -213,7 +213,7 @@ class TripDetailsBody extends StatelessWidget {
                           ? LocaleKeys.trip_customer_contact.tr(
                               namedArgs: const {'phone': '090 123 4567'},
                             )
-                          : t.plate,
+                          : t.plateLabel,
                       style: const TextStyle(color: muted, fontSize: 12),
                     ),
                   ],
@@ -233,7 +233,7 @@ class TripDetailsBody extends StatelessWidget {
                       content: Text(
                         driver
                             ? 'Nguyễn Minh An\n090 123 4567'
-                            : '${t.driver}\n091 286 0456',
+                            : '${t.driverLabel}\n091 286 0456',
                       ),
                       actions: [
                         TextButton(
@@ -301,7 +301,7 @@ class TripDetailsBody extends StatelessWidget {
         Surface(
           child: Column(
             children: [
-              detailRow(LocaleKeys.trip_service.tr(), t.service),
+              detailRow(LocaleKeys.trip_service.tr(), t.serviceLabel),
               const Divider(height: 24),
               detailRow(
                 LocaleKeys.trip_distance.tr(),

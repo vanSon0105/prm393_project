@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
+import 'package:delivery_app/generated/locale_keys.g.dart';
+
 import '../theme/app_theme.dart';
 import 'common.dart';
 
@@ -47,73 +50,80 @@ class ResponsiveAuthLayout extends StatelessWidget {
           final size = Breakpoints.of(constraints.maxWidth);
           //xếp loại bố cục theo màn
           final Widget content = switch (size) {
-            // MOBILE 
+            // MOBILE
             ScreenSize.mobile => SafeArea(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
-                  child: form(size),
-                ),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+                child: form(size),
               ),
+            ),
 
-            // TABLET 
+            // TABLET
             ScreenSize.tablet => Center(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(maxWidth: cardMaxWidth),
-                    child: Container(
-                      padding: const EdgeInsets.all(32),
-                      decoration: BoxDecoration(
-                        color: AppColors.surface,
-                        borderRadius: BorderRadius.circular(24),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Color(0x140F172A),
-                            blurRadius: 30,
-                            offset: Offset(0, 10),
-                          ),
-                        ],
-                      ),
-                      child: form(size),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 40,
+                ),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: cardMaxWidth),
+                  child: Container(
+                    padding: const EdgeInsets.all(32),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(24),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x140F172A),
+                          blurRadius: 30,
+                          offset: Offset(0, 10),
+                        ),
+                      ],
                     ),
+                    child: form(size),
                   ),
                 ),
               ),
+            ),
 
             // DESKTOP
             ScreenSize.desktop => Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Expanded(
-                    flex: 55,
-                    child: _BrandPanel(
-                      title: brandTitle,
-                      subtitle: brandSubtitle,
-                      chips: brandChips,
-                      large: constraints.maxWidth >= 1440,
-                    ),
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  flex: 55,
+                  child: _BrandPanel(
+                    title: brandTitle,
+                    subtitle: brandSubtitle,
+                    chips: brandChips,
+                    large: constraints.maxWidth >= 1440,
                   ),
-                  Expanded(
-                    flex: 45,
-                    child: Center(
-                      child: SingleChildScrollView(
-                        padding: const EdgeInsets.all(48),
-                        child: ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 440),
-                          child: form(size),
-                        ),
+                ),
+                Expanded(
+                  flex: 45,
+                  child: Center(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.all(48),
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 440),
+                        child: form(size),
                       ),
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
+            ),
           };
 
           return Stack(
             children: [
               Positioned.fill(child: content),
               // Huy hiệu hiển thị breakpoint – để demo responsive
-              Positioned(right: 12, bottom: 12, child: BreakpointBadge(size: size)),
+              Positioned(
+                right: 12,
+                bottom: 12,
+                child: BreakpointBadge(size: size),
+              ),
             ],
           );
         },
@@ -149,7 +159,7 @@ class _BrandPanel extends StatelessWidget {
       ),
       child: Stack(
         children: [
-          // Vòng tròn 
+          // Vòng tròn
           Positioned(
             right: -120,
             bottom: -120,
@@ -216,9 +226,9 @@ class BreakpointBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final label = switch (size) {
-      ScreenSize.mobile => '📱 Mobile < 600',
-      ScreenSize.tablet => '📲 Tablet 600–1023',
-      ScreenSize.desktop => '🖥️ Desktop ≥ 1024',
+      ScreenSize.mobile => LocaleKeys.breakpoint_mobile.tr(),
+      ScreenSize.tablet => LocaleKeys.breakpoint_tablet.tr(),
+      ScreenSize.desktop => LocaleKeys.breakpoint_desktop.tr(),
     };
     return IgnorePointer(
       child: Container(

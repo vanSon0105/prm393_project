@@ -1,4 +1,6 @@
 import 'package:delivery_app/features/app_view_model.dart';
+import 'package:delivery_app/generated/locale_keys.g.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart' as flMap;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -142,7 +144,7 @@ class _MapPageState extends ConsumerState<MapPage> {
                   const Icon(Icons.search, color: Colors.grey),
                   const SizedBox(width: 12),
                   Text(
-                    'Bạn muốn đi đâu?',
+                    LocaleKeys.map_destination_prompt.tr(),
                     style: TextStyle(
                       color: Colors.grey.shade600,
                       fontSize: 16,

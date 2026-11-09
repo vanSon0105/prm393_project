@@ -7,6 +7,7 @@ import '../../../../shared/widgets/asset_icon.dart';
 import '../../domain/entities/trip.dart';
 import '../widgets/trip_history_body.dart';
 import '../widgets/trip_details_body.dart';
+import '../widgets/trip_presentation.dart';
 import '../providers/trip_provider.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -108,7 +109,7 @@ class _TripAppState extends ConsumerState<TripApp> {
                 const SizedBox(height: 8),
                 Text(
                   LocaleKeys.trip_rate_driver_name.tr(
-                    namedArgs: {'driver': t.driver},
+                    namedArgs: {'driver': t.driverLabel},
                   ),
                   style: const TextStyle(color: muted),
                 ),

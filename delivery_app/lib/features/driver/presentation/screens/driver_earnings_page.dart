@@ -18,13 +18,13 @@ class DriverEarningsPage extends ConsumerWidget {
 
   static final DateTime _referenceDate = DateTime(2026, 10, 7);
   static const _weeklyEarnings = {
-    'T2': 120000,
-    'T3': 180000,
-    'T4': 135000,
-    'T5': 230000,
-    'T6': 190000,
-    'T7': 250000,
-    'CN': 145000,
+    DateTime.monday: 120000,
+    DateTime.tuesday: 180000,
+    DateTime.wednesday: 135000,
+    DateTime.thursday: 230000,
+    DateTime.friday: 190000,
+    DateTime.saturday: 250000,
+    DateTime.sunday: 145000,
   };
 
   @override

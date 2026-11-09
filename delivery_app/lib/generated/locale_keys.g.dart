@@ -420,5 +420,32 @@ abstract class  LocaleKeys {
   static const location_open_settings = 'location_open_settings';
   static const location_check_again = 'location_check_again';
   static const location_try_again = 'location_try_again';
+  static const app_name = 'app_name';
+  static const map_destination_prompt = 'map_destination_prompt';
+  static const splash_brand_title = 'splash_brand_title';
+  static const splash_brand_subtitle = 'splash_brand_subtitle';
+  static const splash_chip_food = 'splash_chip_food';
+  static const splash_chip_goods = 'splash_chip_goods';
+  static const splash_chip_rides = 'splash_chip_rides';
+  static const splash_continue = 'splash_continue';
+  static const login_success_role = 'login_success_role';
+  static const login_remember_me = 'login_remember_me';
+  static const login_forgot_password = 'login_forgot_password';
+  static const breakpoint_mobile = 'breakpoint_mobile';
+  static const breakpoint_tablet = 'breakpoint_tablet';
+  static const breakpoint_desktop = 'breakpoint_desktop';
+  static const trip_demo_service_goods = 'trip_demo_service_goods';
+  static const trip_demo_service_food = 'trip_demo_service_food';
+  static const trip_demo_service_special = 'trip_demo_service_special';
+  static const trip_demo_unassigned = 'trip_demo_unassigned';
+  static const trip_demo_no_driver = 'trip_demo_no_driver';
+  static const earnings_weekday_monday = 'earnings_weekday_monday';
+  static const earnings_weekday_tuesday = 'earnings_weekday_tuesday';
+  static const earnings_weekday_wednesday = 'earnings_weekday_wednesday';
+  static const earnings_weekday_thursday = 'earnings_weekday_thursday';
+  static const earnings_weekday_friday = 'earnings_weekday_friday';
+  static const earnings_weekday_saturday = 'earnings_weekday_saturday';
+  static const earnings_weekday_sunday = 'earnings_weekday_sunday';
+  static const trip_demo_today_time = 'trip_demo_today_time';
 
 }
