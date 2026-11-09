@@ -407,5 +407,13 @@
   "driver_topup_detail": "リクエスト内容",
   "driver_topup_pending": "保留中",
   "driver_topup_approved": "承認済み",
-  "driver_topup_rejected": "拒否されました"
+  "driver_topup_rejected": "拒否されました",
+  "location_required_title": "位置情報の許可が必要です",
+  "location_permission_message": "アプリを続けて使用するには、位置情報へのアクセスを許可してください。",
+  "location_settings_message": "位置情報へのアクセスがブロックされています。端末の設定を開き、このアプリの位置情報の許可を有効にしてください。",
+  "location_check_error": "位置情報の許可を確認できませんでした。もう一度お試しください。",
+  "location_allow": "位置情報を許可",
+  "location_open_settings": "設定を開く",
+  "location_check_again": "再確認",
+  "location_try_again": "再試行"
 }

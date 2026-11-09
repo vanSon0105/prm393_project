@@ -407,5 +407,13 @@
   "driver_topup_detail": "Chi tiết yêu cầu",
   "driver_topup_pending": "Đang chờ xử lý",
   "driver_topup_approved": "Đã được phê duyệt",
-  "driver_topup_rejected": "Bị từ chối"
+  "driver_topup_rejected": "Bị từ chối",
+  "location_required_title": "Cần quyền truy cập vị trí",
+  "location_permission_message": "Cho phép truy cập vị trí để tiếp tục sử dụng ứng dụng.",
+  "location_settings_message": "Quyền vị trí đã bị chặn. Hãy mở Cài đặt trên thiết bị và bật quyền vị trí cho ứng dụng này để tiếp tục.",
+  "location_check_error": "Không thể kiểm tra quyền vị trí. Vui lòng thử lại.",
+  "location_allow": "Cho phép vị trí",
+  "location_open_settings": "Mở Cài đặt",
+  "location_check_again": "Kiểm tra lại",
+  "location_try_again": "Thử lại"
 }

@@ -407,5 +407,13 @@
   "driver_topup_detail": "Request details",
   "driver_topup_pending": "Pending",
   "driver_topup_approved": "Approved",
-  "driver_topup_rejected": "Rejected"
+  "driver_topup_rejected": "Rejected",
+  "location_required_title": "Location access required",
+  "location_permission_message": "Allow location access to continue using the app.",
+  "location_settings_message": "Location access has been blocked. Open your device settings and enable location permission for this app to continue.",
+  "location_check_error": "Could not check location permission. Please try again.",
+  "location_allow": "Allow location",
+  "location_open_settings": "Open settings",
+  "location_check_again": "Check again",
+  "location_try_again": "Try again"
 }

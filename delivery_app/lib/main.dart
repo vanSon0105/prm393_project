@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
 
+import 'features/location/location_permission_guard.dart';
+
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
@@ -34,7 +36,11 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
       ),
       builder: (context, child) {
-        return FlutterEasyLoading(child: child);
+        return FlutterEasyLoading(
+          child: LocationPermissionGuard(
+            child: child ?? const SizedBox.shrink(),
+          ),
+        );
       },
     );
   }
