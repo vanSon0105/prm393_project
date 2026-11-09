@@ -55,6 +55,7 @@ dependencies:
   riverpod_annotation: ^4.0.0
   mapbox_maps_flutter: ^3.33.1
   file_picker: 12.3.0
+  web_socket_channel: ^3.0.3
 
 dev_dependencies:
   flutter_test:

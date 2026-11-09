@@ -1,0 +1,10 @@
+import 'package:delivery_app/data/network/base/param.dart';
+
+class TripParam extends ApiParam {
+  final int customerId;
+
+  TripParam(this.customerId);
+
+  @override
+  String get path => '/api/user/trips/active?customer_id=$customerId';
+}
