@@ -208,6 +208,8 @@ abstract class  LocaleKeys {
   static const earnings_total_income = 'earnings_total_income';
   static const settings_english = 'settings_english';
   static const settings_korean = 'settings_korean';
+  static const settings_vietnamese = 'settings_vietnamese';
+  static const settings_japanese = 'settings_japanese';
   static const settings_map_default = 'settings_map_default';
   static const settings_map_satellite = 'settings_map_satellite';
   static const earnings_today = 'earnings_today';

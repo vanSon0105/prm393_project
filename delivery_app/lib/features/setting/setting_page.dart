@@ -60,14 +60,13 @@ class SettingPage extends ConsumerWidget {
                       options: {
                         'en-US': LocaleKeys.settings_english.tr(),
                         'ko-KR': LocaleKeys.settings_korean.tr(),
+                        'vi-VN': LocaleKeys.settings_vietnamese.tr(),
+                        'ja-JP': LocaleKeys.settings_japanese.tr(),
                       },
                       onSelected: (value) async {
                         notifier.selectLanguage(value);
-                        await context.setLocale(
-                          value == 'ko-KR'
-                              ? const Locale('ko', 'KR')
-                              : const Locale('en', 'US'),
-                        );
+                        final [language, country] = value.split('-');
+                        await context.setLocale(Locale(language, country));
                       },
                     ),
                   ),
