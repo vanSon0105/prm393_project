@@ -58,7 +58,19 @@ class _LocationPermissionGuardState
       final status = await ref
           .read(locationServiceProvider)
           .checkPermission(requestIfDenied: requestIfDenied);
-      if (mounted) setState(() => _status = status);
+      if (mounted) {
+        setState(() {
+          // Android can report `denied` from checkPermission even after
+          // requestPermission reported `deniedForever`. Keep the settings
+          // action visible until permission is granted.
+          _status =
+              !requestIfDenied &&
+                  status == LocationAccessStatus.denied &&
+                  _status == LocationAccessStatus.deniedForever
+              ? LocationAccessStatus.deniedForever
+              : status;
+        });
+      }
     } catch (error) {
       debugPrint('Location permission check failed: $error');
       if (mounted) setState(() => _checkFailed = true);

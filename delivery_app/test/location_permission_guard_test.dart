@@ -19,7 +19,12 @@ class _FakeLocationService implements LocationService {
   }) async {
     checks.add(requestIfDenied);
     if (requestIfDenied && status == LocationAccessStatus.denied) {
-      status = requestResult;
+      // Android's later check can still say `denied` after a permission
+      // request returns `deniedForever`.
+      status = requestResult == LocationAccessStatus.deniedForever
+          ? LocationAccessStatus.denied
+          : requestResult;
+      return requestResult;
     }
     return status;
   }
@@ -79,6 +84,10 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Open settings'), findsOneWidget);
     expect(find.text('App content'), findsNothing);
+
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pumpAndSettle();
+    expect(find.text('Open settings'), findsOneWidget);
 
     await tester.tap(find.text('Open settings'));
     await tester.pumpAndSettle();
