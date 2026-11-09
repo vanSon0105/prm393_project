@@ -6,17 +6,32 @@ final locationServiceProvider = Provider<LocationService>(
 );
 
 abstract class LocationService {
-  Future<bool> requestPermission();
+  Future<LocationAccessStatus> checkPermission({bool requestIfDenied = false});
+
+  Future<bool> openAppSettings();
 }
+
+enum LocationAccessStatus { granted, denied, deniedForever }
 
 class GeolocatorLocationService implements LocationService {
   @override
-  Future<bool> requestPermission() async {
+  Future<LocationAccessStatus> checkPermission({
+    bool requestIfDenied = false,
+  }) async {
     var permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
+    if (requestIfDenied &&
+        (permission == LocationPermission.denied ||
+            permission == LocationPermission.unableToDetermine)) {
       permission = await Geolocator.requestPermission();
     }
-    return permission == LocationPermission.whileInUse ||
-        permission == LocationPermission.always;
+    return switch (permission) {
+      LocationPermission.whileInUse ||
+      LocationPermission.always => LocationAccessStatus.granted,
+      LocationPermission.deniedForever => LocationAccessStatus.deniedForever,
+      _ => LocationAccessStatus.denied,
+    };
   }
+
+  @override
+  Future<bool> openAppSettings() => Geolocator.openAppSettings();
 }

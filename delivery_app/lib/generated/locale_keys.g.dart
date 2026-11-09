@@ -208,6 +208,8 @@ abstract class  LocaleKeys {
   static const earnings_total_income = 'earnings_total_income';
   static const settings_english = 'settings_english';
   static const settings_korean = 'settings_korean';
+  static const settings_vietnamese = 'settings_vietnamese';
+  static const settings_japanese = 'settings_japanese';
   static const settings_map_default = 'settings_map_default';
   static const settings_map_satellite = 'settings_map_satellite';
   static const earnings_today = 'earnings_today';
@@ -410,5 +412,13 @@ abstract class  LocaleKeys {
   static const driver_topup_pending = 'driver_topup_pending';
   static const driver_topup_approved = 'driver_topup_approved';
   static const driver_topup_rejected = 'driver_topup_rejected';
+  static const location_required_title = 'location_required_title';
+  static const location_permission_message = 'location_permission_message';
+  static const location_settings_message = 'location_settings_message';
+  static const location_check_error = 'location_check_error';
+  static const location_allow = 'location_allow';
+  static const location_open_settings = 'location_open_settings';
+  static const location_check_again = 'location_check_again';
+  static const location_try_again = 'location_try_again';
 
 }

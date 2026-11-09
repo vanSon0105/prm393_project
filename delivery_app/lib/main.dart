@@ -4,30 +4,11 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'features/location/location_service.dart';
+import 'features/location/location_permission_guard.dart';
 
-class MyApp extends ConsumerStatefulWidget {
+class MyApp extends StatelessWidget {
   const MyApp({super.key});
-
-  @override
-  ConsumerState<MyApp> createState() => _MyAppState();
-}
-
-class _MyAppState extends ConsumerState<MyApp> {
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      if (!mounted) return;
-      try {
-        await ref.read(locationServiceProvider).requestPermission();
-      } catch (error) {
-        debugPrint('Location permission request failed: $error');
-      }
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -55,7 +36,11 @@ class _MyAppState extends ConsumerState<MyApp> {
         useMaterial3: true,
       ),
       builder: (context, child) {
-        return FlutterEasyLoading(child: child);
+        return FlutterEasyLoading(
+          child: LocationPermissionGuard(
+            child: child ?? const SizedBox.shrink(),
+          ),
+        );
       },
     );
   }
