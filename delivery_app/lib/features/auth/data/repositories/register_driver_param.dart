@@ -11,8 +11,6 @@ class RegisterDriverParam extends ApiParam {
   final int vehicleId;
   final String licensePlate;
   final String licensePlateExpiredDate;
-  final double latitude;
-  final double longitude;
   final Map<String, RegisterDocument> documents;
 
   RegisterDriverParam({
@@ -23,8 +21,6 @@ class RegisterDriverParam extends ApiParam {
     required this.vehicleId,
     required this.licensePlate,
     required this.licensePlateExpiredDate,
-    required this.latitude,
-    required this.longitude,
     required this.documents,
   });
 
@@ -54,8 +50,6 @@ class RegisterDriverParam extends ApiParam {
       'vehicle_id': vehicleId,
       'license_plate': licensePlate.trim(),
       'license_plate_expired_date': licensePlateExpiredDate.trim(),
-      'latitude': latitude,
-      'longitude': longitude,
       for (final entry in documents.entries)
         entry.key: MultipartFile.fromBytes(
           entry.value.bytes,

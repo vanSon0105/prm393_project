@@ -4,7 +4,6 @@ import 'package:delivery_app/features/auth/domain/entities/role.dart';
 import 'package:delivery_app/features/auth/data/models/register_model.dart';
 import 'package:delivery_app/features/auth/data/repositories/register_driver_param.dart';
 import 'package:delivery_app/features/auth/data/repositories/register_user_param.dart';
-import 'package:delivery_app/features/location/location_service.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../di/repository_module.dart';
@@ -67,9 +66,6 @@ class RegisterViewModel extends _$RegisterViewModel {
               'Driver vehicle and four documents are required',
             );
           }
-          final coordinates = await ref
-              .read(locationServiceProvider)
-              .currentCoordinates();
           return await repository.registerDriverAccount(
             RegisterDriverParam(
               fullName: request.fullName,
@@ -79,8 +75,6 @@ class RegisterViewModel extends _$RegisterViewModel {
               vehicleId: request.vehicleId!,
               licensePlate: request.licensePlate!,
               licensePlateExpiredDate: request.licensePlateExpiredDate!,
-              latitude: coordinates.latitude,
-              longitude: coordinates.longitude,
               documents: request.documents,
             ),
           );

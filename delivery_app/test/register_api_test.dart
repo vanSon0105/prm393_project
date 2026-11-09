@@ -131,8 +131,6 @@ void main() {
         vehicleId: 1,
         licensePlate: '59A1 234.56',
         licensePlateExpiredDate: '2027-12-31',
-        latitude: 10.776889,
-        longitude: 106.700806,
         documents: {
           'driving_license_front_side': document,
           'driving_license_back_side': document,
@@ -148,8 +146,8 @@ void main() {
     expect(fields['vehicle_id'], '1');
     expect(fields['license_plate'], '59A1 234.56');
     expect(fields['license_plate_expired_date'], '2027-12-31');
-    expect(fields['latitude'], '10.776889');
-    expect(fields['longitude'], '106.700806');
+    expect(fields.containsKey('latitude'), isFalse);
+    expect(fields.containsKey('longitude'), isFalse);
     expect(submitted!.files.map((entry) => entry.key).toSet(), {
       'driving_license_front_side',
       'driving_license_back_side',

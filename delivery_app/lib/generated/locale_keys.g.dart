@@ -47,6 +47,15 @@ abstract class  LocaleKeys {
   static const profile_saved_demo = 'profile_saved_demo';
   static const profile_save = 'profile_save';
   static const profile_edit = 'profile_edit';
+  static const profile_saved = 'profile_saved';
+  static const profile_save_error = 'profile_save_error';
+  static const profile_load_error = 'profile_load_error';
+  static const profile_sign_in_again = 'profile_sign_in_again';
+  static const profile_name_invalid = 'profile_name_invalid';
+  static const profile_phone_invalid = 'profile_phone_invalid';
+  static const profile_address_invalid = 'profile_address_invalid';
+  static const profile_address_cannot_clear = 'profile_address_cannot_clear';
+  static const profile_image_size_error = 'profile_image_size_error';
   static const payment_title = 'payment_title';
   static const payment_total = 'payment_total';
   static const payment_fare = 'payment_fare';
@@ -352,9 +361,6 @@ abstract class  LocaleKeys {
   static const register_go_login = 'register_go_login';
   static const register_conflict_error = 'register_conflict_error';
   static const register_submit_error = 'register_submit_error';
-  static const register_location_permission_required = 'register_location_permission_required';
-  static const register_location_services_disabled = 'register_location_services_disabled';
-  static const register_location_unavailable = 'register_location_unavailable';
   static const register_have_account = 'register_have_account';
   static const register_full_name_hint = 'register_full_name_hint';
   static const register_full_name_error = 'register_full_name_error';

@@ -2,7 +2,6 @@ import 'package:delivery_app/features/auth/domain/entities/register_account.dart
 import 'package:delivery_app/data/network/base/exception.dart';
 import 'package:delivery_app/features/auth/domain/entities/role.dart';
 import 'package:delivery_app/features/auth/register/register_view_model.dart';
-import 'package:delivery_app/features/location/location_service.dart';
 import 'package:delivery_app/generated/locale_keys.g.dart';
 import 'package:delivery_app/routes/app_navigate.dart';
 import 'package:easy_localization/easy_localization.dart';
@@ -157,17 +156,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         ),
       );
       if (mounted) AppNavigate.instance.gotoLogin();
-    } on LocationAccessException catch (error) {
-      if (!mounted) return;
-      final message = switch (error.failure) {
-        LocationAccessFailure.permissionDenied =>
-          LocaleKeys.register_location_permission_required.tr(),
-        LocationAccessFailure.servicesDisabled =>
-          LocaleKeys.register_location_services_disabled.tr(),
-        LocationAccessFailure.unavailable =>
-          LocaleKeys.register_location_unavailable.tr(),
-      };
-      _notice(message);
     } on ApiException catch (error) {
       if (!mounted) return;
       _notice(
