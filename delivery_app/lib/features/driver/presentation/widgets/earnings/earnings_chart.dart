@@ -7,7 +7,18 @@ import '../../../../../core/theme/app_theme.dart';
 class EarningsChart extends StatelessWidget {
   const EarningsChart({required this.data, super.key});
 
-  final Map<String, int> data;
+  final Map<int, int> data;
+
+  String _weekdayLabel(int weekday) => switch (weekday) {
+    DateTime.monday => LocaleKeys.earnings_weekday_monday.tr(),
+    DateTime.tuesday => LocaleKeys.earnings_weekday_tuesday.tr(),
+    DateTime.wednesday => LocaleKeys.earnings_weekday_wednesday.tr(),
+    DateTime.thursday => LocaleKeys.earnings_weekday_thursday.tr(),
+    DateTime.friday => LocaleKeys.earnings_weekday_friday.tr(),
+    DateTime.saturday => LocaleKeys.earnings_weekday_saturday.tr(),
+    DateTime.sunday => LocaleKeys.earnings_weekday_sunday.tr(),
+    _ => '',
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -60,7 +71,7 @@ class EarningsChart extends StatelessWidget {
                           ),
                           SizedBox(height: 8),
                           Text(
-                            entry.key,
+                            _weekdayLabel(entry.key),
                             style: TextStyle(
                               color: AppColors.textSoft,
                               fontSize: 12,

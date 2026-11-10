@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
+import 'package:delivery_app/generated/locale_keys.g.dart';
 
 import '../../shared/theme/app_theme.dart';
 import '../../shared/widgets/common.dart';
@@ -195,7 +197,7 @@ class _SplashScreenState extends State<SplashScreen>
           : CrossAxisAlignment.start,
       children: [
         Text(
-          'Đi đúng nơi.\nGiao đúng lúc.',
+          LocaleKeys.splash_brand_title.tr(),
           textAlign: center ? TextAlign.center : TextAlign.start,
           style: TextStyle(
             color: Colors.white,
@@ -206,7 +208,7 @@ class _SplashScreenState extends State<SplashScreen>
         ),
         const SizedBox(height: 14),
         Text(
-          'Đồ ăn, hàng hóa và dịch vụ vận chuyển chuyên biệt trong một ứng dụng.',
+          LocaleKeys.splash_brand_subtitle.tr(),
           textAlign: center ? TextAlign.center : TextAlign.start,
           style: const TextStyle(
             color: Color(0xD9FFFFFF),
@@ -226,12 +228,12 @@ class _SplashScreenState extends State<SplashScreen>
         backgroundColor: Colors.white,
         foregroundColor: AppColors.primary,
       ),
-      child: const Row(
+      child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text('Tiếp tục'),
-          SizedBox(width: 8),
-          Icon(Icons.arrow_forward_rounded, size: 20),
+          Text(LocaleKeys.splash_continue.tr()),
+          const SizedBox(width: 8),
+          const Icon(Icons.arrow_forward_rounded, size: 20),
         ],
       ),
     );

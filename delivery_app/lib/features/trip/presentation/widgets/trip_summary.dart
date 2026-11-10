@@ -23,7 +23,10 @@ Widget tripSummary(Trip t) => Row(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(t.service, style: const TextStyle(fontSize: 12, color: muted)),
+          Text(
+            t.serviceLabel,
+            style: const TextStyle(fontSize: 12, color: muted),
+          ),
           const SizedBox(height: 5),
           Text(t.pickup, style: const TextStyle(fontWeight: FontWeight.w600)),
           const SizedBox(height: 3),

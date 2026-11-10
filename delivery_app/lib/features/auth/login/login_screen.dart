@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
+import 'package:delivery_app/generated/locale_keys.g.dart';
 
 import '../../../shared/theme/app_theme.dart';
 import '../../../shared/widgets/common.dart';
@@ -8,9 +10,9 @@ enum UserRole { customer, driver, admin }
 
 extension on UserRole {
   String get label => switch (this) {
-    UserRole.customer => 'Khách hàng',
-    UserRole.driver => 'Tài xế',
-    UserRole.admin => 'Admin',
+    UserRole.customer => LocaleKeys.login_customer_txt.tr(),
+    UserRole.driver => LocaleKeys.login_driver_txt.tr(),
+    UserRole.admin => LocaleKeys.login_admin_txt.tr(),
   };
   IconData get icon => switch (this) {
     UserRole.customer => Icons.person_outline_rounded,
@@ -45,7 +47,9 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!_formKey.currentState!.validate()) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Đăng nhập thành công với vai trò: ${_role.label}'),
+        content: Text(
+          LocaleKeys.login_success_role.tr(namedArgs: {'role': _role.label}),
+        ),
       ),
     );
   }
@@ -53,12 +57,21 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return ResponsiveAuthLayout(
-      brandTitle: 'Đi đúng nơi.\nGiao đúng lúc.',
-      brandSubtitle: 'Đồ ăn, hàng hóa và dịch vụ vận chuyển chuyên biệt trong một ứng dụng.',
-      brandChips: const [
-        BrandChip(label: 'Đồ ăn', icon: Icons.two_wheeler_rounded),
-        BrandChip(label: 'Hàng hóa', icon: Icons.inventory_2_outlined),
-        BrandChip(label: 'Đưa đón', icon: Icons.directions_car_outlined),
+      brandTitle: LocaleKeys.splash_brand_title.tr(),
+      brandSubtitle: LocaleKeys.splash_brand_subtitle.tr(),
+      brandChips: [
+        BrandChip(
+          label: LocaleKeys.splash_chip_food.tr(),
+          icon: Icons.two_wheeler_rounded,
+        ),
+        BrandChip(
+          label: LocaleKeys.splash_chip_goods.tr(),
+          icon: Icons.inventory_2_outlined,
+        ),
+        BrandChip(
+          label: LocaleKeys.splash_chip_rides.tr(),
+          icon: Icons.directions_car_outlined,
+        ),
       ],
       form: (size) => Form(
         key: _formKey,
@@ -67,8 +80,8 @@ class _LoginScreenState extends State<LoginScreen> {
           children: [
             AuthTopBar(size: size),
             AuthHeading(
-              title: 'Chào bạn',
-              subtitle: 'Chọn vai trò để tiếp tục.',
+              title: LocaleKeys.login_title_welcome.tr(),
+              subtitle: LocaleKeys.login_sub_title_role.tr(),
               size: size,
             ),
 
@@ -90,7 +103,7 @@ class _LoginScreenState extends State<LoginScreen> {
             const SizedBox(height: 22),
 
             LabeledField(
-              label: 'Số điện thoại',
+              label: LocaleKeys.profile_phone.tr(),
               child: TextFormField(
                 controller: _phoneCtrl,
                 keyboardType: TextInputType.phone,
@@ -105,16 +118,18 @@ class _LoginScreenState extends State<LoginScreen> {
             const SizedBox(height: 16),
 
             LabeledField(
-              label: 'Mật khẩu',
+              label: LocaleKeys.login_password_label.tr(),
               child: TextFormField(
                 controller: _passCtrl,
                 obscureText: _obscure,
                 onFieldSubmitted: (_) => _submit(),
                 decoration: InputDecoration(
-                  hintText: 'Nhập mật khẩu',
+                  hintText: LocaleKeys.login_password_hint.tr(),
                   prefixIcon: const Icon(Icons.lock_outline_rounded),
                   suffixIcon: IconButton(
-                    tooltip: _obscure ? 'Hiện mật khẩu' : 'Ẩn mật khẩu',
+                    tooltip: _obscure
+                        ? LocaleKeys.login_show_password.tr()
+                        : LocaleKeys.login_hide_password.tr(),
                     icon: Icon(
                       _obscure
                           ? Icons.visibility_outlined
@@ -135,37 +150,40 @@ class _LoginScreenState extends State<LoginScreen> {
                   activeColor: AppColors.primary,
                   onChanged: (v) => setState(() => _remember = v ?? false),
                 ),
-                const Text(
-                  'Ghi nhớ tôi',
-                  style: TextStyle(color: AppColors.muted),
+                Text(
+                  LocaleKeys.login_remember_me.tr(),
+                  style: const TextStyle(color: AppColors.muted),
                 ),
                 const Spacer(),
                 TextButton(
                   onPressed: () {},
-                  child: const Text(
-                    'Quên mật khẩu?',
-                    style: TextStyle(fontWeight: FontWeight.w600),
+                  child: Text(
+                    LocaleKeys.login_forgot_password.tr(),
+                    style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 16),
 
-            ElevatedButton(onPressed: _submit, child: const Text('Đăng nhập')),
+            ElevatedButton(
+              onPressed: _submit,
+              child: Text(LocaleKeys.login_btn_login.tr()),
+            ),
             const SizedBox(height: 12),
 
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Text(
-                  'Chưa có tài khoản?',
-                  style: TextStyle(color: AppColors.muted),
+                Text(
+                  LocaleKeys.login_no_account_txt.tr(),
+                  style: const TextStyle(color: AppColors.muted),
                 ),
                 TextButton(
                   onPressed: () => Navigator.pushNamed(context, '/register'),
-                  child: const Text(
-                    'Đăng ký',
-                    style: TextStyle(fontWeight: FontWeight.w700),
+                  child: Text(
+                    LocaleKeys.login_btn_register.tr(),
+                    style: const TextStyle(fontWeight: FontWeight.w700),
                   ),
                 ),
               ],
