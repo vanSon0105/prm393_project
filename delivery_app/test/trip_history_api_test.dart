@@ -29,6 +29,8 @@ void main() {
                       'driver_name': 'Driver B',
                       'trip_distance': 8,
                       'trip_price': 42000.0,
+                      'review_vote': 5,
+                      'review_comment': 'Great driver',
                       'trip_latitude': 21.03,
                       'trip_longitude': 105.85,
                       'destination_latitude': 21.04,
@@ -56,6 +58,8 @@ void main() {
     expect(page.hasMore, isTrue);
     expect(page.entries.single.tripId, 31);
     expect(page.entries.single.driverName, 'Driver B');
+    expect(page.entries.single.reviewVote, 5);
+    expect(page.entries.single.reviewComment, 'Great driver');
   });
 
   test('handles a cancelled trip without a driver or price', () async {
@@ -76,6 +80,8 @@ void main() {
                       'driver_name': null,
                       'trip_distance': null,
                       'trip_price': null,
+                      'review_vote': null,
+                      'review_comment': null,
                       'trip_latitude': 21.03,
                       'trip_longitude': 105.85,
                       'destination_latitude': 21.04,
@@ -96,5 +102,6 @@ void main() {
     expect(entry.isCompleted, isFalse);
     expect(entry.driverName, isNull);
     expect(entry.price, isNull);
+    expect(entry.reviewVote, isNull);
   });
 }

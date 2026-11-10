@@ -36,6 +36,9 @@ abstract class LocaleKeys {
   static const rating_comment = 'rating_comment';
   static const rating_comment_hint = 'rating_comment_hint';
   static const rating_submit = 'rating_submit';
+  static const rating_later = 'rating_later';
+  static const rating_submit_failed = 'rating_submit_failed';
+  static const rating_already_submitted = 'rating_already_submitted';
   static const profile_title = 'profile_title';
   static const profile_user = 'profile_user';
   static const profile_personal_info = 'profile_personal_info';
@@ -152,6 +155,10 @@ abstract class LocaleKeys {
   static const trip_recipient = 'trip_recipient';
   static const trip_distance_estimate = 'trip_distance_estimate';
   static const trip_rating_done = 'trip_rating_done';
+  static const trip_customer_rating = 'trip_customer_rating';
+  static const trip_review_stars = 'trip_review_stars';
+  static const trip_review_pending = 'trip_review_pending';
+  static const trip_review_comment = 'trip_review_comment';
   static const trip_cancel_confirm = 'trip_cancel_confirm';
   static const trip_cash_confirm = 'trip_cash_confirm';
   static const trip_rate_driver_name = 'trip_rate_driver_name';
@@ -493,6 +500,10 @@ abstract class LocaleKeys {
       'map_location_permission_denied';
   static const map_route_not_found = 'map_route_not_found';
   static const map_address_not_found = 'map_address_not_found';
+  static const map_trip_address_loading = 'map_trip_address_loading';
+  static const map_trip_address_unavailable = 'map_trip_address_unavailable';
+  static const map_trip_customer_loading = 'map_trip_customer_loading';
+  static const map_trip_customer_unavailable = 'map_trip_customer_unavailable';
   static const map_restore_trip_failed = 'map_restore_trip_failed';
   static const map_no_place_suggestions = 'map_no_place_suggestions';
   static const map_place_search_failed = 'map_place_search_failed';

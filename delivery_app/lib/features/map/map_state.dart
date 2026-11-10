@@ -1,4 +1,5 @@
 import 'package:delivery_app/features/map/data/models/trip_model.dart';
+import 'package:delivery_app/features/profile/profile_repository.dart';
 import 'package:latlong2/latlong.dart';
 
 import 'data/models/route_result.dart';
@@ -20,6 +21,9 @@ class MapState {
 
   final String pickupAddress;
   final String destinationAddress;
+  final bool driverAddressesLoaded;
+  final UserProfile? customerProfile;
+  final bool customerProfileLoaded;
 
   final LatLng? pickup;
   final LatLng? destination;
@@ -40,6 +44,9 @@ class MapState {
     this.errorMessage,
     this.pickupAddress = '',
     this.destinationAddress = '',
+    this.driverAddressesLoaded = false,
+    this.customerProfile,
+    this.customerProfileLoaded = false,
     this.pickup,
     this.destination,
     this.driverLocation,
@@ -57,6 +64,9 @@ class MapState {
     bool clearError = false,
     String? pickupAddress,
     String? destinationAddress,
+    bool? driverAddressesLoaded,
+    UserProfile? customerProfile,
+    bool? customerProfileLoaded,
     LatLng? pickup,
     LatLng? destination,
     LatLng? driverLocation,
@@ -72,6 +82,11 @@ class MapState {
       errorMessage: clearError ? null : errorMessage ?? this.errorMessage,
       pickupAddress: pickupAddress ?? this.pickupAddress,
       destinationAddress: destinationAddress ?? this.destinationAddress,
+      driverAddressesLoaded:
+          driverAddressesLoaded ?? this.driverAddressesLoaded,
+      customerProfile: customerProfile ?? this.customerProfile,
+      customerProfileLoaded:
+          customerProfileLoaded ?? this.customerProfileLoaded,
       pickup: pickup ?? this.pickup,
       destination: destination ?? this.destination,
       driverLocation: driverLocation ?? this.driverLocation,

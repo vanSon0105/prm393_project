@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:delivery_app/features/app_view_model.dart';
 import 'package:delivery_app/features/auth/domain/entities/role.dart';
+import 'package:delivery_app/features/driver_rating/driver_rating_screen.dart';
+import 'package:delivery_app/features/trip/presentation/providers/trip_history_provider.dart';
 import 'package:delivery_app/gen/assets.gen.dart';
 import 'package:delivery_app/generated/locale_keys.g.dart';
 import 'package:delivery_app/core/theme/app_theme.dart';
@@ -47,6 +49,42 @@ class _MapPageState extends ConsumerState<MapPage> {
   bool _locatingPickup = false;
   String _manualPickupDraft = '';
   int _pickupLocationRequest = 0;
+  final Set<int> _promptedRatingTrips = {};
+
+  Future<void> _offerTripRating(int tripId, int? profileId) async {
+    final rateNow = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(LocaleKeys.rating_question.tr()),
+        content: Text(LocaleKeys.rating_prompt.tr()),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: Text(LocaleKeys.rating_later.tr()),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: Text(LocaleKeys.trip_rate_driver.tr()),
+          ),
+        ],
+      ),
+    );
+    if (!mounted || rateNow != true) return;
+    final result = await Navigator.of(context).push<TripRatingResult>(
+      MaterialPageRoute(builder: (_) => DriverRatingScreen(tripId: tripId)),
+    );
+    if (!mounted || result == null || result == TripRatingResult.later) return;
+    if (profileId != null) ref.invalidate(tripHistoryProvider(profileId));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          result == TripRatingResult.alreadyRated
+              ? LocaleKeys.rating_already_submitted.tr()
+              : LocaleKeys.trip_thank_rating.tr(),
+        ),
+      ),
+    );
+  }
 
   void _onAddressChanged(int field, String value) {
     if (field == 0) {
@@ -391,6 +429,15 @@ class _MapPageState extends ConsumerState<MapPage> {
     final provider = mapViewModelProvider(role);
     final state = ref.watch(provider);
     ref.listen<MapState>(provider, (previous, next) {
+      if (role == Role.customer &&
+          next.tripId != null &&
+          next.tripStatus == MapTripStatus.completed &&
+          previous?.tripStatus != MapTripStatus.completed &&
+          _promptedRatingTrips.add(next.tripId!)) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _offerTripRating(next.tripId!, appState.profileId);
+        });
+      }
       if (role == Role.customer && next.tripId != null) {
         if (next.pickupAddress != previous?.pickupAddress &&
             _pickupController.text != next.pickupAddress) {
@@ -804,6 +851,14 @@ class _MapPageState extends ConsumerState<MapPage> {
     required VoidCallback onComplete,
     required VoidCallback onCancel,
   }) {
+    if (state.tripId != null) {
+      return _buildActiveDriverTripSheet(
+        state,
+        onStart: onStart,
+        onComplete: onComplete,
+        onCancel: onCancel,
+      );
+    }
     return Positioned(
       left: 12,
       right: 12,
@@ -819,152 +874,247 @@ class _MapPageState extends ConsumerState<MapPage> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  if (state.tripId == null) ...[
-                    Text(
-                      LocaleKeys.map_pending_trips.tr(),
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 8),
-                    Chip(
-                      avatar:
-                          state.driverOnlineStatus ==
-                                  DriverOnlineStatus.connecting ||
-                              state.driverOnlineStatus ==
-                                  DriverOnlineStatus.disconnecting
-                          ? const SizedBox.square(
-                              dimension: 16,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : Icon(
-                              Icons.circle,
-                              size: 12,
-                              color:
-                                  state.driverOnlineStatus ==
-                                      DriverOnlineStatus.online
-                                  ? Colors.green
-                                  : Colors.grey,
-                            ),
-                      label: Text(switch (state.driverOnlineStatus) {
-                        DriverOnlineStatus.offline =>
-                          LocaleKeys.map_status_offline.tr(),
-                        DriverOnlineStatus.connecting =>
-                          LocaleKeys.map_status_connecting.tr(),
-                        DriverOnlineStatus.online =>
-                          LocaleKeys.map_status_online.tr(),
-                        DriverOnlineStatus.disconnecting =>
-                          LocaleKeys.map_status_disconnecting.tr(),
-                      }),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: ElevatedButton(
-                            onPressed:
-                                state.driverOnlineStatus ==
-                                    DriverOnlineStatus.offline
-                                ? onOnline
-                                : null,
-                            child: Text(LocaleKeys.map_go_online.tr()),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: OutlinedButton(
-                            onPressed:
+                  Text(
+                    LocaleKeys.map_pending_trips.tr(),
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  Chip(
+                    avatar:
+                        state.driverOnlineStatus ==
+                                DriverOnlineStatus.connecting ||
+                            state.driverOnlineStatus ==
+                                DriverOnlineStatus.disconnecting
+                        ? const SizedBox.square(
+                            dimension: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : Icon(
+                            Icons.circle,
+                            size: 12,
+                            color:
                                 state.driverOnlineStatus ==
                                     DriverOnlineStatus.online
-                                ? onOffline
-                                : null,
-                            child: Text(LocaleKeys.map_go_offline.tr()),
+                                ? Colors.green
+                                : Colors.grey,
                           ),
-                        ),
-                      ],
-                    ),
-                    if (state.pendingTrips.isEmpty)
-                      Padding(
-                        padding: const EdgeInsets.all(8),
-                        child: Text(LocaleKeys.map_no_pending_trips.tr()),
-                      ),
-                    ...state.pendingTrips.map((trip) {
-                      final tripId = (trip['trip_id'] as num).toInt();
-
-                      return ListTile(
-                        leading: _fieldIcon(Assets.images.icRoute),
-                        title: Text(
-                          LocaleKeys.map_trip_number.tr(
-                            namedArgs: {'id': '$tripId'},
-                          ),
-                        ),
-                        subtitle: Text(
-                          LocaleKeys.map_pickup_coordinates.tr(
-                            namedArgs: {
-                              'latitude': '${trip['trip_latitude']}',
-                              'longitude': '${trip['trip_longitude']}',
-                            },
-                          ),
-                        ),
-                        trailing: ElevatedButton(
-                          onPressed: () => onAccept(tripId),
-                          child: Text(LocaleKeys.map_accept_trip.tr()),
-                        ),
-                      );
+                    label: Text(switch (state.driverOnlineStatus) {
+                      DriverOnlineStatus.offline =>
+                        LocaleKeys.map_status_offline.tr(),
+                      DriverOnlineStatus.connecting =>
+                        LocaleKeys.map_status_connecting.tr(),
+                      DriverOnlineStatus.online =>
+                        LocaleKeys.map_status_online.tr(),
+                      DriverOnlineStatus.disconnecting =>
+                        LocaleKeys.map_status_disconnecting.tr(),
                     }),
-                  ] else ...[
-                    Text(
-                      LocaleKeys.map_active_trip.tr(
-                        namedArgs: {'id': '${state.tripId}'},
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed:
+                              state.driverOnlineStatus ==
+                                  DriverOnlineStatus.offline
+                              ? onOnline
+                              : null,
+                          child: Text(LocaleKeys.map_go_online.tr()),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed:
+                              state.driverOnlineStatus ==
+                                  DriverOnlineStatus.online
+                              ? onOffline
+                              : null,
+                          child: Text(LocaleKeys.map_go_offline.tr()),
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (state.pendingTrips.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.all(8),
+                      child: Text(LocaleKeys.map_no_pending_trips.tr()),
+                    ),
+                  ...state.pendingTrips.map((trip) {
+                    final tripId = (trip['trip_id'] as num).toInt();
+
+                    return ListTile(
+                      leading: _fieldIcon(Assets.images.icRoute),
+                      title: Text(
+                        LocaleKeys.map_trip_number.tr(
+                          namedArgs: {'id': '$tripId'},
+                        ),
+                      ),
+                      subtitle: Text(
+                        LocaleKeys.map_pickup_coordinates.tr(
+                          namedArgs: {
+                            'latitude': '${trip['trip_latitude']}',
+                            'longitude': '${trip['trip_longitude']}',
+                          },
+                        ),
+                      ),
+                      trailing: ElevatedButton(
+                        onPressed: () => onAccept(tripId),
+                        child: Text(LocaleKeys.map_accept_trip.tr()),
+                      ),
+                    );
+                  }),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActiveDriverTripSheet(
+    MapState state, {
+    required VoidCallback onStart,
+    required VoidCallback onComplete,
+    required VoidCallback onCancel,
+  }) {
+    final customer = state.customerProfile;
+    return DraggableScrollableSheet(
+      key: ValueKey('driver-trip-${state.tripId}'),
+      minChildSize: 0.20,
+      initialChildSize: 0.28,
+      maxChildSize: 0.78,
+      snap: true,
+      snapSizes: const [0.28],
+      builder: (context, scrollController) => Container(
+        margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x280F172A),
+              blurRadius: 18,
+              offset: Offset(0, -4),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: SingleChildScrollView(
+            controller: scrollController,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 42,
+                      height: 5,
+                      margin: const EdgeInsets.only(bottom: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade400,
+                        borderRadius: BorderRadius.circular(99),
                       ),
                     ),
-                    Text(
-                      state.tripStatus == MapTripStatus.goingToDestination
-                          ? LocaleKeys.map_driver_trip_in_progress.tr()
-                          : LocaleKeys.map_driver_trip_to_pickup.tr(),
+                  ),
+                  Text(
+                    LocaleKeys.map_active_trip.tr(
+                      namedArgs: {'id': '${state.tripId}'},
                     ),
-                    if (state.pickup != null)
-                      ListTile(
-                        dense: true,
-                        leading: const Icon(Icons.place_outlined),
-                        title: Text(LocaleKeys.map_pickup.tr()),
-                        subtitle: Text(
-                          '${state.pickup!.latitude.toStringAsFixed(5)}, '
-                          '${state.pickup!.longitude.toStringAsFixed(5)}',
-                        ),
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    state.tripStatus == MapTripStatus.goingToDestination
+                        ? LocaleKeys.map_driver_trip_in_progress.tr()
+                        : LocaleKeys.map_driver_trip_to_pickup.tr(),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 10),
+                  if (state.tripStatus == MapTripStatus.driverComing)
+                    ElevatedButton(
+                      onPressed: onStart,
+                      child: Text(LocaleKeys.map_start_trip.tr()),
+                    ),
+                  if (state.tripStatus == MapTripStatus.goingToDestination)
+                    ElevatedButton(
+                      onPressed: onComplete,
+                      child: Text(LocaleKeys.map_complete_trip.tr()),
+                    ),
+                  if (state.tripStatus == MapTripStatus.driverComing)
+                    TextButton(
+                      onPressed: onCancel,
+                      child: Text(LocaleKeys.map_cancel_trip.tr()),
+                    ),
+                  const Divider(height: 24),
+                  Text(
+                    LocaleKeys.trip_details_title.tr(),
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  if (state.pickup != null)
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(Icons.place_outlined),
+                      title: Text(LocaleKeys.map_pickup.tr()),
+                      subtitle: Text(
+                        state.pickupAddress.isNotEmpty
+                            ? state.pickupAddress
+                            : state.driverAddressesLoaded
+                            ? LocaleKeys.map_trip_address_unavailable.tr()
+                            : LocaleKeys.map_trip_address_loading.tr(),
                       ),
-                    if (state.destination != null)
-                      ListTile(
-                        dense: true,
-                        leading: const Icon(Icons.flag_outlined),
-                        title: Text(LocaleKeys.map_destination.tr()),
-                        subtitle: Text(
-                          '${state.destination!.latitude.toStringAsFixed(5)}, '
-                          '${state.destination!.longitude.toStringAsFixed(5)}',
-                        ),
+                    ),
+                  if (state.destination != null)
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(Icons.flag_outlined),
+                      title: Text(LocaleKeys.map_destination.tr()),
+                      subtitle: Text(
+                        state.destinationAddress.isNotEmpty
+                            ? state.destinationAddress
+                            : state.driverAddressesLoaded
+                            ? LocaleKeys.map_trip_address_unavailable.tr()
+                            : LocaleKeys.map_trip_address_loading.tr(),
                       ),
-                    if (state.tripStatus == MapTripStatus.driverComing)
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: onStart,
-                          child: Text(LocaleKeys.map_start_trip.tr()),
-                        ),
+                    ),
+                  const Divider(height: 24),
+                  Text(
+                    LocaleKeys.trip_customer.tr(),
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  if (customer != null)
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(Icons.person_outline),
+                      title: Text(
+                        customer.fullName.trim().isNotEmpty
+                            ? customer.fullName
+                            : customer.userName,
                       ),
-                    if (state.tripStatus == MapTripStatus.driverComing)
-                      TextButton(
-                        onPressed: onCancel,
-                        child: Text(LocaleKeys.map_cancel_trip.tr()),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (customer.fullName.trim().isNotEmpty &&
+                              customer.userName.trim().isNotEmpty)
+                            Text('@${customer.userName}'),
+                          if (customer.phoneNumber.trim().isNotEmpty)
+                            Text(customer.phoneNumber),
+                        ],
                       ),
-                    if (state.tripStatus == MapTripStatus.goingToDestination)
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: onComplete,
-                          child: Text(LocaleKeys.map_complete_trip.tr()),
-                        ),
+                    )
+                  else
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      child: Text(
+                        state.customerProfileLoaded
+                            ? LocaleKeys.map_trip_customer_unavailable.tr()
+                            : LocaleKeys.map_trip_customer_loading.tr(),
                       ),
-                    if (state.tripStatus == MapTripStatus.completed)
-                      Text(LocaleKeys.map_trip_completed.tr()),
-                  ],
+                    ),
                 ],
               ),
             ),

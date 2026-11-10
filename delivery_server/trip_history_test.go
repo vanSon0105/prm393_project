@@ -60,7 +60,7 @@ func (c historyConn) QueryContext(_ context.Context, query string, args []driver
 			columns: []string{
 				"trip_id", "trip_distance", "trip_price", "customer_id", "driver_id",
 				"trip_status_id", "status", "trip_latitude", "trip_longitude",
-				"destination_latitude", "destination_longitude", "customer_name", "driver_name",
+				"destination_latitude", "destination_longitude", "customer_name", "driver_name", "review_vote", "review_comment",
 			},
 			values: c.data.tripRows,
 		}, nil
@@ -128,8 +128,8 @@ func TestTripHistoryRejectsInvalidParameters(t *testing.T) {
 
 func TestTripHistoryCustomerUsesProfileAndPagination(t *testing.T) {
 	data := useHistoryTestDB(t, "CUSTOMER", [][]driver.Value{
-		{int64(31), int64(8), float64(42000), int64(7), int64(9), int64(4), "COMPLETED", float64(21.03), float64(105.85), float64(21.04), float64(105.86), "Customer A", "Driver B"},
-		{int64(30), int64(3), float64(22000), int64(7), nil, int64(5), "CANCEL", float64(21.03), float64(105.85), float64(21.04), float64(105.86), "Customer A", nil},
+		{int64(31), int64(8), float64(42000), int64(7), int64(9), int64(4), "COMPLETED", float64(21.03), float64(105.85), float64(21.04), float64(105.86), "Customer A", "Driver B", int64(5), "Great driver"},
+		{int64(30), int64(3), float64(22000), int64(7), nil, int64(5), "CANCEL", float64(21.03), float64(105.85), float64(21.04), float64(105.86), "Customer A", nil, nil, nil},
 	})
 	recorder, body := requestTripHistory(t, "/api/trips/history?profile_id=7&limit=1&offset=2")
 	if recorder.Code != http.StatusOK {
@@ -155,11 +155,17 @@ func TestTripHistoryCustomerUsesProfileAndPagination(t *testing.T) {
 	if trip["trip_id"] != float64(31) || trip["driver_name"] != "Driver B" {
 		t.Fatalf("unexpected trip data: %v", trip)
 	}
+	if trip["review_vote"] != float64(5) {
+		t.Fatalf("review vote not returned: %v", trip)
+	}
+	if trip["review_comment"] != "Great driver" {
+		t.Fatalf("review comment not returned: %v", trip)
+	}
 }
 
 func TestTripHistoryDriverUsesDriverID(t *testing.T) {
 	data := useHistoryTestDB(t, "DRIVER", [][]driver.Value{
-		{int64(31), int64(8), float64(42000), int64(7), int64(9), int64(4), "COMPLETED", float64(21.03), float64(105.85), float64(21.04), float64(105.86), "Customer A", "Driver B"},
+		{int64(31), int64(8), float64(42000), int64(7), int64(9), int64(4), "COMPLETED", float64(21.03), float64(105.85), float64(21.04), float64(105.86), "Customer A", "Driver B", int64(4), "Safe ride"},
 	})
 	recorder, body := requestTripHistory(t, "/api/trips/history?profile_id=9")
 	if recorder.Code != http.StatusOK {
@@ -170,6 +176,10 @@ func TestTripHistoryDriverUsesDriverID(t *testing.T) {
 	}
 	if body["role"] != "DRIVER" || len(body["data"].([]interface{})) != 1 {
 		t.Fatalf("unexpected response: %v", body)
+	}
+	trip := body["data"].([]interface{})[0].(map[string]interface{})
+	if trip["review_vote"] != float64(4) || trip["review_comment"] != "Safe ride" {
+		t.Fatalf("driver review not returned: %v", trip)
 	}
 }
 

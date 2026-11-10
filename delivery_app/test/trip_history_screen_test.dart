@@ -5,6 +5,7 @@ import 'package:delivery_app/features/auth/domain/entities/role.dart';
 import 'package:delivery_app/features/app_state.dart';
 import 'package:delivery_app/features/app_view_model.dart';
 import 'package:delivery_app/features/detail_delivery/detail_delivery_page.dart';
+import 'package:delivery_app/features/driver_rating/data/trip_rating_repository.dart';
 import 'package:delivery_app/features/trip/data/models/trip_history_model.dart';
 import 'package:delivery_app/features/trip/data/repositories/trip_history_remote_repository.dart';
 import 'package:delivery_app/features/trip/presentation/providers/trip_history_provider.dart';
@@ -30,6 +31,9 @@ class _HistoryRepository extends TripHistoryRemoteRepository {
   _HistoryRepository() : super(ApiProvider(Dio()));
 
   final calls = <(int, int)>[];
+  late final ratingRepository = _RecordingRatingRepository(this);
+  int? rating;
+  String? reviewComment;
 
   @override
   Future<TripHistoryPageData> getHistory({
@@ -51,10 +55,35 @@ class _HistoryRepository extends TripHistoryRemoteRepository {
           destinationLongitude: 105.86,
           distanceKm: offset == 0 ? 8 : null,
           price: offset == 0 ? 42000 : null,
+          reviewVote: offset == 0 ? rating : null,
+          reviewComment: offset == 0 ? reviewComment : null,
         ),
       ],
       hasMore: offset == 0,
     );
+  }
+}
+
+class _RecordingRatingRepository extends TripRatingRepository {
+  _RecordingRatingRepository(this.history) : super(ApiProvider(Dio()));
+
+  final _HistoryRepository history;
+  int? submittedTripId;
+  String? submittedComment;
+  bool fail = false;
+  bool duplicate = false;
+
+  @override
+  Future<void> submit({
+    required int tripId,
+    required int vote,
+    required String comment,
+  }) async {
+    if (duplicate) throw const TripAlreadyRatedException();
+    if (fail) throw StateError('Review unavailable');
+    submittedTripId = tripId;
+    submittedComment = comment;
+    history.rating = vote;
   }
 }
 
@@ -80,6 +109,9 @@ Future<void> _start(
               AppState(role: role, profileId: 7),
             ),
             tripHistoryRepositoryProvider.overrideWithValue(repository),
+            tripRatingRepositoryProvider.overrideWithValue(
+              repository.ratingRepository,
+            ),
           ],
           child: MaterialApp(
             locale: context.locale,
@@ -141,6 +173,92 @@ void main() {
     expect(repository.calls, [(7, 0)]);
     expect(find.text('Customer A'), findsOneWidget);
     expect(find.byTooltip('Choose role'), findsNothing);
+    await tester.tap(find.text('Trip 31'));
+    await tester.pumpAndSettle();
+    expect(find.text('No customer rating yet'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('driver can read stars and comment for a completed trip', (
+    tester,
+  ) async {
+    final repository = _HistoryRepository()
+      ..rating = 4
+      ..reviewComment = 'Safe ride';
+    await _start(tester, repository, role: Role.driver);
+
+    expect(find.text('4/5 stars'), findsOneWidget);
+    await tester.tap(find.text('Trip 31'));
+    await tester.pumpAndSettle();
+    expect(find.text('Customer rating'), findsOneWidget);
+    expect(find.text('4/5 stars'), findsOneWidget);
+    expect(find.text('Customer comment'), findsOneWidget);
+    expect(find.text('Safe ride'), findsOneWidget);
+    expect(find.text('Rate driver'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('customer can skip rating and submit later from history', (
+    tester,
+  ) async {
+    final repository = _HistoryRepository();
+    await _start(tester, repository);
+
+    await tester.tap(find.text('Trip 31'));
+    await tester.pumpAndSettle();
+    expect(find.text('Rate driver'), findsOneWidget);
+
+    await tester.tap(find.text('Rate driver'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Later'));
+    await tester.pumpAndSettle();
+    expect(repository.rating, isNull);
+    expect(find.text('Rate driver'), findsOneWidget);
+
+    await tester.tap(find.text('Rate driver'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.byType(TextField), 250);
+    await tester.enterText(find.byType(TextField), 'Great trip');
+    repository.ratingRepository.fail = true;
+    await tester.tap(find.text('Submit rating'));
+    await tester.pumpAndSettle();
+    expect(
+      find.text('Could not submit your rating. Please try again.'),
+      findsOneWidget,
+    );
+    expect(repository.rating, isNull);
+    repository.ratingRepository.fail = false;
+    await tester.tap(find.text('Submit rating'));
+    await tester.pumpAndSettle();
+
+    expect(repository.ratingRepository.submittedTripId, 31);
+    expect(repository.ratingRepository.submittedComment, 'Great trip');
+    await tester.tap(find.text('Trip 31'));
+    await tester.pumpAndSettle();
+    expect(find.text('You rated 5 stars'), findsOneWidget);
+    expect(find.text('Rate driver'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('already rated trip closes the form and prevents another vote', (
+    tester,
+  ) async {
+    final repository = _HistoryRepository();
+    repository.ratingRepository.duplicate = true;
+    await _start(tester, repository);
+
+    await tester.tap(find.text('Trip 31'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Rate driver'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Submit rating'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('This trip has already been rated.'), findsOneWidget);
+    expect(repository.rating, isNull);
+    await tester.tap(find.text('Trip 31'));
+    await tester.pumpAndSettle();
+    expect(find.text('Rate driver'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 }

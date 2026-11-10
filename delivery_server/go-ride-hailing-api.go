@@ -3356,11 +3356,15 @@ func getTripHistoryByProfile(w http.ResponseWriter, r *http.Request) {
 		       t.trip_latitude, t.trip_longitude,
 		       t.destination_latitude, t.destination_longitude,
 		       COALESCE(NULLIF(cp.full_name, ''), cp.user_name),
-		       COALESCE(NULLIF(dp.full_name, ''), dp.user_name)
+		       COALESCE(NULLIF(dp.full_name, ''), dp.user_name),
+		       rt.vote, rt.comment
 		FROM Trip t
 		JOIN TripStatus ts ON ts.trip_status_id = t.trip_status_id
 		JOIN Profile cp ON cp.profile_id = t.customer_id
 		LEFT JOIN Profile dp ON dp.profile_id = t.driver_id
+		LEFT JOIN ReviewTrip rt ON rt.reviewId = (
+			SELECT MAX(rt2.reviewId) FROM ReviewTrip rt2 WHERE rt2.trip_id = t.trip_id
+		)
 		WHERE %s = ? AND t.trip_status_id IN (?, ?)
 		ORDER BY t.trip_id DESC
 		LIMIT ? OFFSET ?
@@ -3378,17 +3382,17 @@ func getTripHistoryByProfile(w http.ResponseWriter, r *http.Request) {
 	history := make([]map[string]interface{}, 0, limit)
 	for rows.Next() {
 		var tripID, customerID, statusID int
-		var distance sql.NullInt64
+		var distance, reviewVote sql.NullInt64
 		var price sql.NullFloat64
 		var driverID sql.NullInt64
-		var status, customerName, driverName sql.NullString
+		var status, customerName, driverName, reviewComment sql.NullString
 		var pickupLat, pickupLng, destinationLat, destinationLng float64
 
 		if err := rows.Scan(
 			&tripID, &distance, &price,
 			&customerID, &driverID, &statusID, &status,
 			&pickupLat, &pickupLng, &destinationLat, &destinationLng,
-			&customerName, &driverName,
+			&customerName, &driverName, &reviewVote, &reviewComment,
 		); err != nil {
 			tripJSONErrorV2(w, http.StatusInternalServerError, "Không thể đọc lịch sử chuyến đi")
 			return
@@ -3408,6 +3412,8 @@ func getTripHistoryByProfile(w http.ResponseWriter, r *http.Request) {
 			"trip_longitude":        pickupLng,
 			"destination_latitude":  destinationLat,
 			"destination_longitude": destinationLng,
+			"review_vote":           nil,
+			"review_comment":        nil,
 		}
 		if distance.Valid {
 			item["trip_distance"] = distance.Int64
@@ -3420,6 +3426,12 @@ func getTripHistoryByProfile(w http.ResponseWriter, r *http.Request) {
 		}
 		if driverName.Valid {
 			item["driver_name"] = driverName.String
+		}
+		if reviewVote.Valid {
+			item["review_vote"] = reviewVote.Int64
+		}
+		if reviewComment.Valid {
+			item["review_comment"] = reviewComment.String
 		}
 		history = append(history, item)
 	}

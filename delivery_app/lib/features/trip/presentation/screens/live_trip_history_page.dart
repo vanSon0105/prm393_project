@@ -1,4 +1,5 @@
 import 'package:delivery_app/features/auth/domain/entities/role.dart';
+import 'package:delivery_app/features/driver_rating/driver_rating_screen.dart';
 import 'package:delivery_app/generated/locale_keys.g.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
@@ -33,6 +34,7 @@ class _LiveTripHistoryPageState extends ConsumerState<LiveTripHistoryPage> {
   bool _loadingMore = false;
   bool? _moreHasMore;
   bool _moreFailed = false;
+  final Set<int> _knownRatedTripIds = {};
 
   Future<void> _refresh() async {
     setState(() {
@@ -68,6 +70,33 @@ class _LiveTripHistoryPageState extends ConsumerState<LiveTripHistoryPage> {
       if (mounted) setState(() => _moreFailed = true);
     } finally {
       if (mounted) setState(() => _loadingMore = false);
+    }
+  }
+
+  Future<void> _rateTrip(TripHistoryEntry trip) async {
+    final result = await Navigator.of(context).push<TripRatingResult>(
+      MaterialPageRoute(
+        builder: (_) => DriverRatingScreen(
+          tripId: trip.tripId,
+          driverName: trip.driverName,
+        ),
+      ),
+    );
+    if (!mounted || result == null || result == TripRatingResult.later) return;
+    if (result == TripRatingResult.alreadyRated) {
+      setState(() => _knownRatedTripIds.add(trip.tripId));
+    }
+    await _refresh();
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            result == TripRatingResult.alreadyRated
+                ? LocaleKeys.rating_already_submitted.tr()
+                : LocaleKeys.trip_thank_rating.tr(),
+          ),
+        ),
+      );
     }
   }
 
@@ -284,6 +313,20 @@ class _LiveTripHistoryPageState extends ConsumerState<LiveTripHistoryPage> {
                 fontWeight: FontWeight.w600,
               ),
             ),
+            if (widget.role == Role.driver && trip.reviewVote != null) ...[
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  const Icon(Icons.star_rounded, color: Colors.amber, size: 20),
+                  const SizedBox(width: 4),
+                  Text(
+                    LocaleKeys.trip_review_stars.tr(
+                      namedArgs: {'stars': '${trip.reviewVote}'},
+                    ),
+                  ),
+                ],
+              ),
+            ],
             const SizedBox(height: 8),
             Text(
               '${LocaleKeys.trip_pickup.tr()}: '
@@ -331,6 +374,40 @@ class _LiveTripHistoryPageState extends ConsumerState<LiveTripHistoryPage> {
               ),
       ),
       _detailRow(LocaleKeys.trip_total_fee.tr(), _price(trip)),
+      if (widget.role == Role.driver && trip.isCompleted) ...[
+        _detailRow(
+          LocaleKeys.trip_customer_rating.tr(),
+          trip.reviewVote == null
+              ? LocaleKeys.trip_review_pending.tr()
+              : LocaleKeys.trip_review_stars.tr(
+                  namedArgs: {'stars': '${trip.reviewVote}'},
+                ),
+        ),
+        if (trip.reviewComment?.trim().isNotEmpty == true)
+          _detailRow(
+            LocaleKeys.trip_review_comment.tr(),
+            trip.reviewComment!.trim(),
+          ),
+      ],
+      if (widget.role == Role.customer && trip.isCompleted)
+        Padding(
+          padding: const EdgeInsets.only(top: 16),
+          child:
+              trip.reviewVote == null &&
+                  !_knownRatedTripIds.contains(trip.tripId)
+              ? FilledButton(
+                  onPressed: () => _rateTrip(trip),
+                  child: Text(LocaleKeys.trip_rate_driver.tr()),
+                )
+              : Text(
+                  trip.reviewVote == null
+                      ? LocaleKeys.rating_already_submitted.tr()
+                      : LocaleKeys.trip_rating_done.tr(
+                          namedArgs: {'stars': '${trip.reviewVote}'},
+                        ),
+                  textAlign: TextAlign.center,
+                ),
+        ),
     ],
   );
 
