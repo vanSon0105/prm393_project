@@ -299,6 +299,8 @@ class MapViewModel extends _$MapViewModel {
         state = state.copyWith(
           tripDistance: tripDistance,
           tripPrice: tripPrice,
+          destination: destination,
+          route: route,
           tripStatus: MapTripStatus.idle,
         );
       } else {

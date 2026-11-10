@@ -92,4 +92,6 @@ class MapState {
       tripPrice: tripPrice ?? this.tripPrice,
     );
   }
+
+  static const int undefine = -1;
 }
