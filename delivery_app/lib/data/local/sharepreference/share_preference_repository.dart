@@ -1,7 +1,11 @@
+import 'dart:convert';
+
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'model/data_saved.dart';
+
 // Define Preference key here
-enum SharePreferenceKey { isLogged, charlesIp }
+enum SharePreferenceKey { isLogged, charlesIp, dataKey }
 
 typedef SPKey = SharePreferenceKey;
 
@@ -32,7 +36,15 @@ class SharePreferenceRepository {
 }
 
 extension AppSharePreferences on SharePreferenceRepository {
-  bool get isLogged => getBool(SPKey.isLogged);
+  Future<void> saveData(DataSaved? data) async {
+    await setString(SPKey.dataKey, data == null ? '' : jsonEncode(data.toJson));
+  }
+
+  DataSaved? get data {
+    final json = getString(SPKey.dataKey);
+    if (json.isEmpty) return null;
+    return DataSaved.fromJson(json);
+  }
 
   String get charlesIp => getString(SPKey.charlesIp);
 }

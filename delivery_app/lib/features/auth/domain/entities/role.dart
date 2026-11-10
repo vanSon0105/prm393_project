@@ -12,6 +12,10 @@ enum Role {
   final String value;
 
   const Role({required this.value});
+
+  static Role valueOf(String role) {
+    return Role.values.firstWhere((e) => e.value == role);
+  }
 }
 
 extension RoleEx on Role {

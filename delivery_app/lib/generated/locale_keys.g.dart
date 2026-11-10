@@ -20,6 +20,8 @@ abstract class LocaleKeys {
   static const login_btn_login = 'login_btn_login';
   static const login_no_account_txt = 'login_no_account_txt';
   static const login_btn_register = 'login_btn_register';
+  static const login_register_as = 'login_register_as';
+  static const login_unknown_role = 'login_unknown_role';
   static const rating_safe_driving = 'rating_safe_driving';
   static const rating_friendly = 'rating_friendly';
   static const rating_punctual = 'rating_punctual';
