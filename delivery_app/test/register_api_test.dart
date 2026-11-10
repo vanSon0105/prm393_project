@@ -8,7 +8,6 @@ import 'package:delivery_app/features/auth/data/repositories/register_driver_par
 import 'package:delivery_app/features/auth/data/repositories/register_user_param.dart';
 import 'package:delivery_app/features/auth/domain/entities/login_status.dart';
 import 'package:delivery_app/features/auth/domain/entities/register_account.dart';
-import 'package:delivery_app/features/auth/domain/entities/role.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -154,18 +153,10 @@ void main() {
     });
 
     final approved = await repository.login(
-      param: LoginParam(
-        userName: 'approved_driver',
-        password: 'secret123',
-        role: Role.driver,
-      ),
+      param: LoginParam(userName: 'approved_driver', password: 'secret123'),
     );
     final rejected = await repository.login(
-      param: LoginParam(
-        userName: 'rejected_driver',
-        password: 'secret123',
-        role: Role.driver,
-      ),
+      param: LoginParam(userName: 'rejected_driver', password: 'secret123'),
     );
     expect(LoginStatus.valueOf(approved.data!.status!), LoginStatus.approved);
     expect(LoginStatus.valueOf(rejected.data!.status!), LoginStatus.reject);

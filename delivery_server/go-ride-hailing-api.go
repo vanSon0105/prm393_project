@@ -1020,7 +1020,6 @@ func loginUser(w http.ResponseWriter, r *http.Request) {
 	type LoginRequest struct {
 		UserName string `json:"user_name"`
 		Password string `json:"password"`
-		Role     string `json:"role"`
 	}
 
 	type LoginResponseDetail struct {
@@ -1047,9 +1046,9 @@ func loginUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.UserName == "" || req.Password == "" || req.Role == "" {
+	if req.UserName == "" || req.Password == "" {
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Vui lòng nhập đầy đủ user_name, password và role"})
+		json.NewEncoder(w).Encode(map[string]string{"error": "Vui lòng nhập đầy đủ user_name và password"})
 		return
 	}
 
@@ -1061,22 +1060,43 @@ func loginUser(w http.ResponseWriter, r *http.Request) {
 		FROM Profile p
 		INNER JOIN Role r ON p.role_id = r.role_id
 		WHERE p.user_name = ?
+		LIMIT 2
 	`
-	err = db.QueryRow(queryProfile, req.UserName).Scan(&profileID, &dbPassword, &dbRoleValue)
-
 	invalidCredentialsError := map[string]string{"error": "Tài khoản hoặc mật khẩu không chính xác"}
-
-	if err == sql.ErrNoRows {
+	rows, err := db.Query(queryProfile, req.UserName)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Lỗi hệ thống khi kiểm tra thông tin tài khoản"})
+		return
+	}
+	defer rows.Close()
+	if !rows.Next() {
+		if rows.Err() != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(map[string]string{"error": "Lỗi hệ thống khi kiểm tra thông tin tài khoản"})
+			return
+		}
 		w.WriteHeader(http.StatusUnauthorized)
 		json.NewEncoder(w).Encode(invalidCredentialsError)
 		return
-	} else if err != nil {
+	}
+	if err := rows.Scan(&profileID, &dbPassword, &dbRoleValue); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Lỗi hệ thống khi kiểm tra thông tin tài khoản"})
+		return
+	}
+	if rows.Next() {
+		w.WriteHeader(http.StatusConflict)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Tên đăng nhập bị trùng; vui lòng liên hệ quản trị viên"})
+		return
+	}
+	if rows.Err() != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(map[string]string{"error": "Lỗi hệ thống khi kiểm tra thông tin tài khoản"})
 		return
 	}
 
-	if dbPassword != req.Password || req.Role != dbRoleValue {
+	if dbPassword != req.Password {
 		w.WriteHeader(http.StatusUnauthorized)
 		json.NewEncoder(w).Encode(invalidCredentialsError)
 		return
@@ -1085,7 +1105,7 @@ func loginUser(w http.ResponseWriter, r *http.Request) {
 	loginStatus := "APPROVED"
 	msg := "Đăng nhập thành công"
 
-	if req.Role == "DRIVER" {
+	if dbRoleValue == "DRIVER" {
 		var active int
 		queryDriver := "SELECT active FROM Driver WHERE driver_id = ?"
 		err = db.QueryRow(queryDriver, profileID).Scan(&active)
@@ -1121,7 +1141,7 @@ func loginUser(w http.ResponseWriter, r *http.Request) {
 		Data: LoginResponseDetail{
 			ProfileID: profileID,
 			UserName:  req.UserName,
-			Role:      req.Role,
+			Role:      dbRoleValue,
 			Status:    loginStatus,
 			Message:   msg,
 		},

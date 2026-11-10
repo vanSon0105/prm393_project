@@ -1,4 +1,5 @@
 import 'package:delivery_app/di/repository_module.dart';
+import 'package:delivery_app/features/app_view_model.dart';
 import 'package:delivery_app/features/auth/data/models/login_model.dart';
 import 'package:delivery_app/features/auth/data/models/register_model.dart';
 import 'package:delivery_app/features/auth/data/models/vehicle_type_model.dart';
@@ -30,7 +31,7 @@ void main() {
     AppLoading.instance.configLoading();
   });
 
-  testWidgets('approved driver enters the app; rejected driver can resubmit', (
+  testWidgets('login routes by stored role and rejected driver can resubmit', (
     tester,
   ) async {
     final repository = _DriverReviewRepository();
@@ -48,6 +49,11 @@ void main() {
           path: '/map',
           name: '/map',
           builder: (_, _) => const Scaffold(body: Text('Driver map')),
+        ),
+        GoRoute(
+          path: '/admin',
+          name: '/admin',
+          builder: (_, _) => const Scaffold(body: Text('Admin home')),
         ),
         GoRoute(
           path: '/driver/:driverId/resubmit',
@@ -88,19 +94,18 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Driver'));
-    await tester.pump();
     await tester.enterText(find.byType(TextField).first, 'approved_driver');
     await tester.enterText(find.byType(TextField).last, 'secret123');
     await tester.tap(find.text('Sign in'));
     await tester.pumpAndSettle();
     expect(find.text('Driver map'), findsOneWidget);
-    expect(repository.lastRole, Role.driver);
+    expect(repository.lastRequest?.bodyParams, {
+      'user_name': 'approved_driver',
+      'password': 'secret123',
+    });
 
     router.go('/login');
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Driver'));
-    await tester.pump();
     await tester.enterText(find.byType(TextField).first, 'rejected_driver');
     await tester.enterText(find.byType(TextField).last, 'secret123');
     await tester.tap(find.text('Sign in'));
@@ -113,8 +118,6 @@ void main() {
     expect(find.text('Sign in'), findsOneWidget);
     expect(resubmitRepository.saved, isNull);
 
-    await tester.tap(find.text('Driver'));
-    await tester.pump();
     await tester.enterText(find.byType(TextField).first, 'rejected_driver');
     await tester.enterText(find.byType(TextField).last, 'secret123');
     await tester.tap(find.text('Sign in'));
@@ -130,8 +133,6 @@ void main() {
       ..licensePlate = '59A1-67890';
     await tester.tap(find.text('Go to sign in'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Driver'));
-    await tester.pump();
     await tester.enterText(find.byType(TextField).first, 'rejected_driver');
     await tester.enterText(find.byType(TextField).last, 'secret123');
     await tester.tap(find.text('Sign in'));
@@ -151,12 +152,40 @@ void main() {
           .onPressed,
       isNotNull,
     );
+
+    router.go('/login');
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).first, 'customer');
+    await tester.enterText(find.byType(TextField).last, 'secret123');
+    await tester.tap(find.text('Sign in'));
+    await tester.pumpAndSettle();
+    expect(find.text('Driver map'), findsOneWidget);
+    expect(
+      ProviderScope.containerOf(tester.element(find.text('Driver map')))
+          .read(appViewModelProvider)
+          .role,
+      Role.customer,
+    );
+
+    router.go('/login');
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).first, 'admin');
+    await tester.enterText(find.byType(TextField).last, 'secret123');
+    await tester.tap(find.text('Sign in'));
+    await tester.pumpAndSettle();
+    expect(find.text('Admin home'), findsOneWidget);
+    expect(
+      ProviderScope.containerOf(tester.element(find.text('Admin home')))
+          .read(appViewModelProvider)
+          .role,
+      Role.admin,
+    );
     expect(tester.takeException(), isNull);
   });
 }
 
 class _DriverReviewRepository implements AuthenticationRepository {
-  Role? lastRole;
+  LoginParam? lastRequest;
 
   @override
   Future<RegisterModel> registerCustomerAccount(RegisterUserParam param) =>
@@ -168,13 +197,18 @@ class _DriverReviewRepository implements AuthenticationRepository {
 
   @override
   Future<LoginModel> login({required LoginParam param}) async {
-    lastRole = param.role;
+    lastRequest = param;
     final rejected = param.userName == 'rejected_driver';
+    final role = switch (param.userName) {
+      'customer' => 'CUSTOMER',
+      'admin' => 'ADMIN',
+      _ => 'DRIVER',
+    };
     return LoginModel(
       data: LoginData(
         profileId: rejected ? 8 : 7,
         userName: param.userName,
-        role: 'DRIVER',
+        role: role,
         status: rejected ? 'REJECTED' : 'APPROVED',
         message: rejected ? 'Document is unclear' : 'Welcome',
       ),

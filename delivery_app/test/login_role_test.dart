@@ -1,4 +1,4 @@
-import 'package:delivery_app/features/auth/domain/entities/role.dart';
+import 'package:delivery_app/features/auth/data/repositories/login_param.dart';
 import 'package:delivery_app/features/auth/login/login_page.dart';
 import 'package:delivery_app/features/auth/login/login_view_model.dart';
 import 'package:easy_localization/easy_localization.dart';
@@ -9,15 +9,16 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class _RecordingLoginViewModel extends LoginViewModel {
-  Role? submittedRole;
+  String? submittedUserName;
+  String? submittedPassword;
 
   @override
   Future<void> login({
     required String userName,
     required String password,
-    required Role role,
   }) async {
-    submittedRole = role;
+    submittedUserName = userName;
+    submittedPassword = password;
   }
 }
 
@@ -29,7 +30,7 @@ void main() {
     await EasyLocalization.ensureInitialized();
   });
 
-  testWidgets('Login submits the role currently selected on screen', (
+  testWidgets('Login submits credentials without asking for a role', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(390, 844);
@@ -63,8 +64,8 @@ void main() {
     expect(find.text('Enter your username'), findsOneWidget);
     expect(find.text('Enter your password'), findsOneWidget);
 
-    await tester.tap(find.text('Driver'));
-    await tester.pump();
+    expect(find.text('Choose a role to continue.'), findsNothing);
+    expect(find.text('Driver'), findsNothing);
     await tester.enterText(find.byType(TextField).first, 'driver');
     await tester.enterText(find.byType(TextField).last, 'qwer1212!');
     expect(
@@ -89,7 +90,22 @@ void main() {
     );
     await tester.tap(find.text('Sign in'));
 
-    expect(viewModel.submittedRole, Role.driver);
+    expect(viewModel.submittedUserName, 'driver');
+    expect(viewModel.submittedPassword, 'qwer1212!');
+    await tester.tap(find.textContaining('Register', findRichText: true));
+    await tester.pumpAndSettle();
+    expect(find.text('Create an account as'), findsOneWidget);
+    expect(find.text('Customer'), findsOneWidget);
+    expect(find.text('Driver'), findsOneWidget);
+    expect(find.text('Admin'), findsNothing);
     expect(tester.takeException(), isNull);
+  });
+
+  test('Login request contains only username and password', () {
+    final request = LoginParam(userName: 'driver', password: 'secret123');
+    expect(request.bodyParams, {
+      'user_name': 'driver',
+      'password': 'secret123',
+    });
   });
 }

@@ -8,14 +8,14 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class LoginPage extends StatefulWidget {
+class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
 
   @override
-  State<LoginPage> createState() => _LoginPageState();
+  ConsumerState<LoginPage> createState() => _LoginPageState();
 }
 
-class _LoginPageState extends State<LoginPage> {
+class _LoginPageState extends ConsumerState<LoginPage> {
   final userController = TextEditingController();
   final passController = TextEditingController();
   bool _obscurePassword = true;
@@ -29,6 +29,7 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
+    ref.watch(loginViewModelProvider);
     return AppScaffold(
       showAppbar: false,
       backgroundColor: Colors.white,
@@ -65,54 +66,6 @@ class _LoginPageState extends State<LoginPage> {
               Text(
                 LocaleKeys.login_sub_title_role.tr(),
                 style: const TextStyle(fontSize: 16, color: Colors.grey),
-              ),
-              const SizedBox(height: 24),
-              Consumer(
-                builder: (context, ref, child) {
-                  final loginState = ref.watch(loginViewModelProvider);
-                  final loginViewModel = ref.read(
-                    loginViewModelProvider.notifier,
-                  );
-                  return Row(
-                    children: [
-                      Expanded(
-                        child: _buildRoleButton(
-                          Role.customer,
-                          loginState.currentRole,
-                          Icons.account_circle_outlined,
-                          LocaleKeys.login_customer_txt.tr(),
-                          () {
-                            loginViewModel.changeRole(Role.customer);
-                          },
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _buildRoleButton(
-                          Role.driver,
-                          loginState.currentRole,
-                          Icons.local_shipping_outlined,
-                          LocaleKeys.login_driver_txt.tr(),
-                          () {
-                            loginViewModel.changeRole(Role.driver);
-                          },
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _buildRoleButton(
-                          Role.admin,
-                          loginState.currentRole,
-                          Icons.settings_outlined,
-                          LocaleKeys.login_admin_txt.tr(),
-                          () {
-                            loginViewModel.changeRole(Role.admin);
-                          },
-                        ),
-                      ),
-                    ],
-                  );
-                },
               ),
               const SizedBox(height: 32),
               Text(
@@ -160,134 +113,96 @@ class _LoginPageState extends State<LoginPage> {
               SizedBox(
                 width: double.infinity,
                 height: 52,
-                child: Consumer(
-                  builder: (context, ref, child) {
-                    final loginViewModel = ref.read(
-                      loginViewModelProvider.notifier,
-                    );
-                    final state = ref.watch(loginViewModelProvider);
-                    return ElevatedButton(
-                      onPressed: () {
-                        loginViewModel.login(
+                child: ElevatedButton(
+                  onPressed: () {
+                    ref
+                        .read(loginViewModelProvider.notifier)
+                        .login(
                           userName: userController.text,
                           password: passController.text,
-                          role: state.currentRole,
                         );
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: ColorName.blue,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        elevation: 0,
-                      ),
-                      child: Text(
-                        LocaleKeys.login_btn_login.tr(),
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                    );
                   },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: ColorName.blue,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 0,
+                  ),
+                  child: Text(
+                    LocaleKeys.login_btn_login.tr(),
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(height: 24),
-              Consumer(
-                builder: (context, ref, child) {
-                  final loginState = ref.watch(loginViewModelProvider);
-                  return Center(
-                    child: InkWell(
-                      onTap: () async {
-                        final accepted = loginState.currentRole == Role.driver
-                            ? (await AppNavigate.instance.gotoDriverTerms())
-                            : true;
-                        if (accepted) {
-                          AppNavigate.instance.gotoRegister(
-                            loginState.currentRole,
-                          );
-                        }
-                      },
-                      child: RichText(
-                        text: TextSpan(
-                          style: const TextStyle(
-                            fontSize: 14,
-                            color: ColorName.black,
-                          ),
+              Center(
+                child: InkWell(
+                  onTap: () async {
+                    final role = await showModalBottomSheet<Role>(
+                      context: context,
+                      showDragHandle: true,
+                      builder: (context) => SafeArea(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            TextSpan(
-                              text: LocaleKeys.login_no_account_txt.tr(),
+                            Text(
+                              LocaleKeys.login_register_as.tr(),
+                              style: Theme.of(context).textTheme.titleLarge,
                             ),
-                            TextSpan(
-                              text: LocaleKeys.login_btn_register.tr(),
-                              style: const TextStyle(
-                                color: ColorName.blue,
-                                fontWeight: FontWeight.bold,
+                            ListTile(
+                              leading: const Icon(
+                                Icons.account_circle_outlined,
                               ),
+                              title: Text(LocaleKeys.login_customer_txt.tr()),
+                              onTap: () =>
+                                  Navigator.pop(context, Role.customer),
+                            ),
+                            ListTile(
+                              leading: const Icon(
+                                Icons.local_shipping_outlined,
+                              ),
+                              title: Text(LocaleKeys.login_driver_txt.tr()),
+                              onTap: () => Navigator.pop(context, Role.driver),
                             ),
                           ],
                         ),
                       ),
+                    );
+                    if (!mounted || role == null) return;
+                    if (role == Role.driver &&
+                        !await AppNavigate.instance.gotoDriverTerms()) {
+                      return;
+                    }
+                    if (!mounted) return;
+                    AppNavigate.instance.gotoRegister(role);
+                  },
+                  child: RichText(
+                    text: TextSpan(
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: ColorName.black,
+                      ),
+                      children: [
+                        TextSpan(text: LocaleKeys.login_no_account_txt.tr()),
+                        TextSpan(
+                          text: LocaleKeys.login_btn_register.tr(),
+                          style: const TextStyle(
+                            color: ColorName.blue,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
                     ),
-                  );
-                },
+                  ),
+                ),
               ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildRoleButton(
-    Role role,
-    Role currentRole,
-    IconData icon,
-    String label,
-    void Function() onTap,
-  ) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF3F4F6),
-          borderRadius: BorderRadius.circular(12),
-          border: currentRole == role
-              ? Border.all(color: Colors.black12, width: 1)
-              : null,
-          boxShadow: currentRole == role
-              ? [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ]
-              : null,
-        ),
-        child: Column(
-          children: [
-            Icon(
-              icon,
-              color: currentRole == role
-                  ? const Color(0xFF2F76DB)
-                  : Colors.grey,
-              size: 24,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: currentRole == role
-                    ? FontWeight.bold
-                    : FontWeight.normal,
-                color: currentRole == role ? Colors.black87 : Colors.grey,
-              ),
-            ),
-          ],
         ),
       ),
     );
