@@ -1,8 +1,9 @@
-import 'dart:convert';
-
 import 'package:delivery_app/features/map/data/models/trip_model.dart';
 import 'package:delivery_app/features/map/data/repositories/accept_trip_param.dart';
+import 'package:delivery_app/features/map/data/repositories/active_driver_trip_param.dart';
 import 'package:delivery_app/features/map/data/repositories/book_param.dart';
+import 'package:delivery_app/features/map/data/repositories/cancel_customer_trip_param.dart';
+import 'package:delivery_app/features/map/data/repositories/cancel_driver_trip_param.dart';
 import 'package:delivery_app/features/map/data/repositories/complete_trip_param.dart';
 import 'package:delivery_app/features/map/data/repositories/start_trip_param.dart';
 import 'package:delivery_app/features/map/data/repositories/trip_param.dart';
@@ -19,11 +20,22 @@ class MapRepositoryImpl extends MapRepository {
 
   @override
   Future<TripModel?> getTripActive({required int customerId}) async {
-    try {
-      return await apiProvider.requestApi(param: TripParam(customerId));
-    } catch (e) {
-      return null;
+    final response = await apiProvider.requestApi(param: TripParam(customerId));
+    if (response is! Map) {
+      throw const FormatException('Invalid active trip response');
     }
+    return TripModel.fromJson(Map<String, dynamic>.from(response));
+  }
+
+  @override
+  Future<TripModel?> getActiveDriverTrip({required int driverId}) async {
+    final response = await apiProvider.requestApi(
+      param: ActiveDriverTripParam(driverId),
+    );
+    if (response is! Map) {
+      throw const FormatException('Invalid active driver trip response');
+    }
+    return TripModel.fromJson(Map<String, dynamic>.from(response));
   }
 
   @override
@@ -71,35 +83,23 @@ class MapRepositoryImpl extends MapRepository {
     debugPrint('------- Complete trip : $response');
   }
 
-  Map<String, dynamic> _responseBody(dynamic data) {
-    if (data is Map) return Map<String, dynamic>.from(data);
-    if (data is String && data.isNotEmpty) {
-      try {
-        return Map<String, dynamic>.from(jsonDecode(data) as Map);
-      } catch (_) {
-        return {'error': data};
-      }
-    }
-    return <String, dynamic>{};
-  }
-
-  String _errorMessage(Map<String, dynamic> body, String fallback) {
-    final error = body['error'] ?? body['message'];
-    return error?.toString().isNotEmpty == true ? error.toString() : fallback;
-  }
-
   @override
   Future<void> cancelCustomerTrip({
     required int customerId,
     required int tripId,
-  }) {
-    // TODO: implement cancelCustomerTrip
-    throw UnimplementedError();
+  }) async {
+    await apiProvider.requestApi(
+      param: CancelCustomerTripParam(tripId: tripId, customerId: customerId),
+    );
   }
 
   @override
-  Future<void> cancelDriverTrip({required int driverId, required int tripId}) {
-    // TODO: implement cancelDriverTrip
-    throw UnimplementedError();
+  Future<void> cancelDriverTrip({
+    required int driverId,
+    required int tripId,
+  }) async {
+    await apiProvider.requestApi(
+      param: CancelDriverTripParam(tripId: tripId, driverId: driverId),
+    );
   }
 }

@@ -147,11 +147,13 @@ func main() {
 	// User (Customer) APIs
 	r.HandleFunc("/api/user/trips/book", bookTripV2).Methods("POST")
 	r.HandleFunc("/api/user/trips/active", getActiveCustomerTripV2).Methods("GET")
+	r.HandleFunc("/api/trips/history", getTripHistoryByProfile).Methods("GET")
 	r.HandleFunc("/api/user/trips/{id}/cancel", cancelTrip).Methods("POST")
 	r.HandleFunc("/api/user/drivers/review", reviewDriver).Methods("POST")
 
 	// Driver APIs
 	r.HandleFunc("/api/driver/trips/{id}/accept", acceptTripV2).Methods("POST")
+	r.HandleFunc("/api/driver/trips/active", getActiveDriverTripV2).Methods("GET")
 	r.HandleFunc("/api/driver/trips/{id}/complete", completeTripV2).Methods("POST")
 	r.HandleFunc("/api/driver/trips/{id}/start", startTripV2).Methods("POST")
 	r.HandleFunc("/api/driver/{id}/register-info", getRegisterRequest).Methods("GET")
@@ -3302,6 +3304,212 @@ func isHanoiCoordinateV2(ctx context.Context, latitude, longitude float64) (bool
 	return isHanoi, nil
 }
 
+func tripHistoryOwnerColumn(role string) (string, bool) {
+	switch strings.ToUpper(strings.TrimSpace(role)) {
+	case "CUSTOMER":
+		return "t.customer_id", true
+	case "DRIVER":
+		return "t.driver_id", true
+	default:
+		return "", false
+	}
+}
+
+func parseTripHistoryParams(r *http.Request) (int, int, int, error) {
+	profileID, err := strconv.Atoi(strings.TrimSpace(r.URL.Query().Get("profile_id")))
+	if err != nil || profileID <= 0 {
+		return 0, 0, 0, fmt.Errorf("profile_id không hợp lệ")
+	}
+
+	limit := 20
+	if value := strings.TrimSpace(r.URL.Query().Get("limit")); value != "" {
+		limit, err = strconv.Atoi(value)
+		if err != nil || limit < 1 || limit > 100 {
+			return 0, 0, 0, fmt.Errorf("limit phải từ 1 đến 100")
+		}
+	}
+
+	offset := 0
+	if value := strings.TrimSpace(r.URL.Query().Get("offset")); value != "" {
+		offset, err = strconv.Atoi(value)
+		if err != nil || offset < 0 {
+			return 0, 0, 0, fmt.Errorf("offset phải từ 0 trở lên")
+		}
+	}
+	return profileID, limit, offset, nil
+}
+
+func getTripHistoryByProfile(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+
+	profileID, limit, offset, err := parseTripHistoryParams(r)
+	if err != nil {
+		tripJSONErrorV2(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	var role string
+	err = db.QueryRowContext(r.Context(), `
+		SELECT r.role_value
+		FROM Profile p
+		JOIN Role r ON r.role_id = p.role_id
+		WHERE p.profile_id = ?
+	`, profileID).Scan(&role)
+	if err == sql.ErrNoRows {
+		tripJSONErrorV2(w, http.StatusNotFound, "Không tìm thấy profile")
+		return
+	}
+	if err != nil {
+		tripJSONErrorV2(w, http.StatusInternalServerError, "Không thể kiểm tra profile")
+		return
+	}
+
+	ownerColumn, supported := tripHistoryOwnerColumn(role)
+	if !supported {
+		tripJSONErrorV2(w, http.StatusForbidden, "Role này không có lịch sử chuyến đi")
+		return
+	}
+
+	query := fmt.Sprintf(`
+		SELECT t.trip_id, t.trip_distance, t.trip_price,
+		       t.customer_id, t.driver_id, t.trip_status_id, ts.status,
+		       t.trip_latitude, t.trip_longitude,
+		       t.destination_latitude, t.destination_longitude,
+		       COALESCE(NULLIF(cp.full_name, ''), cp.user_name),
+		       COALESCE(NULLIF(dp.full_name, ''), dp.user_name)
+		FROM Trip t
+		JOIN TripStatus ts ON ts.trip_status_id = t.trip_status_id
+		JOIN Profile cp ON cp.profile_id = t.customer_id
+		LEFT JOIN Profile dp ON dp.profile_id = t.driver_id
+		WHERE %s = ? AND t.trip_status_id IN (?, ?)
+		ORDER BY t.trip_id DESC
+		LIMIT ? OFFSET ?
+	`, ownerColumn)
+	rows, err := db.QueryContext(
+		r.Context(), query,
+		profileID, tripStatusCompletedV2, tripStatusCancelV2, limit+1, offset,
+	)
+	if err != nil {
+		tripJSONErrorV2(w, http.StatusInternalServerError, "Không thể lấy lịch sử chuyến đi")
+		return
+	}
+	defer rows.Close()
+
+	history := make([]map[string]interface{}, 0, limit)
+	for rows.Next() {
+		var tripID, customerID, statusID int
+		var distance sql.NullInt64
+		var price sql.NullFloat64
+		var driverID sql.NullInt64
+		var status, customerName, driverName sql.NullString
+		var pickupLat, pickupLng, destinationLat, destinationLng float64
+
+		if err := rows.Scan(
+			&tripID, &distance, &price,
+			&customerID, &driverID, &statusID, &status,
+			&pickupLat, &pickupLng, &destinationLat, &destinationLng,
+			&customerName, &driverName,
+		); err != nil {
+			tripJSONErrorV2(w, http.StatusInternalServerError, "Không thể đọc lịch sử chuyến đi")
+			return
+		}
+
+		item := map[string]interface{}{
+			"trip_id":               tripID,
+			"trip_distance":         nil,
+			"trip_price":            nil,
+			"customer_id":           customerID,
+			"customer_name":         customerName.String,
+			"driver_id":             nil,
+			"driver_name":           nil,
+			"trip_status_id":        statusID,
+			"status_text":           status.String,
+			"trip_latitude":         pickupLat,
+			"trip_longitude":        pickupLng,
+			"destination_latitude":  destinationLat,
+			"destination_longitude": destinationLng,
+		}
+		if distance.Valid {
+			item["trip_distance"] = distance.Int64
+		}
+		if price.Valid {
+			item["trip_price"] = price.Float64
+		}
+		if driverID.Valid {
+			item["driver_id"] = driverID.Int64
+		}
+		if driverName.Valid {
+			item["driver_name"] = driverName.String
+		}
+		history = append(history, item)
+	}
+	if err := rows.Err(); err != nil {
+		tripJSONErrorV2(w, http.StatusInternalServerError, "Không thể đọc lịch sử chuyến đi")
+		return
+	}
+
+	hasMore := len(history) > limit
+	if hasMore {
+		history = history[:limit]
+	}
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
+		"profile_id": profileID,
+		"role":       strings.ToUpper(strings.TrimSpace(role)),
+		"data":       history,
+		"limit":      limit,
+		"offset":     offset,
+		"has_more":   hasMore,
+	})
+}
+
+func getActiveDriverTripV2(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	driverID, err := strconv.Atoi(r.URL.Query().Get("driver_id"))
+	if err != nil || driverID <= 0 {
+		tripJSONErrorV2(w, http.StatusBadRequest, "driver_id không hợp lệ")
+		return
+	}
+
+	var tripID, customerID, tripDistance, tripStatusID int
+	var tripPrice, tripLatitude, tripLongitude, destinationLatitude, destinationLongitude float64
+	var statusText sql.NullString
+	err = db.QueryRowContext(r.Context(), `
+		SELECT t.trip_id, t.customer_id, t.trip_distance, t.trip_price,
+		       t.trip_latitude, t.trip_longitude,
+		       t.destination_latitude, t.destination_longitude,
+		       t.trip_status_id, ts.status
+		FROM Trip t
+		LEFT JOIN TripStatus ts ON ts.trip_status_id = t.trip_status_id
+		WHERE t.driver_id = ? AND t.trip_status_id IN (?, ?)
+		ORDER BY t.trip_id DESC
+		LIMIT 1
+	`, driverID, tripStatusAcceptedV2, tripStatusGoingV2).Scan(
+		&tripID, &customerID, &tripDistance, &tripPrice,
+		&tripLatitude, &tripLongitude, &destinationLatitude, &destinationLongitude,
+		&tripStatusID, &statusText,
+	)
+	if err == sql.ErrNoRows {
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{"data": nil})
+		return
+	}
+	if err != nil {
+		log.Printf("Lỗi lấy chuyến đang hoạt động của driver %d: %v", driverID, err)
+		tripJSONErrorV2(w, http.StatusInternalServerError, "Không thể lấy chuyến đang hoạt động")
+		return
+	}
+
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
+		"data": map[string]interface{}{
+			"trip_id": tripID, "customer_id": customerID, "driver_id": driverID,
+			"trip_distance": tripDistance, "trip_price": tripPrice,
+			"trip_latitude": tripLatitude, "trip_longitude": tripLongitude,
+			"destination_latitude":  destinationLatitude,
+			"destination_longitude": destinationLongitude,
+			"trip_status_id":        tripStatusID, "status_text": parseNullString(statusText),
+		},
+	})
+}
+
 func getActiveCustomerTripV2(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 
@@ -3860,8 +4068,12 @@ func handleUserTrackingV2(w http.ResponseWriter, r *http.Request) {
 	`, tripID).Scan(&driverID, &statusID)
 	if err == nil {
 		if driverID.Valid && (statusID == tripStatusAcceptedV2 || statusID == tripStatusGoingV2) {
+			eventType := "trip_accepted"
+			if statusID == tripStatusGoingV2 {
+				eventType = "trip_started"
+			}
 			_ = client.writeJSON(map[string]interface{}{
-				"type": "trip_accepted", "trip_id": tripID, "driver_id": driverID.Int64,
+				"type": eventType, "trip_id": tripID, "driver_id": driverID.Int64,
 			})
 		}
 	} else if err != sql.ErrNoRows {

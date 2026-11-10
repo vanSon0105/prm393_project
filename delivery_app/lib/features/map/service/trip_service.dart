@@ -4,6 +4,8 @@ import 'dart:convert';
 import 'package:delivery_app/config/environment.dart';
 import 'package:delivery_app/features/map/data/repositories/map_repository_impl.dart';
 import 'package:delivery_app/features/map/domain/repositories/map_repository.dart';
+import 'package:delivery_app/generated/locale_keys.g.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
@@ -74,6 +76,10 @@ class TripService {
     return await mapRepository.getTripActive(customerId: customerId);
   }
 
+  Future<TripModel?> getActiveDriverTrip({required int driverId}) async {
+    return mapRepository.getActiveDriverTrip(driverId: driverId);
+  }
+
   Stream<Map<String, dynamic>> connectTripNotifications(int driverId) {
     _driverId = driverId;
 
@@ -94,6 +100,10 @@ class TripService {
     });
   }
 
+  Future<void> waitForDriverNotifications() async {
+    await _notificationChannel!.ready.timeout(const Duration(seconds: 10));
+  }
+
   void _handleDriverNotification(Map<String, dynamic> message) {
     final type = message['type'];
 
@@ -106,6 +116,11 @@ class TripService {
     } else if (type == 'trip_taken') {
       final tripId = (message['trip_id'] as num).toInt();
 
+      _pendingTrips.remove(tripId);
+      _reportedNearbyTrips.remove(tripId);
+    } else if (type == 'trip_cancelled_by_customer') {
+      final tripId = (message['trip_id'] as num).toInt();
+      if (_currentTripId == tripId) _currentTripId = 0;
       _pendingTrips.remove(tripId);
       _reportedNearbyTrips.remove(tripId);
     }
@@ -122,7 +137,8 @@ class TripService {
       Uri.parse('$wsBaseUrl/ws/driver/location?driver_id=$driverId'),
     );
 
-    await _sendCurrentLocation();
+    await _locationChannel!.ready.timeout(const Duration(seconds: 10));
+    await _sendCurrentLocation(rethrowOnError: true);
 
     _locationTimer?.cancel();
 
@@ -146,7 +162,7 @@ class TripService {
     final trip = _pendingTrips[tripId];
 
     if (trip == null) {
-      throw Exception('Chuyến này không còn trong danh sách chuyến chờ');
+      throw Exception(LocaleKeys.map_trip_unavailable.tr());
     }
 
     final pickup = LatLng(
@@ -166,7 +182,7 @@ class TripService {
         1000;
 
     if (distanceKm > maxPickupDistanceKm) {
-      throw Exception('Bạn đang ở ngoài bán kính 5km của điểm đón');
+      throw Exception(LocaleKeys.map_pickup_too_far.tr());
     }
 
     await mapRepository.acceptTrip(driverId: driverId, tripId: tripId);
@@ -193,6 +209,25 @@ class TripService {
   }) async {
     await mapRepository.completeTrip(driverId: driverId, tripId: tripId);
 
+    _currentTripId = 0;
+  }
+
+  Future<void> cancelCustomerTrip({
+    required int customerId,
+    required int tripId,
+  }) async {
+    await mapRepository.cancelCustomerTrip(
+      customerId: customerId,
+      tripId: tripId,
+    );
+    _currentTripId = 0;
+  }
+
+  Future<void> cancelDriverTrip({
+    required int driverId,
+    required int tripId,
+  }) async {
+    await mapRepository.cancelDriverTrip(driverId: driverId, tripId: tripId);
     _currentTripId = 0;
   }
 
@@ -233,7 +268,7 @@ class TripService {
     _customerTrackingChannel = null;
   }
 
-  Future<void> _sendCurrentLocation() async {
+  Future<void> _sendCurrentLocation({bool rethrowOnError = false}) async {
     if (_sendingLocation || _locationChannel == null || _driverId <= 0) {
       return;
     }
@@ -244,6 +279,7 @@ class TripService {
       final position = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
           accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 12),
         ),
       );
 
@@ -301,6 +337,7 @@ class TripService {
       }
     } catch (error) {
       debugPrint('Không thể lấy/gửi GPS Driver: $error');
+      if (rethrowOnError) rethrow;
     } finally {
       _sendingLocation = false;
     }
@@ -310,7 +347,7 @@ class TripService {
     final serviceEnabled = await Geolocator.isLocationServiceEnabled();
 
     if (!serviceEnabled) {
-      throw Exception('Vui lòng bật dịch vụ định vị trên điện thoại');
+      throw Exception(LocaleKeys.map_location_service_disabled.tr());
     }
 
     var permission = await Geolocator.checkPermission();
@@ -321,7 +358,7 @@ class TripService {
 
     if (permission == LocationPermission.denied ||
         permission == LocationPermission.deniedForever) {
-      throw Exception('Ứng dụng chưa được cấp quyền truy cập vị trí');
+      throw Exception(LocaleKeys.map_location_permission_denied.tr());
     }
   }
 

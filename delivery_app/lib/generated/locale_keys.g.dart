@@ -2,7 +2,7 @@
 
 // ignore_for_file: constant_identifier_names
 
-abstract class  LocaleKeys {
+abstract class LocaleKeys {
   static const login_btn = 'login_btn';
   static const loading_txt = 'loading_txt';
   static const login_customer_txt = 'login_customer_txt';
@@ -76,6 +76,15 @@ abstract class  LocaleKeys {
   static const payment_trip_code = 'payment_trip_code';
   static const rating_driver_vehicle = 'rating_driver_vehicle';
   static const trip_tab = 'trip_tab';
+  static const trip_history_sign_in = 'trip_history_sign_in';
+  static const trip_history_load_error = 'trip_history_load_error';
+  static const trip_history_retry = 'trip_history_retry';
+  static const trip_history_load_more = 'trip_history_load_more';
+  static const trip_history_refresh = 'trip_history_refresh';
+  static const trip_history_unavailable = 'trip_history_unavailable';
+  static const trip_history_unassigned = 'trip_history_unassigned';
+  static const trip_history_price_vnd = 'trip_history_price_vnd';
+  static const trip_history_distance_km = 'trip_history_distance_km';
   static const trip_status_approaching = 'trip_status_approaching';
   static const trip_status_in_progress = 'trip_status_in_progress';
   static const trip_status_completed = 'trip_status_completed';
@@ -266,7 +275,8 @@ abstract class  LocaleKeys {
   static const admin_request_count = 'admin_request_count';
   static const admin_driver_trips_completed = 'admin_driver_trips_completed';
   static const admin_driver_status_available = 'admin_driver_status_available';
-  static const admin_driver_status_delivering = 'admin_driver_status_delivering';
+  static const admin_driver_status_delivering =
+      'admin_driver_status_delivering';
   static const admin_driver_status_offline = 'admin_driver_status_offline';
   static const admin_request_subtitle = 'admin_request_subtitle';
   static const admin_vehicle_motorcycle = 'admin_vehicle_motorcycle';
@@ -286,13 +296,15 @@ abstract class  LocaleKeys {
   static const driver_resubmit_title = 'driver_resubmit_title';
   static const driver_resubmit_description = 'driver_resubmit_description';
   static const driver_resubmit_reason = 'driver_resubmit_reason';
-  static const driver_resubmit_documents_hint = 'driver_resubmit_documents_hint';
+  static const driver_resubmit_documents_hint =
+      'driver_resubmit_documents_hint';
   static const driver_resubmit_image_error = 'driver_resubmit_image_error';
   static const driver_resubmit_send = 'driver_resubmit_send';
   static const driver_resubmit_load_error = 'driver_resubmit_load_error';
   static const driver_resubmit_error = 'driver_resubmit_error';
   static const driver_resubmit_success_title = 'driver_resubmit_success_title';
-  static const driver_resubmit_success_message = 'driver_resubmit_success_message';
+  static const driver_resubmit_success_message =
+      'driver_resubmit_success_message';
   static const admin_transfer_note = 'admin_transfer_note';
   static const admin_field_required = 'admin_field_required';
   static const admin_account_number_invalid = 'admin_account_number_invalid';
@@ -338,7 +350,8 @@ abstract class  LocaleKeys {
   static const register_license_expiry_past = 'register_license_expiry_past';
   static const register_plate_required = 'register_plate_required';
   static const register_documents_title = 'register_documents_title';
-  static const register_documents_description = 'register_documents_description';
+  static const register_documents_description =
+      'register_documents_description';
   static const register_documents_label = 'register_documents_label';
   static const register_documents_help = 'register_documents_help';
   static const register_documents_required = 'register_documents_required';
@@ -356,7 +369,8 @@ abstract class  LocaleKeys {
   static const register_confirm_password = 'register_confirm_password';
   static const register_confirm_hint = 'register_confirm_hint';
   static const register_password_mismatch = 'register_password_mismatch';
-  static const register_driver_terms_accepted = 'register_driver_terms_accepted';
+  static const register_driver_terms_accepted =
+      'register_driver_terms_accepted';
   static const register_submit = 'register_submit';
   static const register_submitting = 'register_submitting';
   static const register_success_title = 'register_success_title';
@@ -373,19 +387,27 @@ abstract class  LocaleKeys {
   static const driver_terms_title = 'driver_terms_title';
   static const driver_terms_heading = 'driver_terms_heading';
   static const driver_terms_intro = 'driver_terms_intro';
-  static const driver_terms_eligibility_title = 'driver_terms_eligibility_title';
+  static const driver_terms_eligibility_title =
+      'driver_terms_eligibility_title';
   static const driver_terms_eligibility_age = 'driver_terms_eligibility_age';
   static const driver_terms_eligibility_id = 'driver_terms_eligibility_id';
-  static const driver_terms_eligibility_license = 'driver_terms_eligibility_license';
-  static const driver_terms_eligibility_vehicle = 'driver_terms_eligibility_vehicle';
-  static const driver_terms_information_title = 'driver_terms_information_title';
-  static const driver_terms_information_accurate = 'driver_terms_information_accurate';
-  static const driver_terms_information_valid = 'driver_terms_information_valid';
-  static const driver_terms_information_update = 'driver_terms_information_update';
+  static const driver_terms_eligibility_license =
+      'driver_terms_eligibility_license';
+  static const driver_terms_eligibility_vehicle =
+      'driver_terms_eligibility_vehicle';
+  static const driver_terms_information_title =
+      'driver_terms_information_title';
+  static const driver_terms_information_accurate =
+      'driver_terms_information_accurate';
+  static const driver_terms_information_valid =
+      'driver_terms_information_valid';
+  static const driver_terms_information_update =
+      'driver_terms_information_update';
   static const driver_terms_review_title = 'driver_terms_review_title';
   static const driver_terms_review_pending = 'driver_terms_review_pending';
   static const driver_terms_review_required = 'driver_terms_review_required';
-  static const driver_terms_review_correction = 'driver_terms_review_correction';
+  static const driver_terms_review_correction =
+      'driver_terms_review_correction';
   static const driver_terms_trips_title = 'driver_terms_trips_title';
   static const driver_terms_trips_ready = 'driver_terms_trips_ready';
   static const driver_terms_trips_progress = 'driver_terms_trips_progress';
@@ -414,6 +436,71 @@ abstract class  LocaleKeys {
   static const driver_topup_pending = 'driver_topup_pending';
   static const driver_topup_approved = 'driver_topup_approved';
   static const driver_topup_rejected = 'driver_topup_rejected';
+  static const location_required_title = 'location_required_title';
+  static const location_permission_message = 'location_permission_message';
+  static const location_settings_message = 'location_settings_message';
+  static const location_check_error = 'location_check_error';
+  static const location_allow = 'location_allow';
+  static const location_open_settings = 'location_open_settings';
+  static const location_check_again = 'location_check_again';
+  static const location_try_again = 'location_try_again';
+  static const map_role_unknown = 'map_role_unknown';
+  static const map_pickup = 'map_pickup';
+  static const map_pickup_manual_option = 'map_pickup_manual_option';
+  static const map_pickup_current_option = 'map_pickup_current_option';
+  static const map_locating_pickup = 'map_locating_pickup';
+  static const map_current_location_label = 'map_current_location_label';
+  static const map_current_location_failed = 'map_current_location_failed';
+  static const map_destination = 'map_destination';
+  static const map_driver_location = 'map_driver_location';
+  static const map_pickup_hint = 'map_pickup_hint';
+  static const map_destination_hint = 'map_destination_hint';
+  static const map_book_trip = 'map_book_trip';
+  static const map_calculating_route = 'map_calculating_route';
+  static const map_finding_driver = 'map_finding_driver';
+  static const map_driver_coming = 'map_driver_coming';
+  static const map_going_to_destination = 'map_going_to_destination';
+  static const map_trip_completed = 'map_trip_completed';
+  static const map_cancel_trip = 'map_cancel_trip';
+  static const map_cancel_title = 'map_cancel_title';
+  static const map_cancel_customer_message = 'map_cancel_customer_message';
+  static const map_cancel_driver_message = 'map_cancel_driver_message';
+  static const map_pending_trips = 'map_pending_trips';
+  static const map_go_online = 'map_go_online';
+  static const map_go_offline = 'map_go_offline';
+  static const map_driver_trip_to_pickup = 'map_driver_trip_to_pickup';
+  static const map_driver_trip_in_progress = 'map_driver_trip_in_progress';
+  static const map_status_offline = 'map_status_offline';
+  static const map_status_connecting = 'map_status_connecting';
+  static const map_status_online = 'map_status_online';
+  static const map_status_disconnecting = 'map_status_disconnecting';
+  static const map_online_timeout = 'map_online_timeout';
+  static const map_online_connection_lost = 'map_online_connection_lost';
+  static const map_no_pending_trips = 'map_no_pending_trips';
+  static const map_trip_number = 'map_trip_number';
+  static const map_pickup_coordinates = 'map_pickup_coordinates';
+  static const map_accept_trip = 'map_accept_trip';
+  static const map_active_trip = 'map_active_trip';
+  static const map_start_trip = 'map_start_trip';
+  static const map_complete_trip = 'map_complete_trip';
+  static const map_customer_id_missing = 'map_customer_id_missing';
+  static const map_driver_id_missing = 'map_driver_id_missing';
+  static const map_addresses_required = 'map_addresses_required';
+  static const map_destination_coordinates_missing =
+      'map_destination_coordinates_missing';
+  static const map_trip_unavailable = 'map_trip_unavailable';
+  static const map_pickup_too_far = 'map_pickup_too_far';
+  static const map_location_service_disabled = 'map_location_service_disabled';
+  static const map_location_permission_denied =
+      'map_location_permission_denied';
+  static const map_route_not_found = 'map_route_not_found';
+  static const map_address_not_found = 'map_address_not_found';
+  static const map_restore_trip_failed = 'map_restore_trip_failed';
+  static const map_no_place_suggestions = 'map_no_place_suggestions';
+  static const map_place_search_failed = 'map_place_search_failed';
+  static const map_dismiss_warning = 'map_dismiss_warning';
+  static const map_cancel_unavailable = 'map_cancel_unavailable';
+  static const map_cancel_failed = 'map_cancel_failed';
   static const app_name = 'app_name';
   static const map_destination_prompt = 'map_destination_prompt';
   static const splash_brand_title = 'splash_brand_title';

@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:delivery_app/features/detail_delivery/detail_delivery_page.dart';
+import 'package:delivery_app/features/trip/presentation/screens/trip_page.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -36,7 +36,7 @@ Future<void> start(WidgetTester tester, {double width = 390}) async {
             locale: context.locale,
             supportedLocales: context.supportedLocales,
             localizationsDelegates: context.localizationDelegates,
-            home: const DetailDeliveryPage(),
+            home: const TripApp(),
           ),
         ),
       ),
@@ -74,7 +74,9 @@ void main() {
       final data = await rootBundle.loadString(
         'resources/langs/${locale.languageCode}-${locale.countryCode}.json',
       );
-      _translations[locale] = Map<String, dynamic>.from(jsonDecode(data) as Map);
+      _translations[locale] = Map<String, dynamic>.from(
+        jsonDecode(data) as Map,
+      );
     }
   });
   testWidgets('Cancellation requires confirmation and updates history', (

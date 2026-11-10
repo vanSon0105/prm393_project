@@ -6,5 +6,8 @@ class TripParam extends ApiParam {
   TripParam(this.customerId);
 
   @override
-  String get path => '/api/user/trips/active?customer_id=$customerId';
+  String get path => '/api/user/trips/active';
+
+  @override
+  Map<String, dynamic> get queryParameters => {'customer_id': customerId};
 }

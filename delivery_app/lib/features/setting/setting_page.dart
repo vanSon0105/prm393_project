@@ -1,5 +1,6 @@
 import 'package:delivery_app/features/app_view_model.dart';
 import 'package:delivery_app/features/auth/domain/entities/role.dart';
+import 'package:delivery_app/features/map/service/trip_service.dart';
 import 'package:delivery_app/generated/locale_keys.g.dart';
 import 'package:delivery_app/routes/app_navigate.dart';
 import 'package:delivery_app/routes/app_router.dart';
@@ -127,7 +128,7 @@ class SettingPage extends ConsumerWidget {
               SizedBox(
                 width: double.infinity,
                 child: FilledButton.icon(
-                  onPressed: () => _showLogoutDialog(context, notifier),
+                  onPressed: () => _showLogoutDialog(context, ref),
                   style: FilledButton.styleFrom(
                     backgroundColor: AppColors.dangerSoft,
                     foregroundColor: AppColors.danger,
@@ -187,10 +188,7 @@ class SettingPage extends ConsumerWidget {
     );
   }
 
-  Future<void> _showLogoutDialog(
-    BuildContext context,
-    SettingUiNotifier notifier,
-  ) {
+  Future<void> _showLogoutDialog(BuildContext context, WidgetRef ref) {
     return showDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -203,9 +201,15 @@ class SettingPage extends ConsumerWidget {
           ),
           FilledButton(
             onPressed: () async {
-              await notifier.logout();
               Navigator.pop(dialogContext);
-              AppNavigate.instance.gotoLogin();
+              try {
+                await ref.read(tripRealtimeServiceProvider).goOffline();
+                await ref.read(settingUiProvider.notifier).logout();
+              } catch (error) {
+                debugPrint('Could not close trip connections: $error');
+              }
+              ref.read(appViewModelProvider.notifier).clearData();
+              await AppNavigate.instance.gotoLogin();
             },
             style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
             child: Text(LocaleKeys.settings_logout.tr()),

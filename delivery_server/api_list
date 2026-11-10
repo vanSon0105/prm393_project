@@ -1,3 +1,11 @@
+Trip history by profile_id (CUSTOMER or DRIVER):
+curl -i "http://localhost:8080/api/trips/history?profile_id=7&limit=20&offset=0"
+Returns completed/cancelled trips in descending trip_id order, with data, has_more, limit and offset.
+
+Current trip assigned to a driver (ACCEPTED or GOING):
+curl -i "http://localhost:8080/api/driver/trips/active?driver_id=6"
+Returns the active trip in data, or data: null when no trip is assigned.
+
 GetRole: curl -i http://localhost:8080/api/getRoles
 GetALLDriver: curl -i http://localhost:8080/api/admin/drivers
 GetALLRequestDriver: curl -i http://localhost:8080/api/admin/drivers/requests
