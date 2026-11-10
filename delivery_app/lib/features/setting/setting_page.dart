@@ -1,12 +1,12 @@
+import 'package:delivery_app/features/app_view_model.dart';
+import 'package:delivery_app/features/auth/domain/entities/role.dart';
 import 'package:delivery_app/generated/locale_keys.g.dart';
 import 'package:delivery_app/routes/app_navigate.dart';
 import 'package:delivery_app/routes/app_router.dart';
-import 'package:delivery_app/features/app_view_model.dart';
-import 'package:delivery_app/features/auth/domain/entities/role.dart';
-import 'package:go_router/go_router.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_theme.dart';
 import '../../gen/assets.gen.dart';
@@ -127,7 +127,7 @@ class SettingPage extends ConsumerWidget {
               SizedBox(
                 width: double.infinity,
                 child: FilledButton.icon(
-                  onPressed: () => _showLogoutDialog(context),
+                  onPressed: () => _showLogoutDialog(context, notifier),
                   style: FilledButton.styleFrom(
                     backgroundColor: AppColors.dangerSoft,
                     foregroundColor: AppColors.danger,
@@ -187,7 +187,10 @@ class SettingPage extends ConsumerWidget {
     );
   }
 
-  Future<void> _showLogoutDialog(BuildContext context) {
+  Future<void> _showLogoutDialog(
+    BuildContext context,
+    SettingUiNotifier notifier,
+  ) {
     return showDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -199,7 +202,8 @@ class SettingPage extends ConsumerWidget {
             child: Text(LocaleKeys.settings_cancel.tr()),
           ),
           FilledButton(
-            onPressed: () {
+            onPressed: () async {
+              await notifier.logout();
               Navigator.pop(dialogContext);
               AppNavigate.instance.gotoLogin();
             },

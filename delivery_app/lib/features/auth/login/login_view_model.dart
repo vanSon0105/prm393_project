@@ -1,3 +1,5 @@
+import 'package:delivery_app/data/local/sharepreference/model/data_saved.dart';
+import 'package:delivery_app/data/local/sharepreference/share_preference_repository.dart';
 import 'package:delivery_app/di/repository_module.dart';
 import 'package:delivery_app/features/app_view_model.dart';
 import 'package:delivery_app/features/auth/data/repositories/login_param.dart';
@@ -38,6 +40,10 @@ class LoginViewModel extends _$LoginViewModel {
         param: LoginParam(userName: userName, password: password, role: role),
       );
       final status = LoginStatus.valueOf(response.data?.status ?? '');
+      final prefers = ref.read(appSharePreferencesProvider);
+      await prefers.saveData(
+        DataSaved(role: role, profileId: response.data?.profileId ?? -1),
+      );
       switch (status) {
         case LoginStatus.approved:
           AppNavigate.instance.gotoScreenBy(screen: role.screen);
