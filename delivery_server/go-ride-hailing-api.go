@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math"
 	"net"
 	"net/http"
 	"os"
@@ -144,19 +145,22 @@ func main() {
 	r.HandleFunc("/api/admin/topup/requests", getAllTopupRequests).Methods("GET")
 
 	// User (Customer) APIs
-	r.HandleFunc("/api/user/trips/book", bookTrip).Methods("POST")
+	r.HandleFunc("/api/user/trips/book", bookTripV2).Methods("POST")
+	r.HandleFunc("/api/user/trips/active", getActiveCustomerTripV2).Methods("GET")
 	r.HandleFunc("/api/user/trips/{id}/cancel", cancelTrip).Methods("POST")
 	r.HandleFunc("/api/user/drivers/review", reviewDriver).Methods("POST")
 
 	// Driver APIs
-	r.HandleFunc("/api/driver/trips/{id}/accept", acceptTrip).Methods("POST")
-	r.HandleFunc("/api/driver/trips/{id}/complete", completeTrip).Methods("POST")
+	r.HandleFunc("/api/driver/trips/{id}/accept", acceptTripV2).Methods("POST")
+	r.HandleFunc("/api/driver/trips/{id}/complete", completeTripV2).Methods("POST")
+	r.HandleFunc("/api/driver/trips/{id}/start", startTripV2).Methods("POST")
 	r.HandleFunc("/api/driver/{id}/register-info", getRegisterRequest).Methods("GET")
 	r.HandleFunc("/api/driver/{id}/register-info", resubmitDriverRegisterInfo).Methods("POST")
 	r.HandleFunc("/api/driver/topup", createTopupRequest).Methods("POST")
 	r.HandleFunc("/api/driver/{id}/topup/requests", getDriverTopupRequests).Methods("GET")
 	r.HandleFunc("/api/topup/{id}", getTopupRequestDetail).Methods("GET")
 	r.HandleFunc("/api/driver/topup/{id}/update", updateTopupRequest).Methods("PUT", "POST")
+	r.HandleFunc("/api/driver/trips/{id}/cancel", driverCancelTrip).Methods("POST")
 
 	// For Driver, User, Admin
 	r.HandleFunc("/api/user/login", loginUser).Methods("POST")
@@ -167,10 +171,11 @@ func main() {
 	r.HandleFunc("/api/{id}/profile", updateUserProfile).Methods("POST", "PATCH")
 
 	// Customer connect to listener location of driver realtime
-	r.HandleFunc("/ws/user/track/{trip_id}", handleUserTracking)
+	r.HandleFunc("/ws/user/track/{trip_id}", handleUserTrackingV2).Methods("GET")
 
 	// Driver push location to server realtime
-	r.HandleFunc("/ws/driver/location", handleDriverLocationStream)
+	r.HandleFunc("/ws/driver/location", handleDriverLocationStreamV2).Methods("GET")
+	r.HandleFunc("/ws/driver/trips", handleDriverTripNotificationsV2).Methods("GET")
 
 	localIP := getLocalIP()
 	port := ":8080"
@@ -242,12 +247,6 @@ func handleDriverLocationStream(w http.ResponseWriter, r *http.Request) {
 		if err := json.Unmarshal(message, &update); err != nil {
 			log.Println("Dữ liệu GPS gửi lên sai định dạng:", err)
 			continue
-		}
-
-		_, err = db.Exec("UPDATE Driver SET latitude = ?, longitude = ? WHERE driver_id = ?",
-			update.Latitude, update.Longitude, update.DriverID)
-		if err != nil {
-			log.Println("Lỗi lưu tọa độ vào DB:", err)
 		}
 
 		hub.Lock()
@@ -710,6 +709,195 @@ func bookTrip(w http.ResponseWriter, r *http.Request) {
 }
 
 func cancelTrip(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+
+	tripID, err := strconv.Atoi(mux.Vars(r)["id"])
+	if err != nil || tripID <= 0 {
+		tripJSONErrorV2(w, http.StatusBadRequest, "trip_id không hợp lệ")
+		return
+	}
+
+	type CancelTripRequest struct {
+		CustomerID int `json:"customer_id"`
+	}
+
+	var req CancelTripRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.CustomerID <= 0 {
+		tripJSONErrorV2(w, http.StatusBadRequest, "Vui lòng truyền customer_id hợp lệ")
+		return
+	}
+
+	tx, err := db.BeginTx(r.Context(), nil)
+	if err != nil {
+		tripJSONErrorV2(w, http.StatusInternalServerError, "Không thể khởi tạo giao dịch hủy chuyến")
+		return
+	}
+	defer tx.Rollback()
+
+	var currentCustomerID, tripStatusID int
+	var driverID sql.NullInt64
+
+	err = tx.QueryRowContext(r.Context(), `
+		SELECT customer_id, trip_status_id, driver_id 
+		FROM Trip WHERE trip_id = ? FOR UPDATE
+	`, tripID).Scan(&currentCustomerID, &tripStatusID, &driverID)
+
+	if err == sql.ErrNoRows {
+		tripJSONErrorV2(w, http.StatusNotFound, "Không tìm thấy chuyến đi")
+		return
+	}
+	if err != nil {
+		tripJSONErrorV2(w, http.StatusInternalServerError, "Lỗi hệ thống khi kiểm tra chuyến đi")
+		return
+	}
+
+	if currentCustomerID != req.CustomerID {
+		tripJSONErrorV2(w, http.StatusForbidden, "Bạn không có quyền hủy chuyến đi của người khác")
+		return
+	}
+
+	if tripStatusID != tripStatusPendingV2 && tripStatusID != tripStatusAcceptedV2 {
+		tripJSONErrorV2(w, http.StatusConflict, "Chuyến đi đang di chuyển hoặc đã kết thúc, không thể hủy")
+		return
+	}
+
+	_, err = tx.ExecContext(r.Context(), `
+		UPDATE Trip SET trip_status_id = ? WHERE trip_id = ?
+	`, tripStatusCancelV2, tripID)
+	if err != nil {
+		tripJSONErrorV2(w, http.StatusInternalServerError, "Không thể cập nhật trạng thái hủy chuyến")
+		return
+	}
+
+	if err := tx.Commit(); err != nil {
+		tripJSONErrorV2(w, http.StatusInternalServerError, "Không thể xác nhận hoàn tất hủy chuyến")
+		return
+	}
+
+	cancelEvent := map[string]interface{}{
+		"type":    "trip_cancelled_by_customer",
+		"trip_id": tripID,
+	}
+	broadcastCustomerTripV2(tripID, cancelEvent)
+
+	if driverID.Valid {
+		sendDriverMessageV2(int(driverID.Int64), cancelEvent)
+	}
+
+	if tripStatusID == tripStatusPendingV2 {
+		broadcastAllDriversV2(map[string]interface{}{
+			"type":    "trip_taken",
+			"trip_id": tripID,
+		})
+	}
+
+	w.WriteHeader(http.StatusOK)
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
+		"message": "Khách hàng hủy chuyến đi thành công",
+		"trip_id": tripID,
+	})
+}
+
+func driverCancelTrip(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+
+	tripID, err := strconv.Atoi(mux.Vars(r)["id"])
+	if err != nil || tripID <= 0 {
+		tripJSONErrorV2(w, http.StatusBadRequest, "trip_id không hợp lệ")
+		return
+	}
+
+	type DriverCancelRequest struct {
+		DriverID int `json:"driver_id"`
+	}
+
+	var req DriverCancelRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.DriverID <= 0 {
+		tripJSONErrorV2(w, http.StatusBadRequest, "Vui lòng truyền driver_id hợp lệ")
+		return
+	}
+
+	tx, err := db.BeginTx(r.Context(), nil)
+	if err != nil {
+		tripJSONErrorV2(w, http.StatusInternalServerError, "Không thể khởi tạo giao dịch tài xế hủy chuyến")
+		return
+	}
+	defer tx.Rollback()
+
+	var tripStatusID int
+	var currentDriverID sql.NullInt64
+
+	err = tx.QueryRowContext(r.Context(), `
+		SELECT trip_status_id, driver_id FROM Trip WHERE trip_id = ? FOR UPDATE
+	`, tripID).Scan(&tripStatusID, &currentDriverID)
+
+	if err == sql.ErrNoRows {
+		tripJSONErrorV2(w, http.StatusNotFound, "Không tìm thấy chuyến đi")
+		return
+	}
+	if err != nil {
+		tripJSONErrorV2(w, http.StatusInternalServerError, "Lỗi hệ thống khi kiểm tra chuyến đi")
+		return
+	}
+
+	if !currentDriverID.Valid || int(currentDriverID.Int64) != req.DriverID {
+		tripJSONErrorV2(w, http.StatusForbidden, "Bạn không phải tài xế đang tiếp nhận chuyến đi này")
+		return
+	}
+
+	if tripStatusID != tripStatusAcceptedV2 {
+		tripJSONErrorV2(w, http.StatusConflict, "Chuyến đi không ở trạng thái chờ đón hoặc đã bắt đầu di chuyển, không thể hủy")
+		return
+	}
+
+	_, err = tx.ExecContext(r.Context(), `
+		UPDATE Trip SET driver_id = NULL, trip_status_id = ? WHERE trip_id = ?
+	`, tripStatusPendingV2, tripID)
+	if err != nil {
+		tripJSONErrorV2(w, http.StatusInternalServerError, "Không thể cập nhật giải phóng chuyến đi")
+		return
+	}
+
+	if err := tx.Commit(); err != nil {
+		tripJSONErrorV2(w, http.StatusInternalServerError, "Không thể xác nhận hoàn tất hủy tiếp nhận")
+		return
+	}
+
+	broadcastCustomerTripV2(tripID, map[string]interface{}{
+		"type":      "driver_cancelled_trip",
+		"trip_id":   tripID,
+		"driver_id": req.DriverID,
+	})
+
+	var tripDistance int
+	var tripPrice float64
+	var customerID int
+	var tripLat, tripLng, destLat, destLng float64
+
+	_ = db.QueryRow(`
+		SELECT customer_id, trip_distance, trip_price, trip_latitude, trip_longitude, destination_latitude, destination_longitude 
+		FROM Trip WHERE trip_id = ?
+	`, tripID).Scan(&customerID, &tripDistance, &tripPrice, &tripLat, &tripLng, &destLat, &destLng)
+
+	broadcastAllDriversV2(map[string]interface{}{
+		"type": "new_trip",
+		"data": map[string]interface{}{
+			"trip_id":               tripID,
+			"customer_id":           customerID,
+			"trip_distance":         tripDistance,
+			"trip_price":            tripPrice,
+			"trip_latitude":         tripLat,
+			"trip_longitude":        tripLng,
+			"destination_latitude":  destLat,
+			"destination_longitude": destLng,
+		},
+	})
+
+	w.WriteHeader(http.StatusOK)
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
+		"message": "Tài xế hủy tiếp nhận chuyến đi thành công, chuyến đi đã được đưa về hàng chờ",
+		"trip_id": tripID,
+	})
 }
 
 func reviewDriver(w http.ResponseWriter, r *http.Request) {
@@ -2868,4 +3056,1043 @@ func getAdminBankInfo(w http.ResponseWriter, r *http.Request) {
 
 	r = mux.SetURLVars(r, map[string]string{"id": strconv.Itoa(adminID)})
 	getBankInfo(w, r)
+}
+
+// ===== Trip booking, driver dispatch and realtime tracking =====
+const (
+	tripStatusPendingV2   = 1
+	tripStatusAcceptedV2  = 2
+	tripStatusGoingV2     = 3
+	tripStatusCompletedV2 = 4
+	tripStatusCancelV2    = 5
+)
+
+type tripSocketClientV2 struct {
+	conn    *websocket.Conn
+	writeMu sync.Mutex
+}
+
+func (c *tripSocketClientV2) writeJSON(v interface{}) error {
+	c.writeMu.Lock()
+	defer c.writeMu.Unlock()
+	_ = c.conn.SetWriteDeadline(time.Now().Add(5 * time.Second))
+	return c.conn.WriteJSON(v)
+}
+
+var customerTripHubV2 = struct {
+	sync.Mutex
+	clients map[int]map[*tripSocketClientV2]struct{}
+}{clients: make(map[int]map[*tripSocketClientV2]struct{})}
+
+var driverTripHubV2 = struct {
+	sync.Mutex
+	clients map[int]map[*tripSocketClientV2]struct{}
+}{clients: make(map[int]map[*tripSocketClientV2]struct{})}
+
+func addCustomerTripClientV2(tripID int, client *tripSocketClientV2) {
+	customerTripHubV2.Lock()
+	defer customerTripHubV2.Unlock()
+	if customerTripHubV2.clients[tripID] == nil {
+		customerTripHubV2.clients[tripID] = make(map[*tripSocketClientV2]struct{})
+	}
+	customerTripHubV2.clients[tripID][client] = struct{}{}
+}
+
+func removeCustomerTripClientV2(tripID int, client *tripSocketClientV2) {
+	customerTripHubV2.Lock()
+	defer customerTripHubV2.Unlock()
+	delete(customerTripHubV2.clients[tripID], client)
+	if len(customerTripHubV2.clients[tripID]) == 0 {
+		delete(customerTripHubV2.clients, tripID)
+	}
+}
+
+func addDriverTripClientV2(driverID int, client *tripSocketClientV2) {
+	driverTripHubV2.Lock()
+	defer driverTripHubV2.Unlock()
+	if driverTripHubV2.clients[driverID] == nil {
+		driverTripHubV2.clients[driverID] = make(map[*tripSocketClientV2]struct{})
+	}
+	driverTripHubV2.clients[driverID][client] = struct{}{}
+}
+
+func removeDriverTripClientV2(driverID int, client *tripSocketClientV2) {
+	driverTripHubV2.Lock()
+	defer driverTripHubV2.Unlock()
+	delete(driverTripHubV2.clients[driverID], client)
+	if len(driverTripHubV2.clients[driverID]) == 0 {
+		delete(driverTripHubV2.clients, driverID)
+	}
+}
+
+func isDriverConnectedV2(driverID int) bool {
+	driverTripHubV2.Lock()
+	defer driverTripHubV2.Unlock()
+	return len(driverTripHubV2.clients[driverID]) > 0
+}
+
+func sendDriverMessageV2(driverID int, message interface{}) bool {
+	driverTripHubV2.Lock()
+	clients := make([]*tripSocketClientV2, 0, len(driverTripHubV2.clients[driverID]))
+	for client := range driverTripHubV2.clients[driverID] {
+		clients = append(clients, client)
+	}
+	driverTripHubV2.Unlock()
+
+	sent := false
+	for _, client := range clients {
+		if err := client.writeJSON(message); err != nil {
+			log.Printf("WebSocket driver %d lỗi: %v", driverID, err)
+			removeDriverTripClientV2(driverID, client)
+			_ = client.conn.Close()
+			continue
+		}
+		sent = true
+	}
+	return sent
+}
+
+func broadcastAllDriversV2(message interface{}) {
+	driverTripHubV2.Lock()
+	var clients []*tripSocketClientV2
+	for _, group := range driverTripHubV2.clients {
+		for client := range group {
+			clients = append(clients, client)
+		}
+	}
+	driverTripHubV2.Unlock()
+
+	for _, client := range clients {
+		if err := client.writeJSON(message); err != nil {
+			_ = client.conn.Close()
+		}
+	}
+}
+
+func broadcastCustomerTripV2(tripID int, message interface{}) {
+	customerTripHubV2.Lock()
+	clients := make([]*tripSocketClientV2, 0, len(customerTripHubV2.clients[tripID]))
+	for client := range customerTripHubV2.clients[tripID] {
+		clients = append(clients, client)
+	}
+	customerTripHubV2.Unlock()
+
+	for _, client := range clients {
+		if err := client.writeJSON(message); err != nil {
+			log.Printf("WebSocket customer trip %d lỗi: %v", tripID, err)
+			removeCustomerTripClientV2(tripID, client)
+			_ = client.conn.Close()
+		}
+	}
+}
+
+func tripJSONErrorV2(w http.ResponseWriter, statusCode int, message string) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(statusCode)
+	_ = json.NewEncoder(w).Encode(map[string]string{"error": message})
+}
+
+func validCoordinateV2(latitude, longitude float64) bool {
+	return !math.IsNaN(latitude) && !math.IsInf(latitude, 0) &&
+		!math.IsNaN(longitude) && !math.IsInf(longitude, 0) &&
+		latitude >= -90 && latitude <= 90 && longitude >= -180 && longitude <= 180
+}
+
+var nominatimHTTPClientV2 = &http.Client{Timeout: 8 * time.Second}
+
+var nominatimRateLimiterV2 = struct {
+	sync.Mutex
+	lastRequest time.Time
+}{}
+
+var hanoiGeoCacheV2 = struct {
+	sync.RWMutex
+	values map[string]bool
+}{values: make(map[string]bool)}
+
+func isHanoiLabelV2(value string) bool {
+	value = strings.ToLower(strings.TrimSpace(value))
+	return strings.Contains(value, "hà nội") ||
+		strings.Contains(value, "ha noi") ||
+		strings.Contains(value, "hanoi")
+}
+
+func isHanoiCoordinateV2(ctx context.Context, latitude, longitude float64) (bool, error) {
+	cacheKey := fmt.Sprintf("%.5f,%.5f", latitude, longitude)
+	hanoiGeoCacheV2.RLock()
+	cached, exists := hanoiGeoCacheV2.values[cacheKey]
+	hanoiGeoCacheV2.RUnlock()
+	if exists {
+		return cached, nil
+	}
+
+	nominatimRateLimiterV2.Lock()
+	wait := time.Second - time.Since(nominatimRateLimiterV2.lastRequest)
+	if wait > 0 {
+		time.Sleep(wait)
+	}
+	nominatimRateLimiterV2.lastRequest = time.Now()
+	nominatimRateLimiterV2.Unlock()
+
+	endpoint := fmt.Sprintf(
+		"https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=%.7f&lon=%.7f&zoom=10&addressdetails=1",
+		latitude, longitude,
+	)
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+	if err != nil {
+		return false, err
+	}
+	request.Header.Set("User-Agent", "DeliveryApp/1.0")
+	request.Header.Set("Accept-Language", "vi")
+
+	response, err := nominatimHTTPClientV2.Do(request)
+	if err != nil {
+		return false, err
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode != http.StatusOK {
+		return false, fmt.Errorf("Nominatim trả về HTTP %d", response.StatusCode)
+	}
+
+	var result struct {
+		Address struct {
+			State        string `json:"state"`
+			City         string `json:"city"`
+			Municipality string `json:"municipality"`
+			County       string `json:"county"`
+			Province     string `json:"province"`
+			CountryCode  string `json:"country_code"`
+		} `json:"address"`
+	}
+	if err := json.NewDecoder(io.LimitReader(response.Body, 1<<20)).Decode(&result); err != nil {
+		return false, err
+	}
+
+	isHanoi := strings.EqualFold(result.Address.CountryCode, "vn") &&
+		(isHanoiLabelV2(result.Address.State) ||
+			isHanoiLabelV2(result.Address.City) ||
+			isHanoiLabelV2(result.Address.Municipality) ||
+			isHanoiLabelV2(result.Address.County) ||
+			isHanoiLabelV2(result.Address.Province))
+
+	hanoiGeoCacheV2.Lock()
+	hanoiGeoCacheV2.values[cacheKey] = isHanoi
+	hanoiGeoCacheV2.Unlock()
+	return isHanoi, nil
+}
+
+func getActiveCustomerTripV2(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+
+	customerID, err := strconv.Atoi(r.URL.Query().Get("customer_id"))
+	if err != nil || customerID <= 0 {
+		tripJSONErrorV2(w, http.StatusBadRequest, "customer_id không hợp lệ")
+		return
+	}
+
+	var (
+		tripID               int
+		tripDistance         int
+		tripPrice            float64
+		tripLatitude         float64
+		tripLongitude        float64
+		destinationLatitude  float64
+		destinationLongitude float64
+		tripStatusID         int
+		statusText           sql.NullString
+		driverID             sql.NullInt64
+	)
+
+	err = db.QueryRowContext(r.Context(), `
+		SELECT
+			t.trip_id,
+			t.trip_distance,
+			t.trip_price,
+			t.trip_latitude,
+			t.trip_longitude,
+			t.destination_latitude,
+			t.destination_longitude,
+			t.trip_status_id,
+			ts.status,
+			t.driver_id
+		FROM Trip t
+		LEFT JOIN TripStatus ts ON ts.trip_status_id = t.trip_status_id
+		WHERE t.customer_id = ?
+		  AND t.trip_status_id IN (?, ?, ?)
+		ORDER BY t.trip_id DESC
+		LIMIT 1
+	`, customerID, tripStatusPendingV2, tripStatusAcceptedV2, tripStatusGoingV2).Scan(
+		&tripID,
+		&tripDistance,
+		&tripPrice,
+		&tripLatitude,
+		&tripLongitude,
+		&destinationLatitude,
+		&destinationLongitude,
+		&tripStatusID,
+		&statusText,
+		&driverID,
+	)
+
+	if err == sql.ErrNoRows {
+		w.WriteHeader(http.StatusOK)
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+			"data":    nil,
+			"message": "Khách hàng không có chuyến đi đang hoạt động",
+		})
+		return
+	}
+	if err != nil {
+		log.Printf("Lỗi lấy chuyến đang hoạt động của customer %d: %v", customerID, err)
+		tripJSONErrorV2(w, http.StatusInternalServerError, "Không thể lấy chuyến đi đang hoạt động")
+		return
+	}
+
+	var driverIDValue interface{}
+	if driverID.Valid {
+		driverIDValue = driverID.Int64
+	}
+
+	w.WriteHeader(http.StatusOK)
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
+		"data": map[string]interface{}{
+			"trip_id":               tripID,
+			"customer_id":           customerID,
+			"trip_distance":         tripDistance,
+			"trip_price":            tripPrice,
+			"trip_latitude":         tripLatitude,
+			"trip_longitude":        tripLongitude,
+			"destination_latitude":  destinationLatitude,
+			"destination_longitude": destinationLongitude,
+			"trip_status_id":        tripStatusID,
+			"status_text":           parseNullString(statusText),
+			"driver_id":             driverIDValue,
+		},
+		"message": "Lấy chuyến đi đang hoạt động thành công",
+	})
+}
+
+type bookTripRequestV2 struct {
+	CustomerID           int     `json:"customer_id"`
+	TripDistance         int     `json:"trip_distance"`
+	TripLatitude         float64 `json:"trip_latitude"`
+	TripLongitude        float64 `json:"trip_longitude"`
+	DestinationLatitude  float64 `json:"destination_latitude"`
+	DestinationLongitude float64 `json:"destination_longitude"`
+}
+
+func bookTripV2(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+
+	var req bookTripRequestV2
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		tripJSONErrorV2(w, http.StatusBadRequest, "Dữ liệu JSON không hợp lệ")
+		return
+	}
+
+	if req.CustomerID <= 0 || req.TripDistance <= 0 ||
+		!validCoordinateV2(req.TripLatitude, req.TripLongitude) ||
+		!validCoordinateV2(req.DestinationLatitude, req.DestinationLongitude) {
+		tripJSONErrorV2(w, http.StatusBadRequest, "Vui lòng nhập customer_id, trip_distance và tọa độ điểm đi/điểm đến hợp lệ")
+		return
+	}
+
+	geoCtx, cancelGeo := context.WithTimeout(r.Context(), 25*time.Second)
+	defer cancelGeo()
+
+	pickupInHanoi, err := isHanoiCoordinateV2(geoCtx, req.TripLatitude, req.TripLongitude)
+	if err != nil {
+		log.Printf("Không thể xác thực địa chỉ điểm đón bằng Nominatim: %v", err)
+		tripJSONErrorV2(w, http.StatusServiceUnavailable, "Không thể xác thực địa giới Hà Nội lúc này. Vui lòng thử lại")
+		return
+	}
+	if !pickupInHanoi {
+		tripJSONErrorV2(w, http.StatusBadRequest, "Điểm đón phải nằm trong địa giới thành phố Hà Nội")
+		return
+	}
+
+	destinationInHanoi, err := isHanoiCoordinateV2(geoCtx, req.DestinationLatitude, req.DestinationLongitude)
+	if err != nil {
+		log.Printf("Không thể xác thực địa chỉ điểm đến bằng Nominatim: %v", err)
+		tripJSONErrorV2(w, http.StatusServiceUnavailable, "Không thể xác thực địa giới Hà Nội lúc này. Vui lòng thử lại")
+		return
+	}
+	if !destinationInHanoi {
+		tripJSONErrorV2(w, http.StatusBadRequest, "Điểm đến phải nằm trong địa giới thành phố Hà Nội")
+		return
+	}
+
+	var pricePerKm int
+	err = db.QueryRow(
+		"SELECT price_per_km FROM PriceConfig WHERE ? >= `from` AND ? <= `to` LIMIT 1",
+		req.TripDistance, req.TripDistance,
+	).Scan(&pricePerKm)
+	if err == sql.ErrNoRows {
+		pricePerKm = 10000
+	} else if err != nil {
+		log.Printf("Lỗi lấy PriceConfig: %v", err)
+		tripJSONErrorV2(w, http.StatusInternalServerError, "Lỗi hệ thống khi tính toán giá tiền")
+		return
+	}
+	totalPrice := float64(req.TripDistance) * float64(pricePerKm)
+
+	tx, err := db.BeginTx(r.Context(), nil)
+	if err != nil {
+		tripJSONErrorV2(w, http.StatusInternalServerError, "Không thể khởi tạo giao dịch đặt chuyến")
+		return
+	}
+	defer tx.Rollback()
+
+	var lockedCustomerID int
+	err = tx.QueryRowContext(
+		r.Context(),
+		"SELECT customer_id FROM Customer WHERE customer_id = ? FOR UPDATE",
+		req.CustomerID,
+	).Scan(&lockedCustomerID)
+	if err == sql.ErrNoRows {
+		tripJSONErrorV2(w, http.StatusNotFound, "Không tìm thấy khách hàng")
+		return
+	}
+	if err != nil {
+		log.Printf("Lỗi khóa Customer khi đặt chuyến: %v", err)
+		tripJSONErrorV2(w, http.StatusInternalServerError, "Không thể kiểm tra trạng thái khách hàng")
+		return
+	}
+
+	var activeTripID int
+	var activeTripStatusID int
+	err = tx.QueryRowContext(
+		r.Context(),
+		`SELECT trip_id, trip_status_id
+		 FROM Trip
+		 WHERE customer_id = ? AND trip_status_id IN (?, ?, ?)
+		 ORDER BY trip_id DESC
+		 LIMIT 1`,
+		req.CustomerID,
+		tripStatusPendingV2,
+		tripStatusAcceptedV2,
+		tripStatusGoingV2,
+	).Scan(&activeTripID, &activeTripStatusID)
+	if err == nil {
+		tripJSONErrorV2(w, http.StatusConflict, fmt.Sprintf(
+			"Bạn đang có chuyến đi chưa hoàn thành (trip_id: %d, status_id: %d). Vui lòng hoàn thành hoặc hủy chuyến hiện tại trước khi đặt chuyến mới",
+			activeTripID, activeTripStatusID,
+		))
+		return
+	}
+	if err != sql.ErrNoRows {
+		log.Printf("Lỗi kiểm tra chuyến đang hoạt động của Customer %d: %v", req.CustomerID, err)
+		tripJSONErrorV2(w, http.StatusInternalServerError, "Không thể kiểm tra chuyến đi hiện tại")
+		return
+	}
+
+	insertQuery := `
+		INSERT INTO Trip (
+			trip_distance, trip_price, customer_id, driver_id, trip_status_id,
+			trip_latitude, trip_longitude, destination_latitude, destination_longitude
+		)
+		VALUES (?, ?, ?, NULL, ?, ?, ?, ?, ?)
+	`
+	result, err := tx.ExecContext(
+		r.Context(), insertQuery,
+		req.TripDistance, totalPrice, req.CustomerID, tripStatusPendingV2,
+		req.TripLatitude, req.TripLongitude,
+		req.DestinationLatitude, req.DestinationLongitude,
+	)
+	if err != nil {
+		log.Printf("Lỗi INSERT Trip: %v", err)
+		tripJSONErrorV2(w, http.StatusInternalServerError, "Không thể lưu chuyến đi")
+		return
+	}
+
+	lastInsertID, err := result.LastInsertId()
+	if err != nil {
+		tripJSONErrorV2(w, http.StatusInternalServerError, "Không thể lấy trip_id vừa tạo")
+		return
+	}
+	tripID := int(lastInsertID)
+
+	if _, err = tx.ExecContext(
+		r.Context(),
+		"UPDATE Customer SET latitude = ?, longitude = ? WHERE customer_id = ?",
+		req.TripLatitude, req.TripLongitude, req.CustomerID,
+	); err != nil {
+		log.Printf("Lỗi cập nhật tọa độ Customer: %v", err)
+		tripJSONErrorV2(w, http.StatusInternalServerError, "Không thể cập nhật vị trí khách hàng")
+		return
+	}
+
+	var statusText string
+	if err = tx.QueryRowContext(
+		r.Context(), "SELECT status FROM TripStatus WHERE trip_status_id = ?", tripStatusPendingV2,
+	).Scan(&statusText); err != nil {
+		log.Printf("Lỗi lấy TripStatus: %v", err)
+		tripJSONErrorV2(w, http.StatusInternalServerError, "Không thể lấy trạng thái chuyến đi")
+		return
+	}
+
+	if err = tx.Commit(); err != nil {
+		log.Printf("Lỗi commit bookTrip: %v", err)
+		tripJSONErrorV2(w, http.StatusInternalServerError, "Không thể xác nhận chuyến đi")
+		return
+	}
+
+	notifiedCount, notifyErr := notifyAvailableDriversV2(tripID, req, totalPrice)
+	if notifyErr != nil {
+		log.Printf("Lỗi tìm/gửi chuyến mới cho Driver: %v", notifyErr)
+	}
+
+	message := "Đã tạo chuyến đi. Đang chờ tài xế online gửi vị trí realtime"
+	if notifiedCount > 0 {
+		message = fmt.Sprintf("Đã gửi chuyến đi đến %d tài xế đang online; Flutter tự kiểm tra bán kính 5km", notifiedCount)
+	}
+
+	w.WriteHeader(http.StatusCreated)
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
+		"data": map[string]interface{}{
+			"trip_id":               tripID,
+			"customer_id":           req.CustomerID,
+			"trip_distance":         req.TripDistance,
+			"trip_price":            totalPrice,
+			"trip_status_id":        tripStatusPendingV2,
+			"status_text":           statusText,
+			"trip_latitude":         req.TripLatitude,
+			"trip_longitude":        req.TripLongitude,
+			"destination_latitude":  req.DestinationLatitude,
+			"destination_longitude": req.DestinationLongitude,
+			"notified_driver_count": notifiedCount,
+			"message":               message,
+		},
+	})
+}
+
+func notifyAvailableDriversV2(tripID int, req bookTripRequestV2, tripPrice float64) (int, error) {
+	rows, err := db.Query(`SELECT driver_id FROM Driver WHERE active = 1`)
+	if err != nil {
+		return 0, err
+	}
+	var driverIDs []int
+	for rows.Next() {
+		var driverID int
+		if err := rows.Scan(&driverID); err != nil {
+			_ = rows.Close()
+			return 0, err
+		}
+		driverIDs = append(driverIDs, driverID)
+	}
+	if err := rows.Err(); err != nil {
+		_ = rows.Close()
+		return 0, err
+	}
+	_ = rows.Close()
+
+	notifiedCount := 0
+	for _, driverID := range driverIDs {
+		tx, err := db.Begin()
+		if err != nil {
+			return notifiedCount, err
+		}
+		var active int
+		err = tx.QueryRow(`SELECT active FROM Driver WHERE driver_id = ? FOR UPDATE`, driverID).Scan(&active)
+		if err != nil || active != 1 {
+			_ = tx.Rollback()
+			continue
+		}
+		var busyCount int
+		err = tx.QueryRow(`
+			SELECT COUNT(*) FROM Trip
+			WHERE driver_id = ? AND trip_status_id IN (?, ?)
+		`, driverID, tripStatusAcceptedV2, tripStatusGoingV2).Scan(&busyCount)
+		if err != nil || busyCount > 0 {
+			_ = tx.Rollback()
+			continue
+		}
+
+		message := map[string]interface{}{
+			"type": "new_trip",
+			"data": map[string]interface{}{
+				"trip_id":               tripID,
+				"customer_id":           req.CustomerID,
+				"trip_distance":         req.TripDistance,
+				"trip_price":            tripPrice,
+				"trip_latitude":         req.TripLatitude,
+				"trip_longitude":        req.TripLongitude,
+				"destination_latitude":  req.DestinationLatitude,
+				"destination_longitude": req.DestinationLongitude,
+			},
+		}
+		sent := sendDriverMessageV2(driverID, message)
+		if err := tx.Commit(); err != nil {
+			return notifiedCount, err
+		}
+		if sent {
+			notifiedCount++
+		}
+	}
+	return notifiedCount, nil
+}
+
+func sendPendingTripsToDriverV2(driverID int, client *tripSocketClientV2) error {
+	var busyCount int
+	err := db.QueryRow(`
+		SELECT COUNT(*) FROM Trip
+		WHERE driver_id = ? AND trip_status_id IN (?, ?)
+	`, driverID, tripStatusAcceptedV2, tripStatusGoingV2).Scan(&busyCount)
+	if err != nil {
+		return fmt.Errorf("kiểm tra trạng thái bận của driver %d: %w", driverID, err)
+	}
+	if busyCount > 0 {
+		return nil
+	}
+
+	type pendingTripV2 struct {
+		TripID               int
+		CustomerID           int
+		TripDistance         int
+		TripPrice            float64
+		TripLatitude         float64
+		TripLongitude        float64
+		DestinationLatitude  float64
+		DestinationLongitude float64
+	}
+
+	rows, err := db.Query(`
+		SELECT trip_id, customer_id, trip_distance, trip_price,
+		       trip_latitude, trip_longitude,
+		       destination_latitude, destination_longitude
+		FROM Trip
+		WHERE trip_status_id = ? AND driver_id IS NULL
+		ORDER BY trip_id ASC
+	`, tripStatusPendingV2)
+	if err != nil {
+		return fmt.Errorf("lấy danh sách chuyến đang chờ cho driver %d: %w", driverID, err)
+	}
+
+	var pendingTrips []pendingTripV2
+	for rows.Next() {
+		var trip pendingTripV2
+		if err := rows.Scan(
+			&trip.TripID,
+			&trip.CustomerID,
+			&trip.TripDistance,
+			&trip.TripPrice,
+			&trip.TripLatitude,
+			&trip.TripLongitude,
+			&trip.DestinationLatitude,
+			&trip.DestinationLongitude,
+		); err != nil {
+			_ = rows.Close()
+			return fmt.Errorf("đọc chuyến đang chờ cho driver %d: %w", driverID, err)
+		}
+		pendingTrips = append(pendingTrips, trip)
+	}
+	if err := rows.Err(); err != nil {
+		_ = rows.Close()
+		return fmt.Errorf("duyệt danh sách chuyến đang chờ cho driver %d: %w", driverID, err)
+	}
+	if err := rows.Close(); err != nil {
+		return fmt.Errorf("đóng danh sách chuyến đang chờ cho driver %d: %w", driverID, err)
+	}
+
+	for _, trip := range pendingTrips {
+		message := map[string]interface{}{
+			"type": "new_trip",
+			"data": map[string]interface{}{
+				"trip_id":               trip.TripID,
+				"customer_id":           trip.CustomerID,
+				"trip_distance":         trip.TripDistance,
+				"trip_price":            trip.TripPrice,
+				"trip_latitude":         trip.TripLatitude,
+				"trip_longitude":        trip.TripLongitude,
+				"destination_latitude":  trip.DestinationLatitude,
+				"destination_longitude": trip.DestinationLongitude,
+			},
+		}
+		if err := client.writeJSON(message); err != nil {
+			return fmt.Errorf("gửi trip %d cho driver %d: %w", trip.TripID, driverID, err)
+		}
+	}
+
+	if len(pendingTrips) > 0 {
+		log.Printf("Đã gửi lại %d chuyến đang chờ cho driver %d", len(pendingTrips), driverID)
+	}
+	return nil
+}
+
+func handleDriverTripNotificationsV2(w http.ResponseWriter, r *http.Request) {
+	driverID, err := strconv.Atoi(r.URL.Query().Get("driver_id"))
+	if err != nil || driverID <= 0 {
+		http.Error(w, "driver_id không hợp lệ", http.StatusBadRequest)
+		return
+	}
+	var active int
+	if err := db.QueryRow("SELECT active FROM Driver WHERE driver_id = ?", driverID).Scan(&active); err != nil {
+		http.Error(w, "Không tìm thấy tài xế", http.StatusNotFound)
+		return
+	}
+	if active != 1 {
+		http.Error(w, "Tài khoản tài xế chưa được duyệt hoạt động", http.StatusForbidden)
+		return
+	}
+
+	conn, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		log.Printf("Không thể mở WebSocket nhận chuyến cho driver %d: %v", driverID, err)
+		return
+	}
+	client := &tripSocketClientV2{conn: conn}
+	addDriverTripClientV2(driverID, client)
+	log.Printf("Driver %d đã kết nối WebSocket nhận chuyến", driverID)
+
+	defer func() {
+		removeDriverTripClientV2(driverID, client)
+		_ = conn.Close()
+		log.Printf("Driver %d đã ngắt WebSocket nhận chuyến", driverID)
+	}()
+
+	if err := sendPendingTripsToDriverV2(driverID, client); err != nil {
+		log.Printf("Không thể gửi lại chuyến đang chờ cho driver %d: %v", driverID, err)
+	}
+
+	for {
+		_, rawMessage, err := conn.ReadMessage()
+		if err != nil {
+			break
+		}
+		if err := handleDriverProximityMessageV2(driverID, rawMessage); err != nil {
+			log.Printf("Driver %d gửi proximity event lỗi: %v", driverID, err)
+		}
+	}
+}
+
+func handleDriverProximityMessageV2(driverID int, rawMessage []byte) error {
+	var message struct {
+		Type      string  `json:"type"`
+		TripID    int     `json:"trip_id"`
+		Latitude  float64 `json:"latitude"`
+		Longitude float64 `json:"longitude"`
+	}
+	if err := json.Unmarshal(rawMessage, &message); err != nil {
+		return err
+	}
+	if (message.Type != "driver_nearby" && message.Type != "driver_out_of_range") || message.TripID <= 0 {
+		return nil
+	}
+	if !validCoordinateV2(message.Latitude, message.Longitude) {
+		return fmt.Errorf("tọa độ không hợp lệ")
+	}
+
+	var active, statusID int
+	err := db.QueryRow(`
+		SELECT d.active, t.trip_status_id
+		FROM Driver d
+		JOIN Trip t ON t.trip_id = ?
+		WHERE d.driver_id = ?
+	`, message.TripID, driverID).Scan(&active, &statusID)
+	if err != nil {
+		return err
+	}
+	if active != 1 || statusID != tripStatusPendingV2 {
+		return nil
+	}
+
+	if message.Type == "driver_nearby" {
+		var busyCount int
+		if err := db.QueryRow(`
+			SELECT COUNT(*) FROM Trip
+			WHERE driver_id = ? AND trip_status_id IN (?, ?)
+		`, driverID, tripStatusAcceptedV2, tripStatusGoingV2).Scan(&busyCount); err != nil {
+			return err
+		}
+		if busyCount > 0 {
+			return nil
+		}
+	}
+
+	broadcastCustomerTripV2(message.TripID, map[string]interface{}{
+		"type": message.Type, "trip_id": message.TripID,
+		"driver_id": driverID,
+		"latitude":  message.Latitude, "longitude": message.Longitude,
+	})
+	return nil
+}
+
+func handleUserTrackingV2(w http.ResponseWriter, r *http.Request) {
+	tripID, err := strconv.Atoi(mux.Vars(r)["trip_id"])
+	if err != nil || tripID <= 0 {
+		http.Error(w, "trip_id không hợp lệ", http.StatusBadRequest)
+		return
+	}
+
+	conn, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		log.Printf("Không thể mở WebSocket theo dõi trip %d: %v", tripID, err)
+		return
+	}
+	client := &tripSocketClientV2{conn: conn}
+	addCustomerTripClientV2(tripID, client)
+
+	var driverID sql.NullInt64
+	var statusID int
+	err = db.QueryRow(`
+		SELECT driver_id, trip_status_id FROM Trip WHERE trip_id = ?
+	`, tripID).Scan(&driverID, &statusID)
+	if err == nil {
+		if driverID.Valid && (statusID == tripStatusAcceptedV2 || statusID == tripStatusGoingV2) {
+			_ = client.writeJSON(map[string]interface{}{
+				"type": "trip_accepted", "trip_id": tripID, "driver_id": driverID.Int64,
+			})
+		}
+	} else if err != sql.ErrNoRows {
+		log.Printf("Lỗi lấy trạng thái ban đầu của trip %d: %v", tripID, err)
+	}
+
+	defer func() {
+		removeCustomerTripClientV2(tripID, client)
+		_ = conn.Close()
+	}()
+	for {
+		if _, _, err := conn.ReadMessage(); err != nil {
+			break
+		}
+	}
+}
+
+func handleDriverLocationStreamV2(w http.ResponseWriter, r *http.Request) {
+	driverID, err := strconv.Atoi(r.URL.Query().Get("driver_id"))
+	if err != nil || driverID <= 0 {
+		http.Error(w, "driver_id không hợp lệ", http.StatusBadRequest)
+		return
+	}
+	var active int
+	if err := db.QueryRow("SELECT active FROM Driver WHERE driver_id = ?", driverID).Scan(&active); err != nil || active != 1 {
+		http.Error(w, "Tài khoản tài xế không hợp lệ hoặc chưa được duyệt", http.StatusForbidden)
+		return
+	}
+
+	conn, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		log.Printf("Không thể mở WebSocket GPS Driver %d: %v", driverID, err)
+		return
+	}
+	defer conn.Close()
+
+	for {
+		_, rawMessage, err := conn.ReadMessage()
+		if err != nil {
+			break
+		}
+		var update struct {
+			TripID    int     `json:"trip_id"`
+			Latitude  float64 `json:"latitude"`
+			Longitude float64 `json:"longitude"`
+		}
+		if err := json.Unmarshal(rawMessage, &update); err != nil || !validCoordinateV2(update.Latitude, update.Longitude) {
+			_ = conn.WriteJSON(map[string]string{"type": "error", "message": "GPS JSON hoặc tọa độ không hợp lệ"})
+			continue
+		}
+		if update.TripID <= 0 {
+			continue
+		}
+
+		var assigned int
+		err = db.QueryRow(`
+			SELECT COUNT(*) FROM Trip
+			WHERE trip_id = ? AND driver_id = ? AND trip_status_id IN (?, ?)
+		`, update.TripID, driverID, tripStatusAcceptedV2, tripStatusGoingV2).Scan(&assigned)
+		if err != nil || assigned == 0 {
+			continue
+		}
+		broadcastCustomerTripV2(update.TripID, map[string]interface{}{
+			"type": "driver_location", "trip_id": update.TripID,
+			"driver_id": driverID,
+			"latitude":  update.Latitude, "longitude": update.Longitude,
+		})
+	}
+}
+
+type acceptTripRequestV2 struct {
+	DriverID int `json:"driver_id"`
+}
+
+func acceptTripV2(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	tripID, err := strconv.Atoi(mux.Vars(r)["id"])
+	if err != nil || tripID <= 0 {
+		tripJSONErrorV2(w, http.StatusBadRequest, "trip_id không hợp lệ")
+		return
+	}
+
+	var req acceptTripRequestV2
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.DriverID <= 0 {
+		tripJSONErrorV2(w, http.StatusBadRequest, "Vui lòng truyền driver_id hợp lệ")
+		return
+	}
+
+	tx, err := db.BeginTx(r.Context(), nil)
+	if err != nil {
+		tripJSONErrorV2(w, http.StatusInternalServerError, "Không thể khởi tạo giao dịch nhận chuyến")
+		return
+	}
+	defer tx.Rollback()
+
+	var customerID, tripStatusID int
+	var currentDriverID sql.NullInt64
+	err = tx.QueryRowContext(r.Context(), `
+		SELECT customer_id, trip_status_id, driver_id
+		FROM Trip WHERE trip_id = ? FOR UPDATE
+	`, tripID).Scan(&customerID, &tripStatusID, &currentDriverID)
+	if err == sql.ErrNoRows {
+		tripJSONErrorV2(w, http.StatusNotFound, "Không tìm thấy chuyến đi")
+		return
+	}
+	if err != nil {
+		log.Printf("Lỗi lock Trip %d: %v", tripID, err)
+		tripJSONErrorV2(w, http.StatusInternalServerError, "Không thể kiểm tra chuyến đi")
+		return
+	}
+	if tripStatusID != tripStatusPendingV2 || currentDriverID.Valid {
+		tripJSONErrorV2(w, http.StatusConflict, "Chuyến đi đã được tài xế khác nhận hoặc không còn ở trạng thái chờ")
+		return
+	}
+
+	var active int
+	err = tx.QueryRowContext(r.Context(), `
+		SELECT active FROM Driver WHERE driver_id = ? FOR UPDATE
+	`, req.DriverID).Scan(&active)
+	if err == sql.ErrNoRows {
+		tripJSONErrorV2(w, http.StatusNotFound, "Không tìm thấy tài xế")
+		return
+	}
+	if err != nil {
+		log.Printf("Lỗi lock Driver %d: %v", req.DriverID, err)
+		tripJSONErrorV2(w, http.StatusInternalServerError, "Không thể kiểm tra tài xế")
+		return
+	}
+	if active != 1 {
+		tripJSONErrorV2(w, http.StatusForbidden, "Tài khoản tài xế chưa được duyệt")
+		return
+	}
+	if !isDriverConnectedV2(req.DriverID) {
+		tripJSONErrorV2(w, http.StatusConflict, "Tài xế đang offline hoặc mất kết nối")
+		return
+	}
+
+	var busyCount int
+	if err := tx.QueryRowContext(r.Context(), `
+		SELECT COUNT(*) FROM Trip
+		WHERE driver_id = ? AND trip_status_id IN (?, ?)
+	`, req.DriverID, tripStatusAcceptedV2, tripStatusGoingV2).Scan(&busyCount); err != nil {
+		tripJSONErrorV2(w, http.StatusInternalServerError, "Không thể kiểm tra trạng thái bận/rảnh của tài xế")
+		return
+	}
+	if busyCount > 0 {
+		tripJSONErrorV2(w, http.StatusConflict, "Bạn đang thực hiện một chuyến đi khác")
+		return
+	}
+
+	result, err := tx.ExecContext(r.Context(), `
+		UPDATE Trip SET driver_id = ?, trip_status_id = ?
+		WHERE trip_id = ? AND trip_status_id = ? AND driver_id IS NULL
+	`, req.DriverID, tripStatusAcceptedV2, tripID, tripStatusPendingV2)
+	if err != nil {
+		log.Printf("Lỗi cập nhật Driver nhận Trip: %v", err)
+		tripJSONErrorV2(w, http.StatusInternalServerError, "Không thể nhận chuyến đi")
+		return
+	}
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected != 1 {
+		tripJSONErrorV2(w, http.StatusConflict, "Chuyến đi vừa được tài xế khác nhận")
+		return
+	}
+
+	if err := tx.Commit(); err != nil {
+		log.Printf("Lỗi commit acceptTrip: %v", err)
+		tripJSONErrorV2(w, http.StatusInternalServerError, "Không thể xác nhận nhận chuyến")
+		return
+	}
+
+	acceptedEvent := map[string]interface{}{
+		"type":      "trip_accepted",
+		"trip_id":   tripID,
+		"driver_id": req.DriverID,
+	}
+	broadcastCustomerTripV2(tripID, acceptedEvent)
+	broadcastAllDriversV2(map[string]interface{}{
+		"type":      "trip_taken",
+		"trip_id":   tripID,
+		"driver_id": req.DriverID,
+	})
+
+	w.WriteHeader(http.StatusOK)
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
+		"data": map[string]interface{}{
+			"trip_id":   tripID,
+			"driver_id": req.DriverID,
+			"status":    "ACCEPTED",
+			"message":   "Nhận chuyến thành công",
+		},
+	})
+}
+
+func startTripV2(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	tripID, err := strconv.Atoi(mux.Vars(r)["id"])
+	if err != nil || tripID <= 0 {
+		tripJSONErrorV2(w, http.StatusBadRequest, "trip_id không hợp lệ")
+		return
+	}
+	var req acceptTripRequestV2
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.DriverID <= 0 {
+		tripJSONErrorV2(w, http.StatusBadRequest, "Vui lòng truyền driver_id hợp lệ")
+		return
+	}
+
+	result, err := db.Exec(`
+		UPDATE Trip SET trip_status_id = ?
+		WHERE trip_id = ? AND driver_id = ? AND trip_status_id = ?
+	`, tripStatusGoingV2, tripID, req.DriverID, tripStatusAcceptedV2)
+	if err != nil {
+		tripJSONErrorV2(w, http.StatusInternalServerError, "Không thể bắt đầu chuyến đi")
+		return
+	}
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected != 1 {
+		tripJSONErrorV2(w, http.StatusConflict, "Chuyến đi không ở trạng thái ACCEPTED hoặc không thuộc tài xế này")
+		return
+	}
+	broadcastCustomerTripV2(tripID, map[string]interface{}{"type": "trip_started", "trip_id": tripID, "driver_id": req.DriverID})
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{"message": "Bắt đầu chuyến đi thành công", "trip_id": tripID})
+}
+
+func completeTripV2(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	tripID, err := strconv.Atoi(mux.Vars(r)["id"])
+	if err != nil || tripID <= 0 {
+		tripJSONErrorV2(w, http.StatusBadRequest, "trip_id không hợp lệ")
+		return
+	}
+	var req acceptTripRequestV2
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.DriverID <= 0 {
+		tripJSONErrorV2(w, http.StatusBadRequest, "Vui lòng truyền driver_id hợp lệ")
+		return
+	}
+
+	result, err := db.Exec(`
+		UPDATE Trip SET trip_status_id = ?
+		WHERE trip_id = ? AND driver_id = ? AND trip_status_id IN (?, ?)
+	`, tripStatusCompletedV2, tripID, req.DriverID, tripStatusAcceptedV2, tripStatusGoingV2)
+	if err != nil {
+		tripJSONErrorV2(w, http.StatusInternalServerError, "Không thể hoàn thành chuyến đi")
+		return
+	}
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected != 1 {
+		tripJSONErrorV2(w, http.StatusConflict, "Chuyến đi không thuộc tài xế này hoặc đã kết thúc")
+		return
+	}
+
+	broadcastCustomerTripV2(tripID, map[string]interface{}{"type": "trip_completed", "trip_id": tripID, "driver_id": req.DriverID})
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{"message": "Hoàn thành chuyến đi thành công", "trip_id": tripID})
 }

@@ -1,0 +1,80 @@
+import 'package:delivery_app/features/map/data/models/trip_model.dart';
+import 'package:latlong2/latlong.dart';
+
+import 'data/models/route_result.dart';
+
+enum MapTripStatus {
+  idle,
+  booking,
+  waitingForDriver,
+  driverComing,
+  goingToDestination,
+  completed,
+  cancelled,
+}
+
+class MapState {
+  final String? errorMessage;
+
+  final String pickupAddress;
+  final String destinationAddress;
+
+  final LatLng? pickup;
+  final LatLng? destination;
+  final LatLng? driverLocation;
+
+  final int? tripId;
+  final int? driverId;
+
+  final RouteResult? route;
+  final MapTripStatus tripStatus;
+
+  final List<Map<String, dynamic>> pendingTrips;
+  final TripModel? activeTrip;
+
+  const MapState({
+    this.activeTrip,
+    this.errorMessage,
+    this.pickupAddress = '',
+    this.destinationAddress = '',
+    this.pickup,
+    this.destination,
+    this.driverLocation,
+    this.tripId,
+    this.driverId,
+    this.route,
+    this.tripStatus = MapTripStatus.idle,
+    this.pendingTrips = const [],
+  });
+
+  MapState copyWith({
+    TripModel? activeTrip,
+    String? errorMessage,
+    bool clearError = false,
+    String? pickupAddress,
+    String? destinationAddress,
+    LatLng? pickup,
+    LatLng? destination,
+    LatLng? driverLocation,
+    int? tripId,
+    int? driverId,
+    RouteResult? route,
+    MapTripStatus? tripStatus,
+    List<Map<String, dynamic>>? pendingTrips,
+  }) {
+    return MapState(
+      activeTrip: activeTrip ?? this.activeTrip,
+      errorMessage: clearError ? null : errorMessage ?? this.errorMessage,
+      pickupAddress: pickupAddress ?? this.pickupAddress,
+      destinationAddress: destinationAddress ?? this.destinationAddress,
+      pickup: pickup ?? this.pickup,
+      destination: destination ?? this.destination,
+      driverLocation: driverLocation ?? this.driverLocation,
+      tripId: tripId ?? this.tripId,
+      driverId: driverId ?? this.driverId,
+      route: route ?? this.route,
+      tripStatus: tripStatus ?? this.tripStatus,
+      pendingTrips: pendingTrips ?? this.pendingTrips,
+    );
+  }
+}
