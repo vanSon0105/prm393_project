@@ -1,16 +1,10 @@
 import 'package:delivery_app/data/network/base/param.dart';
-import 'package:delivery_app/features/auth/domain/entities/role.dart';
 
 class LoginParam extends ApiParam {
   final String userName;
   final String password;
-  final Role role;
 
-  LoginParam({
-    required this.userName,
-    required this.password,
-    required this.role,
-  });
+  LoginParam({required this.userName, required this.password});
 
   @override
   String get method => Method.post;
@@ -19,7 +13,6 @@ class LoginParam extends ApiParam {
   Map<String, dynamic> get bodyParams => {
     'user_name': userName,
     'password': password,
-    'role': role.value,
   };
 
   @override
