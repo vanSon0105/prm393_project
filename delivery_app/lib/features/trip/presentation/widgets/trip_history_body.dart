@@ -8,6 +8,7 @@ import '../../../../shared/widgets/surface.dart';
 import '../../../../shared/widgets/status_dot.dart';
 import '../../domain/entities/trip.dart';
 import 'trip_summary.dart';
+import 'trip_presentation.dart';
 
 class TripHistoryBody extends StatelessWidget {
   const TripHistoryBody({
@@ -151,7 +152,7 @@ class TripHistoryBody extends StatelessWidget {
                           children: [
                             Expanded(
                               child: Text(
-                                t.date,
+                                t.dateLabel,
                                 style: const TextStyle(
                                   fontSize: 12,
                                   color: muted,

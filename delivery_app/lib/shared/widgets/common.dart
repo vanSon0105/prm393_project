@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:delivery_app/generated/locale_keys.g.dart';
+import 'package:easy_localization/easy_localization.dart';
+
 import '../theme/app_theme.dart';
 import 'responsive_auth_layout.dart';
 
@@ -13,13 +16,20 @@ class NoiLogo extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(Icons.route_rounded,
-            size: fontSize + 4,
-            color: color == AppColors.ink ? AppColors.primary : color),
+        Icon(
+          Icons.route_rounded,
+          size: fontSize + 4,
+          color: color == AppColors.ink ? AppColors.primary : color,
+        ),
         const SizedBox(width: 6),
-        Text('nối',
-            style: TextStyle(
-                fontSize: fontSize, fontWeight: FontWeight.w800, color: color)),
+        Text(
+          LocaleKeys.app_name.tr(),
+          style: TextStyle(
+            fontSize: fontSize,
+            fontWeight: FontWeight.w800,
+            color: color,
+          ),
+        ),
       ],
     );
   }
@@ -60,7 +70,9 @@ class AuthTopBar extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
-                    color: AppColors.muted, fontWeight: FontWeight.w600),
+                  color: AppColors.muted,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ],
@@ -74,7 +86,12 @@ class AuthTopBar extends StatelessWidget {
 
 /// Tiêu đề + mô tả
 class AuthHeading extends StatelessWidget {
-  const AuthHeading({super.key, required this.title, required this.subtitle, required this.size});
+  const AuthHeading({
+    super.key,
+    required this.title,
+    required this.subtitle,
+    required this.size,
+  });
   final String title;
   final String subtitle;
   final ScreenSize size;
@@ -84,14 +101,19 @@ class AuthHeading extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(title,
-            style: TextStyle(
-              fontSize: size == ScreenSize.mobile ? 28 : 30,
-              fontWeight: FontWeight.w800,
-              height: 1.2,
-            )),
+        Text(
+          title,
+          style: TextStyle(
+            fontSize: size == ScreenSize.mobile ? 28 : 30,
+            fontWeight: FontWeight.w800,
+            height: 1.2,
+          ),
+        ),
         const SizedBox(height: 6),
-        Text(subtitle, style: const TextStyle(color: AppColors.muted, fontSize: 15)),
+        Text(
+          subtitle,
+          style: const TextStyle(color: AppColors.muted, fontSize: 15),
+        ),
         const SizedBox(height: 24),
       ],
     );
@@ -109,7 +131,10 @@ class LabeledField extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+        ),
         const SizedBox(height: 6),
         child,
       ],
@@ -136,8 +161,13 @@ class BrandChip extends StatelessWidget {
         children: [
           Icon(icon ?? Icons.check_rounded, color: Colors.white, size: 20),
           const SizedBox(width: 8),
-          Text(label,
-              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ],
       ),
     );
@@ -149,13 +179,13 @@ class Validators {
   static String? phone(String? v) {
     final s = (v ?? '').replaceAll(' ', '');
     if (!RegExp(r'^0\d{9}$').hasMatch(s)) {
-      return 'Số điện thoại gồm 10 chữ số, bắt đầu bằng 0.';
+      return LocaleKeys.register_phone_error.tr();
     }
     return null;
   }
 
   static String? password(String? v) =>
-      (v ?? '').length < 6 ? 'Mật khẩu tối thiểu 6 ký tự.' : null;
+      (v ?? '').length < 6 ? LocaleKeys.register_password_error.tr() : null;
 
   static String? notEmpty(String? v, String message) =>
       (v ?? '').trim().isEmpty ? message : null;
