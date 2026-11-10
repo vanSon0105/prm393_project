@@ -40,10 +40,10 @@ class LoginViewModel extends _$LoginViewModel {
       final status = LoginStatus.valueOf(response.data?.status ?? '');
       switch (status) {
         case LoginStatus.approved:
-          AppNavigate.instance.gotoScreenBy(screen: role.screen);
           ref
               .read(appViewModelProvider.notifier)
               .updateAppData(role, profileId: response.data?.profileId);
+          AppNavigate.instance.gotoScreenBy(screen: role.screen);
         case LoginStatus.pending:
           AppNavigate.instance.showAppDialog(
             message: response.data?.message ?? '',

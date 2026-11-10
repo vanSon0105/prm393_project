@@ -13,6 +13,8 @@ enum MapTripStatus {
   cancelled,
 }
 
+enum DriverOnlineStatus { offline, connecting, online, disconnecting }
+
 class MapState {
   final String? errorMessage;
 
@@ -31,6 +33,7 @@ class MapState {
 
   final List<Map<String, dynamic>> pendingTrips;
   final TripModel? activeTrip;
+  final DriverOnlineStatus driverOnlineStatus;
 
   const MapState({
     this.activeTrip,
@@ -45,6 +48,7 @@ class MapState {
     this.route,
     this.tripStatus = MapTripStatus.idle,
     this.pendingTrips = const [],
+    this.driverOnlineStatus = DriverOnlineStatus.offline,
   });
 
   MapState copyWith({
@@ -61,6 +65,7 @@ class MapState {
     RouteResult? route,
     MapTripStatus? tripStatus,
     List<Map<String, dynamic>>? pendingTrips,
+    DriverOnlineStatus? driverOnlineStatus,
   }) {
     return MapState(
       activeTrip: activeTrip ?? this.activeTrip,
@@ -75,6 +80,7 @@ class MapState {
       route: route ?? this.route,
       tripStatus: tripStatus ?? this.tripStatus,
       pendingTrips: pendingTrips ?? this.pendingTrips,
+      driverOnlineStatus: driverOnlineStatus ?? this.driverOnlineStatus,
     );
   }
 }

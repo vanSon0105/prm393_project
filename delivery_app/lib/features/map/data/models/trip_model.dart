@@ -19,6 +19,7 @@ class TripModel {
 
 class TripData {
   final int? customerId;
+  final int? driverId;
   final double? destinationLatitude;
   final double? destinationLongitude;
   final String? message;
@@ -33,6 +34,7 @@ class TripData {
 
   TripData({
     this.customerId,
+    this.driverId,
     this.destinationLatitude,
     this.destinationLongitude,
     this.message,
@@ -48,6 +50,7 @@ class TripData {
 
   factory TripData.fromJson(Map<String, dynamic> json) => TripData(
     customerId: json["customer_id"],
+    driverId: json["driver_id"],
     destinationLatitude: json["destination_latitude"]?.toDouble(),
     destinationLongitude: json["destination_longitude"]?.toDouble(),
     message: json["message"],
@@ -63,6 +66,7 @@ class TripData {
 
   Map<String, dynamic> toJson() => {
     "customer_id": customerId,
+    "driver_id": driverId,
     "destination_latitude": destinationLatitude,
     "destination_longitude": destinationLongitude,
     "message": message,

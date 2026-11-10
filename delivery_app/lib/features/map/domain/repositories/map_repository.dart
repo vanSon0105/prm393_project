@@ -3,6 +3,7 @@ import 'package:latlong2/latlong.dart';
 
 abstract class MapRepository {
   Future<TripModel?> getTripActive({required int customerId});
+  Future<TripModel?> getActiveDriverTrip({required int driverId});
 
   Future<int> bookTrip({
     required int customerId,

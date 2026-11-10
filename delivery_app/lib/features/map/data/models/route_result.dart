@@ -1,3 +1,5 @@
+import 'package:delivery_app/generated/locale_keys.g.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:latlong2/latlong.dart';
 
 class RouteResult {
@@ -17,7 +19,7 @@ class RouteResult {
     final features = json['features'] as List<dynamic>;
 
     if (features.isEmpty) {
-      throw Exception('Không tìm thấy tuyến đường');
+      throw Exception(LocaleKeys.map_route_not_found.tr());
     }
 
     final feature = Map<String, dynamic>.from(features.first as Map);
