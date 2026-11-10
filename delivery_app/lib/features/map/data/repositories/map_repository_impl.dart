@@ -5,6 +5,7 @@ import 'package:delivery_app/features/map/data/repositories/book_param.dart';
 import 'package:delivery_app/features/map/data/repositories/cancel_customer_trip_param.dart';
 import 'package:delivery_app/features/map/data/repositories/cancel_driver_trip_param.dart';
 import 'package:delivery_app/features/map/data/repositories/complete_trip_param.dart';
+import 'package:delivery_app/features/map/data/repositories/price_param.dart';
 import 'package:delivery_app/features/map/data/repositories/start_trip_param.dart';
 import 'package:delivery_app/features/map/data/repositories/trip_param.dart';
 import 'package:flutter/widgets.dart';
@@ -12,6 +13,7 @@ import 'package:latlong2/latlong.dart';
 
 import '../../../../data/network/base/provider.dart';
 import '../../domain/repositories/map_repository.dart';
+import '../models/price_model.dart';
 
 class MapRepositoryImpl extends MapRepository {
   final ApiProvider apiProvider;
@@ -36,6 +38,12 @@ class MapRepositoryImpl extends MapRepository {
       throw const FormatException('Invalid active driver trip response');
     }
     return TripModel.fromJson(Map<String, dynamic>.from(response));
+  }
+
+  @override
+  Future<PriceModel> getPriceConfig() async {
+    final data = await apiProvider.requestApi(param: PriceParam());
+    return PriceModel.fromJson(data);
   }
 
   @override

@@ -135,6 +135,7 @@ func main() {
 	//Role, VehicleType apis
 	r.HandleFunc("/api/getRoles", getRole).Methods("GET")
 	r.HandleFunc("/api/getVehicleType", getVehicleType).Methods("GET")
+	r.HandleFunc("/api/user/price-config", getPriceConfig(db)).Methods("GET")
 
 	// Admin APIs
 	r.HandleFunc("/api/admin/drivers/requests", getDriverRequests).Methods("GET")
@@ -736,11 +737,24 @@ func cancelTrip(w http.ResponseWriter, r *http.Request) {
 	}
 	defer tx.Rollback()
 
+	var lockedCustomerID int
+	err = tx.QueryRowContext(r.Context(), `
+		SELECT customer_id FROM Customer WHERE customer_id = ? FOR UPDATE
+	`, req.CustomerID).Scan(&lockedCustomerID)
+	if err == sql.ErrNoRows {
+		tripJSONErrorV2(w, http.StatusNotFound, "Không tìm thấy khách hàng")
+		return
+	}
+	if err != nil {
+		tripJSONErrorV2(w, http.StatusInternalServerError, "Không thể kiểm tra khách hàng trước khi hủy chuyến")
+		return
+	}
+
 	var currentCustomerID, tripStatusID int
 	var driverID sql.NullInt64
 
 	err = tx.QueryRowContext(r.Context(), `
-		SELECT customer_id, trip_status_id, driver_id 
+		SELECT customer_id, trip_status_id, driver_id
 		FROM Trip WHERE trip_id = ? FOR UPDATE
 	`, tripID).Scan(&currentCustomerID, &tripStatusID, &driverID)
 
@@ -764,7 +778,9 @@ func cancelTrip(w http.ResponseWriter, r *http.Request) {
 	}
 
 	_, err = tx.ExecContext(r.Context(), `
-		UPDATE Trip SET trip_status_id = ? WHERE trip_id = ?
+		UPDATE Trip
+		SET trip_status_id = ?, time = NOW()
+		WHERE trip_id = ?
 	`, tripStatusCancelV2, tripID)
 	if err != nil {
 		tripJSONErrorV2(w, http.StatusInternalServerError, "Không thể cập nhật trạng thái hủy chuyến")
@@ -3220,90 +3236,6 @@ func validCoordinateV2(latitude, longitude float64) bool {
 		latitude >= -90 && latitude <= 90 && longitude >= -180 && longitude <= 180
 }
 
-var nominatimHTTPClientV2 = &http.Client{Timeout: 8 * time.Second}
-
-var nominatimRateLimiterV2 = struct {
-	sync.Mutex
-	lastRequest time.Time
-}{}
-
-var hanoiGeoCacheV2 = struct {
-	sync.RWMutex
-	values map[string]bool
-}{values: make(map[string]bool)}
-
-func isHanoiLabelV2(value string) bool {
-	value = strings.ToLower(strings.TrimSpace(value))
-	return strings.Contains(value, "hà nội") ||
-		strings.Contains(value, "ha noi") ||
-		strings.Contains(value, "hanoi")
-}
-
-func isHanoiCoordinateV2(ctx context.Context, latitude, longitude float64) (bool, error) {
-	cacheKey := fmt.Sprintf("%.5f,%.5f", latitude, longitude)
-	hanoiGeoCacheV2.RLock()
-	cached, exists := hanoiGeoCacheV2.values[cacheKey]
-	hanoiGeoCacheV2.RUnlock()
-	if exists {
-		return cached, nil
-	}
-
-	nominatimRateLimiterV2.Lock()
-	wait := time.Second - time.Since(nominatimRateLimiterV2.lastRequest)
-	if wait > 0 {
-		time.Sleep(wait)
-	}
-	nominatimRateLimiterV2.lastRequest = time.Now()
-	nominatimRateLimiterV2.Unlock()
-
-	endpoint := fmt.Sprintf(
-		"https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=%.7f&lon=%.7f&zoom=10&addressdetails=1",
-		latitude, longitude,
-	)
-	request, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
-	if err != nil {
-		return false, err
-	}
-	request.Header.Set("User-Agent", "DeliveryApp/1.0")
-	request.Header.Set("Accept-Language", "vi")
-
-	response, err := nominatimHTTPClientV2.Do(request)
-	if err != nil {
-		return false, err
-	}
-	defer response.Body.Close()
-
-	if response.StatusCode != http.StatusOK {
-		return false, fmt.Errorf("Nominatim trả về HTTP %d", response.StatusCode)
-	}
-
-	var result struct {
-		Address struct {
-			State        string `json:"state"`
-			City         string `json:"city"`
-			Municipality string `json:"municipality"`
-			County       string `json:"county"`
-			Province     string `json:"province"`
-			CountryCode  string `json:"country_code"`
-		} `json:"address"`
-	}
-	if err := json.NewDecoder(io.LimitReader(response.Body, 1<<20)).Decode(&result); err != nil {
-		return false, err
-	}
-
-	isHanoi := strings.EqualFold(result.Address.CountryCode, "vn") &&
-		(isHanoiLabelV2(result.Address.State) ||
-			isHanoiLabelV2(result.Address.City) ||
-			isHanoiLabelV2(result.Address.Municipality) ||
-			isHanoiLabelV2(result.Address.County) ||
-			isHanoiLabelV2(result.Address.Province))
-
-	hanoiGeoCacheV2.Lock()
-	hanoiGeoCacheV2.values[cacheKey] = isHanoi
-	hanoiGeoCacheV2.Unlock()
-	return isHanoi, nil
-}
-
 func tripHistoryOwnerColumn(role string) (string, bool) {
 	switch strings.ToUpper(strings.TrimSpace(role)) {
 	case "CUSTOMER":
@@ -3474,6 +3406,61 @@ func getTripHistoryByProfile(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func getPriceConfig(db *sql.DB) http.HandlerFunc {
+	type PriceConfigResponse struct {
+		From       float64 `json:"from"`
+		To         float64 `json:"to"`
+		PricePerKm float64 `json:"price_per_km"`
+	}
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+
+		rows, err := db.Query(`
+            SELECT 
+                ` + "`from`" + `,
+                ` + "`to`" + `,
+                price_per_km
+            FROM PriceConfig
+            ORDER BY ` + "`from`" + ` ASC
+        `)
+
+		if err != nil {
+			http.Error(w, "Failed to get price config", http.StatusInternalServerError)
+			return
+		}
+		defer rows.Close()
+
+		configs := make([]PriceConfigResponse, 0)
+
+		for rows.Next() {
+			var config PriceConfigResponse
+
+			err := rows.Scan(
+				&config.From,
+				&config.To,
+				&config.PricePerKm,
+			)
+
+			if err != nil {
+				http.Error(w, "Failed to read price config", http.StatusInternalServerError)
+				return
+			}
+
+			configs = append(configs, config)
+		}
+
+		if err := rows.Err(); err != nil {
+			http.Error(w, "Failed to read price config", http.StatusInternalServerError)
+			return
+		}
+
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": true,
+			"data":    configs,
+		})
+	}
+}
+
 func getActiveDriverTripV2(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	driverID, err := strconv.Atoi(r.URL.Query().Get("driver_id"))
@@ -3638,33 +3625,8 @@ func bookTripV2(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	geoCtx, cancelGeo := context.WithTimeout(r.Context(), 25*time.Second)
-	defer cancelGeo()
-
-	pickupInHanoi, err := isHanoiCoordinateV2(geoCtx, req.TripLatitude, req.TripLongitude)
-	if err != nil {
-		log.Printf("Không thể xác thực địa chỉ điểm đón bằng Nominatim: %v", err)
-		tripJSONErrorV2(w, http.StatusServiceUnavailable, "Không thể xác thực địa giới Hà Nội lúc này. Vui lòng thử lại")
-		return
-	}
-	if !pickupInHanoi {
-		tripJSONErrorV2(w, http.StatusBadRequest, "Điểm đón phải nằm trong địa giới thành phố Hà Nội")
-		return
-	}
-
-	destinationInHanoi, err := isHanoiCoordinateV2(geoCtx, req.DestinationLatitude, req.DestinationLongitude)
-	if err != nil {
-		log.Printf("Không thể xác thực địa chỉ điểm đến bằng Nominatim: %v", err)
-		tripJSONErrorV2(w, http.StatusServiceUnavailable, "Không thể xác thực địa giới Hà Nội lúc này. Vui lòng thử lại")
-		return
-	}
-	if !destinationInHanoi {
-		tripJSONErrorV2(w, http.StatusBadRequest, "Điểm đến phải nằm trong địa giới thành phố Hà Nội")
-		return
-	}
-
 	var pricePerKm int
-	err = db.QueryRow(
+	err := db.QueryRow(
 		"SELECT price_per_km FROM PriceConfig WHERE ? >= `from` AND ? <= `to` LIMIT 1",
 		req.TripDistance, req.TripDistance,
 	).Scan(&pricePerKm)
@@ -3700,6 +3662,37 @@ func bookTripV2(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var cancelledToday int
+	err = tx.QueryRowContext(r.Context(), `
+		SELECT COUNT(*)
+		FROM Trip
+		WHERE customer_id = ?
+		  AND trip_status_id = ?
+		  AND time >= CURDATE()
+		  AND time < CURDATE() + INTERVAL 1 DAY
+	`, req.CustomerID, tripStatusCancelV2).Scan(&cancelledToday)
+	if err != nil {
+		log.Printf("Lỗi đếm số chuyến Customer %d đã hủy hôm nay: %v", req.CustomerID, err)
+		tripJSONErrorV2(w, http.StatusInternalServerError, "Không thể kiểm tra số lần hủy chuyến hôm nay")
+		return
+	}
+	if cancelledToday >= 8 {
+		_ = tx.Rollback()
+		userMessage := "Bạn đã hủy quá nhiều chuyến hôm nay. Sang ngày mai bạn mới có thể đặt chuyến tiếp theo."
+		driverMessage := fmt.Sprintf(
+			"Khách hàng #%d đã hủy %d chuyến trong hôm nay và hiện không thể đặt chuyến mới. Khách hàng có thể đặt lại từ ngày mai.",
+			req.CustomerID, cancelledToday,
+		)
+		broadcastAllDriversV2(map[string]interface{}{
+			"type":         "customer_booking_blocked",
+			"customer_id":  req.CustomerID,
+			"cancel_count": cancelledToday,
+			"message":      driverMessage,
+		})
+		tripJSONErrorV2(w, http.StatusTooManyRequests, userMessage)
+		return
+	}
+
 	var activeTripID int
 	var activeTripStatusID int
 	err = tx.QueryRowContext(
@@ -3730,9 +3723,9 @@ func bookTripV2(w http.ResponseWriter, r *http.Request) {
 	insertQuery := `
 		INSERT INTO Trip (
 			trip_distance, trip_price, customer_id, driver_id, trip_status_id,
-			trip_latitude, trip_longitude, destination_latitude, destination_longitude
+			trip_latitude, trip_longitude, destination_latitude, destination_longitude, ` + "`time`" + `
 		)
-		VALUES (?, ?, ?, NULL, ?, ?, ?, ?, ?)
+		VALUES (?, ?, ?, NULL, ?, ?, ?, ?, ?, NOW())
 	`
 	result, err := tx.ExecContext(
 		r.Context(), insertQuery,
@@ -4182,11 +4175,12 @@ func acceptTripV2(w http.ResponseWriter, r *http.Request) {
 	defer tx.Rollback()
 
 	var customerID, tripStatusID int
+	var tripPrice float64
 	var currentDriverID sql.NullInt64
 	err = tx.QueryRowContext(r.Context(), `
-		SELECT customer_id, trip_status_id, driver_id
+		SELECT customer_id, trip_status_id, driver_id, trip_price
 		FROM Trip WHERE trip_id = ? FOR UPDATE
-	`, tripID).Scan(&customerID, &tripStatusID, &currentDriverID)
+	`, tripID).Scan(&customerID, &tripStatusID, &currentDriverID, &tripPrice)
 	if err == sql.ErrNoRows {
 		tripJSONErrorV2(w, http.StatusNotFound, "Không tìm thấy chuyến đi")
 		return
@@ -4233,6 +4227,35 @@ func acceptTripV2(w http.ResponseWriter, r *http.Request) {
 	}
 	if busyCount > 0 {
 		tripJSONErrorV2(w, http.StatusConflict, "Bạn đang thực hiện một chuyến đi khác")
+		return
+	}
+
+	var walletMoney sql.NullFloat64
+	err = tx.QueryRowContext(r.Context(), `
+		SELECT money FROM DriverWallet WHERE driver_id = ? FOR UPDATE
+	`, req.DriverID).Scan(&walletMoney)
+	if err != nil && err != sql.ErrNoRows {
+		log.Printf("Lỗi kiểm tra ví Driver %d: %v", req.DriverID, err)
+		tripJSONErrorV2(w, http.StatusInternalServerError, "Không thể kiểm tra số dư ví tài xế")
+		return
+	}
+	walletBalance := 0.0
+	if walletMoney.Valid {
+		walletBalance = walletMoney.Float64
+	}
+	if walletBalance < tripPrice {
+		walletMessage := fmt.Sprintf(
+			"Số dư ví không đủ để nhận chuyến này. Số dư hiện tại: %.0fđ, cần tối thiểu: %.0fđ.",
+			walletBalance, tripPrice,
+		)
+		sendDriverMessageV2(req.DriverID, map[string]interface{}{
+			"type":           "insufficient_wallet_balance",
+			"trip_id":        tripID,
+			"wallet_balance": walletBalance,
+			"trip_price":     tripPrice,
+			"message":        walletMessage,
+		})
+		tripJSONErrorV2(w, http.StatusPaymentRequired, walletMessage)
 		return
 	}
 

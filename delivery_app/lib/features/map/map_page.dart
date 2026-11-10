@@ -1,12 +1,13 @@
 import 'dart:async';
 
+import 'package:delivery_app/core/theme/app_theme.dart';
 import 'package:delivery_app/features/app_view_model.dart';
 import 'package:delivery_app/features/auth/domain/entities/role.dart';
 import 'package:delivery_app/features/driver_rating/driver_rating_screen.dart';
+import 'package:delivery_app/features/map/widget/map_box_view.dart';
 import 'package:delivery_app/features/trip/presentation/providers/trip_history_provider.dart';
 import 'package:delivery_app/gen/assets.gen.dart';
 import 'package:delivery_app/generated/locale_keys.g.dart';
-import 'package:delivery_app/core/theme/app_theme.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart' as fl;
@@ -17,6 +18,8 @@ import 'data/models/place_suggestion.dart';
 import 'map_state.dart';
 import 'map_view_model.dart';
 import 'service/current_map_location_provider.dart';
+
+enum MapType { flutterMap, mapBox }
 
 class MapPage extends ConsumerStatefulWidget {
   const MapPage({super.key});
@@ -86,6 +89,11 @@ class _MapPageState extends ConsumerState<MapPage> {
     );
   }
 
+  LatLng? _mapboxCameraTarget;
+  int _mapboxCameraRequestId = 0;
+
+  MapType _mapType = MapType.mapBox;
+
   void _onAddressChanged(int field, String value) {
     if (field == 0) {
       _selectedPickupLocation = null;
@@ -114,7 +122,7 @@ class _MapPageState extends ConsumerState<MapPage> {
       _placeSearchFailed = false;
     });
     if (value.trim().length < 3) return;
-    _suggestionTimer = Timer(const Duration(milliseconds: 350), () async {
+    _suggestionTimer = Timer(const Duration(milliseconds: 650), () async {
       if (!mounted || request != _suggestionRequest) return;
       setState(() => _searchingPlaces = true);
       try {
@@ -343,7 +351,14 @@ class _MapPageState extends ConsumerState<MapPage> {
       return;
     }
 
-    _mapController.move(target, 15, offset: offset);
+    if (_mapType == MapType.flutterMap) {
+      _mapController.move(target, 15, offset: offset);
+    } else {
+      setState(() {
+        _mapboxCameraTarget = target;
+        _mapboxCameraRequestId++;
+      });
+    }
   }
 
   void _moveMapToPickup(LatLng pickup) {
@@ -501,6 +516,22 @@ class _MapPageState extends ConsumerState<MapPage> {
                       destinationLocation: _selectedDestinationLocation,
                     );
               },
+              onCalculate: () {
+                ref
+                    .read(provider.notifier)
+                    .setAddresses(
+                      pickup: _pickupController.text,
+                      destination: _destinationController.text,
+                    );
+
+                ref
+                    .read(provider.notifier)
+                    .bookTrip(
+                      pickupLocation: _selectedPickupLocation,
+                      destinationLocation: _selectedDestinationLocation,
+                      book: false,
+                    );
+              },
               onCancel: () => _confirmCancellation(
                 role,
                 () => ref.read(provider.notifier).cancelTrip(),
@@ -565,7 +596,7 @@ class _MapPageState extends ConsumerState<MapPage> {
     );
   }
 
-  Widget _buildMap(MapState state) {
+  Widget _buildFlutterMap(MapState state) {
     final markers = <fl.Marker>[];
 
     final pickupMarker = state.pickup ?? _selectedPickupLocation;
@@ -657,6 +688,31 @@ class _MapPageState extends ConsumerState<MapPage> {
     );
   }
 
+  Widget _buildMapbox(MapState state) {
+    return MapboxMapView(
+      routePoints: state.route?.points ?? const [],
+      pickup: state.pickup ?? _selectedPickupLocation,
+      destination: state.destination ?? _selectedDestinationLocation,
+      driverLocation: state.driverLocation,
+      initialLocation:
+          state.pickup ??
+          state.driverLocation ??
+          const LatLng(21.0285, 105.8542),
+      cameraTarget: _mapboxCameraTarget,
+      cameraRequestId: _mapboxCameraRequestId,
+    );
+  }
+
+  Widget _buildMap(MapState state) {
+    switch (_mapType) {
+      case MapType.flutterMap:
+        return _buildFlutterMap(state);
+
+      case MapType.mapBox:
+        return _buildMapbox(state);
+    }
+  }
+
   Widget _mapMarker({
     required SvgGenImage asset,
     required String label,
@@ -703,6 +759,7 @@ class _MapPageState extends ConsumerState<MapPage> {
   Widget _buildCustomerPanel(
     MapState state, {
     required VoidCallback onBook,
+    required VoidCallback onCalculate,
     required VoidCallback onCancel,
   }) {
     return Positioned(
@@ -807,12 +864,23 @@ class _MapPageState extends ConsumerState<MapPage> {
                       ),
                     ),
                   const SizedBox(height: 12),
+                  if (state.tripPrice != null)
+                    Text(
+                      'Quãng đường: ${state.tripDistance} - Giá tiền: ${state.tripPrice}',
+                    ),
+                  const SizedBox(height: 12),
                   if (state.tripStatus == MapTripStatus.idle ||
                       state.tripStatus == MapTripStatus.cancelled)
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        onPressed: _locatingPickup ? null : onBook,
+                        onPressed: () {
+                          if (state.tripPrice == null) {
+                            onCalculate();
+                            return;
+                          }
+                          _locatingPickup ? null : onBook();
+                        },
                         child: Text(LocaleKeys.map_book_trip.tr()),
                       ),
                     ),

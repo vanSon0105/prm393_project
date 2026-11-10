@@ -1,12 +1,13 @@
 import 'dart:async';
 
-import 'package:delivery_app/features/app_view_model.dart';
 import 'package:delivery_app/data/network/base/exception.dart';
+import 'package:delivery_app/features/app_view_model.dart';
 import 'package:delivery_app/features/auth/domain/entities/role.dart';
+import 'package:delivery_app/features/map/data/models/place_suggestion.dart';
+import 'package:delivery_app/features/map/data/models/price_model.dart';
 import 'package:delivery_app/features/map/service/route_service.dart';
 import 'package:delivery_app/features/map/service/trip_service.dart';
 import 'package:delivery_app/features/profile/profile_provider.dart';
-import 'package:delivery_app/features/map/data/models/place_suggestion.dart';
 import 'package:delivery_app/features/trip/presentation/providers/trip_history_provider.dart';
 import 'package:delivery_app/generated/locale_keys.g.dart';
 import 'package:delivery_app/widget/app_loading.dart';
@@ -306,6 +307,7 @@ class MapViewModel extends _$MapViewModel {
   Future<void> bookTrip({
     LatLng? pickupLocation,
     LatLng? destinationLocation,
+    bool book = true,
   }) async {
     if (role != Role.customer) return;
 
@@ -338,23 +340,37 @@ class MapViewModel extends _$MapViewModel {
         origin: pickup,
         destination: destination,
       );
-
-      final tripId = await _tripService.mapRepository.bookTrip(
-        customerId: _profileId!,
-        tripDistanceKm: route.distanceKm,
-        pickup: pickup,
-        destination: destination,
+      final priceModel = await _tripService.mapRepository.getPriceConfig();
+      final tripDistance = route.distanceKm;
+      final tripPrice = PriceModel.calculatePrice(
+        tripDistance,
+        priceModel.data ?? [],
       );
+      if (!book) {
+        state = state.copyWith(
+          tripDistance: tripDistance,
+          tripPrice: tripPrice,
+          destination: destination,
+          route: route,
+          tripStatus: MapTripStatus.idle,
+        );
+      } else {
+        final tripId = await _tripService.mapRepository.bookTrip(
+          customerId: _profileId!,
+          tripDistanceKm: tripDistance.toInt(),
+          pickup: pickup,
+          destination: destination,
+        );
 
-      state = state.copyWith(
-        pickup: pickup,
-        destination: destination,
-        route: route,
-        tripId: tripId,
-        tripStatus: MapTripStatus.waitingForDriver,
-      );
-
-      _connectCustomerTracking(tripId);
+        state = state.copyWith(
+          pickup: pickup,
+          destination: destination,
+          route: route,
+          tripId: tripId,
+          tripStatus: MapTripStatus.waitingForDriver,
+        );
+        _connectCustomerTracking(tripId);
+      }
     } catch (error) {
       state = state.copyWith(
         tripStatus: MapTripStatus.idle,
