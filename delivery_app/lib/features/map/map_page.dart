@@ -1,10 +1,10 @@
 import 'dart:async';
 
+import 'package:delivery_app/core/theme/app_theme.dart';
 import 'package:delivery_app/features/app_view_model.dart';
 import 'package:delivery_app/features/auth/domain/entities/role.dart';
 import 'package:delivery_app/gen/assets.gen.dart';
 import 'package:delivery_app/generated/locale_keys.g.dart';
-import 'package:delivery_app/core/theme/app_theme.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart' as fl;
@@ -76,7 +76,7 @@ class _MapPageState extends ConsumerState<MapPage> {
       _placeSearchFailed = false;
     });
     if (value.trim().length < 3) return;
-    _suggestionTimer = Timer(const Duration(milliseconds: 350), () async {
+    _suggestionTimer = Timer(const Duration(milliseconds: 650), () async {
       if (!mounted || request != _suggestionRequest) return;
       setState(() => _searchingPlaces = true);
       try {
@@ -454,6 +454,22 @@ class _MapPageState extends ConsumerState<MapPage> {
                       destinationLocation: _selectedDestinationLocation,
                     );
               },
+              onCalculate: () {
+                ref
+                    .read(provider.notifier)
+                    .setAddresses(
+                      pickup: _pickupController.text,
+                      destination: _destinationController.text,
+                    );
+
+                ref
+                    .read(provider.notifier)
+                    .bookTrip(
+                      pickupLocation: _selectedPickupLocation,
+                      destinationLocation: _selectedDestinationLocation,
+                      book: false,
+                    );
+              },
               onCancel: () => _confirmCancellation(
                 role,
                 () => ref.read(provider.notifier).cancelTrip(),
@@ -656,6 +672,7 @@ class _MapPageState extends ConsumerState<MapPage> {
   Widget _buildCustomerPanel(
     MapState state, {
     required VoidCallback onBook,
+    required VoidCallback onCalculate,
     required VoidCallback onCancel,
   }) {
     return Positioned(
@@ -760,12 +777,23 @@ class _MapPageState extends ConsumerState<MapPage> {
                       ),
                     ),
                   const SizedBox(height: 12),
+                  if (state.tripPrice != null)
+                    Text(
+                      'Quãng đường: ${state.tripDistance} - Giá tiền: ${state.tripPrice}',
+                    ),
+                  const SizedBox(height: 12),
                   if (state.tripStatus == MapTripStatus.idle ||
                       state.tripStatus == MapTripStatus.cancelled)
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        onPressed: _locatingPickup ? null : onBook,
+                        onPressed: () {
+                          if (state.tripPrice == null) {
+                            onCalculate();
+                            return;
+                          }
+                          _locatingPickup ? null : onBook();
+                        },
                         child: Text(LocaleKeys.map_book_trip.tr()),
                       ),
                     ),

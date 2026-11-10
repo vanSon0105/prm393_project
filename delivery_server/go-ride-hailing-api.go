@@ -135,6 +135,7 @@ func main() {
 	//Role, VehicleType apis
 	r.HandleFunc("/api/getRoles", getRole).Methods("GET")
 	r.HandleFunc("/api/getVehicleType", getVehicleType).Methods("GET")
+	r.HandleFunc("/api/user/price-config", getPriceConfig(db)).Methods("GET")
 
 	// Admin APIs
 	r.HandleFunc("/api/admin/drivers/requests", getDriverRequests).Methods("GET")
@@ -3391,6 +3392,61 @@ func getTripHistoryByProfile(w http.ResponseWriter, r *http.Request) {
 		"offset":     offset,
 		"has_more":   hasMore,
 	})
+}
+
+func getPriceConfig(db *sql.DB) http.HandlerFunc {
+	type PriceConfigResponse struct {
+		From       float64 `json:"from"`
+		To         float64 `json:"to"`
+		PricePerKm float64 `json:"price_per_km"`
+	}
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+
+		rows, err := db.Query(`
+            SELECT 
+                ` + "`from`" + `,
+                ` + "`to`" + `,
+                price_per_km
+            FROM PriceConfig
+            ORDER BY ` + "`from`" + ` ASC
+        `)
+
+		if err != nil {
+			http.Error(w, "Failed to get price config", http.StatusInternalServerError)
+			return
+		}
+		defer rows.Close()
+
+		configs := make([]PriceConfigResponse, 0)
+
+		for rows.Next() {
+			var config PriceConfigResponse
+
+			err := rows.Scan(
+				&config.From,
+				&config.To,
+				&config.PricePerKm,
+			)
+
+			if err != nil {
+				http.Error(w, "Failed to read price config", http.StatusInternalServerError)
+				return
+			}
+
+			configs = append(configs, config)
+		}
+
+		if err := rows.Err(); err != nil {
+			http.Error(w, "Failed to read price config", http.StatusInternalServerError)
+			return
+		}
+
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": true,
+			"data":    configs,
+		})
+	}
 }
 
 func getActiveDriverTripV2(w http.ResponseWriter, r *http.Request) {

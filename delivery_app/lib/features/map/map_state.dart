@@ -35,6 +35,9 @@ class MapState {
   final TripModel? activeTrip;
   final DriverOnlineStatus driverOnlineStatus;
 
+  final num? tripPrice;
+  final num? tripDistance;
+
   const MapState({
     this.activeTrip,
     this.errorMessage,
@@ -49,6 +52,8 @@ class MapState {
     this.tripStatus = MapTripStatus.idle,
     this.pendingTrips = const [],
     this.driverOnlineStatus = DriverOnlineStatus.offline,
+    this.tripDistance,
+    this.tripPrice,
   });
 
   MapState copyWith({
@@ -66,6 +71,8 @@ class MapState {
     MapTripStatus? tripStatus,
     List<Map<String, dynamic>>? pendingTrips,
     DriverOnlineStatus? driverOnlineStatus,
+    num? tripDistance,
+    num? tripPrice,
   }) {
     return MapState(
       activeTrip: activeTrip ?? this.activeTrip,
@@ -81,6 +88,8 @@ class MapState {
       tripStatus: tripStatus ?? this.tripStatus,
       pendingTrips: pendingTrips ?? this.pendingTrips,
       driverOnlineStatus: driverOnlineStatus ?? this.driverOnlineStatus,
+      tripDistance: tripDistance ?? this.tripDistance,
+      tripPrice: tripPrice ?? this.tripPrice,
     );
   }
 }
