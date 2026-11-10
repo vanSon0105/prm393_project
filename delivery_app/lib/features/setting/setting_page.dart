@@ -1,12 +1,9 @@
 import 'package:delivery_app/features/app_view_model.dart';
 import 'package:delivery_app/features/auth/domain/entities/role.dart';
+import 'package:delivery_app/features/map/service/trip_service.dart';
 import 'package:delivery_app/generated/locale_keys.g.dart';
 import 'package:delivery_app/routes/app_navigate.dart';
 import 'package:delivery_app/routes/app_router.dart';
-import 'package:delivery_app/features/app_view_model.dart';
-import 'package:delivery_app/features/auth/domain/entities/role.dart';
-import 'package:delivery_app/features/map/service/trip_service.dart';
-import 'package:go_router/go_router.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -131,7 +128,6 @@ class SettingPage extends ConsumerWidget {
               SizedBox(
                 width: double.infinity,
                 child: FilledButton.icon(
-                  onPressed: () => _showLogoutDialog(context, notifier),
                   onPressed: () => _showLogoutDialog(context, ref),
                   style: FilledButton.styleFrom(
                     backgroundColor: AppColors.dangerSoft,
@@ -193,10 +189,6 @@ class SettingPage extends ConsumerWidget {
   }
 
   Future<void> _showLogoutDialog(BuildContext context, WidgetRef ref) {
-  Future<void> _showLogoutDialog(
-    BuildContext context,
-    SettingUiNotifier notifier,
-  ) {
     return showDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -212,6 +204,7 @@ class SettingPage extends ConsumerWidget {
               Navigator.pop(dialogContext);
               try {
                 await ref.read(tripRealtimeServiceProvider).goOffline();
+                await ref.read(settingUiProvider.notifier).logout();
               } catch (error) {
                 debugPrint('Could not close trip connections: $error');
               }
