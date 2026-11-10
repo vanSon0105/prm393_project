@@ -75,7 +75,19 @@ class ApiProvider {
   }
 
   String? _getErrorMessage(dynamic errorResponse) {
-    /// TODO: Get error message
+    if (errorResponse is Map && errorResponse['error'] is String) {
+      return errorResponse['error'] as String;
+    }
+    if (errorResponse is String) {
+      try {
+        final decoded = jsonDecode(errorResponse);
+        if (decoded is Map && decoded['error'] is String) {
+          return decoded['error'] as String;
+        }
+      } on FormatException {
+        // The response is not JSON.
+      }
+    }
     return null;
   }
 }

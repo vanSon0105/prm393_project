@@ -10,6 +10,8 @@ class TripHistoryEntry {
     required this.destinationLongitude,
     this.distanceKm,
     this.price,
+    this.reviewVote,
+    this.reviewComment,
   });
 
   final int tripId;
@@ -22,6 +24,8 @@ class TripHistoryEntry {
   final double destinationLongitude;
   final int? distanceKm;
   final double? price;
+  final int? reviewVote;
+  final String? reviewComment;
 
   bool get isCompleted => statusId == 4;
 
@@ -43,6 +47,8 @@ class TripHistoryEntry {
       destinationLongitude: requiredNumber('destination_longitude').toDouble(),
       distanceKm: optionalNumber('trip_distance')?.toInt(),
       price: optionalNumber('trip_price')?.toDouble(),
+      reviewVote: optionalNumber('review_vote')?.toInt(),
+      reviewComment: json['review_comment']?.toString(),
     );
   }
 }

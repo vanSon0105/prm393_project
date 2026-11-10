@@ -7,6 +7,7 @@ import 'package:delivery_app/features/map/data/models/place_suggestion.dart';
 import 'package:delivery_app/features/map/data/models/price_model.dart';
 import 'package:delivery_app/features/map/service/route_service.dart';
 import 'package:delivery_app/features/map/service/trip_service.dart';
+import 'package:delivery_app/features/profile/profile_provider.dart';
 import 'package:delivery_app/features/trip/presentation/providers/trip_history_provider.dart';
 import 'package:delivery_app/generated/locale_keys.g.dart';
 import 'package:delivery_app/widget/app_loading.dart';
@@ -147,12 +148,15 @@ class MapViewModel extends _$MapViewModel {
         pickup: pickup,
         destination: destination,
         tripId: tripId,
+        activeTrip: activeTrip,
         tripStatus: trip.tripStatusId == 3
             ? MapTripStatus.goingToDestination
             : MapTripStatus.driverComing,
         clearError: true,
       );
       _tripService.setCurrentTripId(tripId);
+      unawaited(_loadDriverAddresses(tripId, pickup, destination));
+      unawaited(_loadTripCustomer(tripId, trip.customerId));
       unawaited(
         _resumeActiveDriverTrip(
           driverId: driverId,
@@ -195,6 +199,53 @@ class MapViewModel extends _$MapViewModel {
   String _coordinateLabel(LatLng? point) => point == null
       ? ''
       : '${point.latitude.toStringAsFixed(6)}, ${point.longitude.toStringAsFixed(6)}';
+
+  Future<void> _loadDriverAddresses(
+    int tripId,
+    LatLng pickup,
+    LatLng destination,
+  ) async {
+    Future<String> lookup(LatLng point) async {
+      try {
+        return (await reverseGeocode(point))?.trim() ?? '';
+      } catch (error) {
+        debugPrint('Could not resolve driver trip address: $error');
+        return '';
+      }
+    }
+
+    final addresses = await Future.wait([lookup(pickup), lookup(destination)]);
+    if (!ref.mounted || state.tripId != tripId) return;
+    state = state.copyWith(
+      pickupAddress: addresses[0],
+      destinationAddress: addresses[1],
+      driverAddressesLoaded: true,
+    );
+  }
+
+  Future<void> _loadTripCustomer(int tripId, int? customerId) async {
+    if (customerId == null || customerId <= 0) {
+      if (ref.mounted && state.tripId == tripId) {
+        state = state.copyWith(customerProfileLoaded: true);
+      }
+      return;
+    }
+    try {
+      final customer = await ref
+          .read(profileRepositoryProvider)
+          .getProfile(customerId);
+      if (!ref.mounted || state.tripId != tripId) return;
+      state = state.copyWith(
+        customerProfile: customer,
+        customerProfileLoaded: true,
+      );
+    } catch (error) {
+      debugPrint('Could not load trip customer $customerId: $error');
+      if (ref.mounted && state.tripId == tripId) {
+        state = state.copyWith(customerProfileLoaded: true);
+      }
+    }
+  }
 
   Future<void> _restoreTripAddresses({
     required int customerId,
@@ -586,6 +637,11 @@ class MapViewModel extends _$MapViewModel {
         pendingTrips: state.pendingTrips
             .where((item) => (item['trip_id'] as num).toInt() != tripId)
             .toList(),
+      );
+
+      unawaited(_loadDriverAddresses(tripId, pickup, destination));
+      unawaited(
+        _loadTripCustomer(tripId, (trip['customer_id'] as num?)?.toInt()),
       );
 
       final driverLocation = await _tripService.getCurrentDriverLocation();

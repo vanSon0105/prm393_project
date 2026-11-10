@@ -1,23 +1,31 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:easy_localization/easy_localization.dart';
 
 import '../../generated/locale_keys.g.dart';
 
 import '../../core/theme/app_theme.dart';
 import '../../gen/assets.gen.dart';
+import 'data/trip_rating_repository.dart';
 
-class DriverRatingScreen extends StatefulWidget {
-  const DriverRatingScreen({super.key});
+enum TripRatingResult { submitted, alreadyRated, later }
+
+class DriverRatingScreen extends ConsumerStatefulWidget {
+  const DriverRatingScreen({super.key, this.tripId, this.driverName});
+
+  final int? tripId;
+  final String? driverName;
 
   @override
-  State<DriverRatingScreen> createState() => _DriverRatingScreenState();
+  ConsumerState<DriverRatingScreen> createState() => _DriverRatingScreenState();
 }
 
-class _DriverRatingScreenState extends State<DriverRatingScreen> {
+class _DriverRatingScreenState extends ConsumerState<DriverRatingScreen> {
   static const blue = AppColors.blue;
   final commentController = TextEditingController();
 
   int rating = 5;
+  bool submitting = false;
   final Set<String> selectedTags = {};
 
   static const tags = [
@@ -33,6 +41,33 @@ class _DriverRatingScreenState extends State<DriverRatingScreen> {
   void dispose() {
     commentController.dispose();
     super.dispose();
+  }
+
+  Future<void> _submit() async {
+    final tripId = widget.tripId;
+    if (submitting || tripId == null || tripId <= 0) return;
+    setState(() => submitting = true);
+    final comments = [
+      ...selectedTags.map((tag) => tag.tr()),
+      if (commentController.text.trim().isNotEmpty)
+        commentController.text.trim(),
+    ];
+    try {
+      await ref
+          .read(tripRatingRepositoryProvider)
+          .submit(tripId: tripId, vote: rating, comment: comments.join('\n'));
+      if (mounted) Navigator.of(context).pop(TripRatingResult.submitted);
+    } on TripAlreadyRatedException {
+      if (mounted) Navigator.of(context).pop(TripRatingResult.alreadyRated);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(LocaleKeys.rating_submit_failed.tr())),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => submitting = false);
+    }
   }
 
   @override
@@ -66,10 +101,12 @@ class _DriverRatingScreenState extends State<DriverRatingScreen> {
                 ),
               ),
               const SizedBox(height: 14),
-              const Center(
+              Center(
                 child: Text(
-                  'Nguyễn Văn Minh',
-                  style: TextStyle(
+                  widget.driverName?.trim().isNotEmpty == true
+                      ? widget.driverName!
+                      : LocaleKeys.trip_driver.tr(),
+                  style: const TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.bold,
                   ),
@@ -78,7 +115,11 @@ class _DriverRatingScreenState extends State<DriverRatingScreen> {
               const SizedBox(height: 5),
               Center(
                 child: Text(
-                  LocaleKeys.rating_driver_vehicle.tr(),
+                  widget.tripId == null || widget.tripId! <= 0
+                      ? LocaleKeys.trip_history_unavailable.tr()
+                      : LocaleKeys.trip_code.tr(
+                          namedArgs: {'code': '${widget.tripId}'},
+                        ),
                   style: const TextStyle(color: AppColors.textSoft),
                 ),
               ),
@@ -191,38 +232,43 @@ class _DriverRatingScreenState extends State<DriverRatingScreen> {
                   ),
                 ),
               ),
-              const SizedBox(height: 20),
-              SizedBox(
-                height: 54,
-                child: ElevatedButton(
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          LocaleKeys.rating_saved_demo.tr(
-                            namedArgs: {'rating': '$rating'},
-                          ),
-                        ),
+            ],
+          ),
+        ),
+        bottomNavigationBar: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(
+                  width: double.infinity,
+                  height: 54,
+                  child: ElevatedButton(
+                    onPressed:
+                        submitting ||
+                            widget.tripId == null ||
+                            widget.tripId! <= 0
+                        ? null
+                        : _submit,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: blue,
+                      foregroundColor: AppColors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
                       ),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: blue,
-                    foregroundColor: AppColors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
                     ),
-                  ),
-                  child: Text(
-                    LocaleKeys.rating_submit.tr(),
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    child: Text(LocaleKeys.rating_submit.tr()),
                   ),
                 ),
-              ),
-            ],
+                TextButton(
+                  onPressed: submitting
+                      ? null
+                      : () => Navigator.of(context).pop(TripRatingResult.later),
+                  child: Text(LocaleKeys.rating_later.tr()),
+                ),
+              ],
+            ),
           ),
         ),
       ),

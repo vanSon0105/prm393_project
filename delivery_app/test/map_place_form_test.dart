@@ -5,14 +5,20 @@ import 'package:delivery_app/features/app_state.dart';
 import 'package:delivery_app/features/app_view_model.dart';
 import 'package:delivery_app/features/auth/domain/entities/role.dart';
 import 'package:delivery_app/features/map/data/models/place_suggestion.dart';
+import 'package:delivery_app/features/map/data/models/trip_model.dart';
 import 'package:delivery_app/features/map/map_page.dart';
 import 'package:delivery_app/features/map/map_state.dart';
 import 'package:delivery_app/features/map/map_view_model.dart';
 import 'package:delivery_app/features/map/service/trip_service.dart';
 import 'package:delivery_app/features/map/service/current_map_location_provider.dart';
 import 'package:delivery_app/features/map/domain/repositories/map_repository.dart';
+import 'package:delivery_app/features/profile/profile_provider.dart';
+import 'package:delivery_app/features/profile/profile_repository.dart';
+import 'package:delivery_app/data/network/base/provider.dart';
+import 'package:dio/dio.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -37,11 +43,35 @@ class _UnusedRepository implements MapRepository {
 class _TestTripService extends TripService {
   _TestTripService()
     : super(apiBaseUrl: '', wsBaseUrl: '', mapRepository: _UnusedRepository());
+
+  TripModel? activeDriverTrip;
+
+  @override
+  Future<TripModel?> getActiveDriverTrip({required int driverId}) async =>
+      activeDriverTrip;
+}
+
+class _TestProfileRepository extends ProfileRepository {
+  _TestProfileRepository() : super(ApiProvider(Dio()));
+
+  @override
+  Future<UserProfile> getProfile(int id) async => const UserProfile(
+    id: 19,
+    userName: 'customer19',
+    fullName: 'Nguyen An',
+    phoneNumber: '0912345678',
+    address: '',
+    imageUrl: '',
+  );
 }
 
 class _TestMapViewModel extends MapViewModel {
   LatLng? bookedPickup;
   LatLng? bookedDestination;
+
+  void completeForTest(int tripId) {
+    state = state.copyWith(tripId: tripId, tripStatus: MapTripStatus.completed);
+  }
 
   @override
   MapState build(Role role) {
@@ -91,6 +121,15 @@ class _RestoredMapViewModel extends _TestMapViewModel {
       destinationAddress: 'Ba Dinh, Ha Noi',
     );
   }
+}
+
+class _DriverTripMapViewModel extends _TestMapViewModel {
+  @override
+  Future<String?> reverseGeocode(LatLng location) async =>
+      location.latitude > 21.025 ? 'Hoan Kiem, Ha Noi' : 'Ba Dinh, Ha Noi';
+
+  @override
+  Future<void> goOnline() async {}
 }
 
 void main() {
@@ -380,6 +419,137 @@ void main() {
       tester.widget<TextField>(find.byType(TextField).first).enabled,
       true,
     );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('customer can dismiss the rating prompt after completion', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final container = ProviderContainer(
+      overrides: [
+        appViewModelProvider.overrideWithValue(
+          AppState(role: Role.customer, profileId: 7),
+        ),
+        tripRealtimeServiceProvider.overrideWithValue(_TestTripService()),
+        mapViewModelProvider.overrideWith(_TestMapViewModel.new),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(
+      EasyLocalization(
+        supportedLocales: const [Locale('en', 'US')],
+        startLocale: const Locale('en', 'US'),
+        path: 'resources/langs',
+        assetLoader: const _TestTranslations(),
+        child: Builder(
+          builder: (context) => UncontrolledProviderScope(
+            container: container,
+            child: MaterialApp(
+              locale: context.locale,
+              supportedLocales: context.supportedLocales,
+              localizationsDelegates: context.localizationDelegates,
+              home: const MapPage(),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    final viewModel = container.read(
+      mapViewModelProvider(Role.customer).notifier,
+    ) as _TestMapViewModel;
+    viewModel.completeForTest(31);
+    await tester.pump();
+    await tester.pump();
+    expect(find.text('How was your trip?'), findsOneWidget);
+    await tester.tap(find.text('Later'));
+    await tester.pump();
+    expect(find.text('How was your trip?'), findsNothing);
+    expect(container.read(mapViewModelProvider(Role.customer)).tripId, 31);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('driver can expand and collapse active trip details', (
+    tester,
+  ) async {
+    EasyLoading.instance.maskColor = Colors.black54;
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final service = _TestTripService()
+      ..activeDriverTrip = TripModel(
+        data: TripData(
+          tripId: 31,
+          customerId: 19,
+          tripStatusId: 2,
+          tripLatitude: 21.0285,
+          tripLongitude: 105.8542,
+          destinationLatitude: 21.0211,
+          destinationLongitude: 105.8221,
+        ),
+      );
+    final container = ProviderContainer(
+      overrides: [
+        appViewModelProvider.overrideWithValue(
+          AppState(role: Role.driver, profileId: 7),
+        ),
+        tripRealtimeServiceProvider.overrideWithValue(service),
+        profileRepositoryProvider.overrideWithValue(_TestProfileRepository()),
+        mapViewModelProvider.overrideWith(_DriverTripMapViewModel.new),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(
+      EasyLocalization(
+        supportedLocales: const [Locale('en', 'US')],
+        startLocale: const Locale('en', 'US'),
+        path: 'resources/langs',
+        assetLoader: const _TestTranslations(),
+        child: Builder(
+          builder: (context) => UncontrolledProviderScope(
+            container: container,
+            child: MaterialApp(
+              locale: context.locale,
+              supportedLocales: context.supportedLocales,
+              localizationsDelegates: context.localizationDelegates,
+              builder: EasyLoading.init(),
+              home: const MapPage(),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final sheet = find.byType(DraggableScrollableSheet);
+    expect(sheet, findsOneWidget);
+    expect(find.text('Current trip #31'), findsOneWidget);
+    expect(find.text('Picked up customer · Start trip'), findsOneWidget);
+    final tripTitle = find.text('Current trip #31');
+    final collapsedTop = tester.getTopLeft(tripTitle).dy;
+
+    await tester.drag(tripTitle, const Offset(0, -300));
+    await tester.pumpAndSettle();
+    final expandedTop = tester.getTopLeft(tripTitle).dy;
+    expect(expandedTop, lessThan(collapsedTop));
+    expect(find.text('Pickup'), findsOneWidget);
+    expect(find.text('Destination'), findsOneWidget);
+    expect(find.text('Hoan Kiem, Ha Noi'), findsOneWidget);
+    expect(find.text('Ba Dinh, Ha Noi'), findsOneWidget);
+    expect(find.text('Nguyen An'), findsOneWidget);
+    expect(find.text('0912345678'), findsOneWidget);
+
+    await tester.drag(tripTitle, const Offset(0, 350));
+    await tester.pumpAndSettle();
+    expect(tester.getTopLeft(tripTitle).dy, greaterThan(expandedTop));
     expect(tester.takeException(), isNull);
   });
 }
