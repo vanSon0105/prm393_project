@@ -58,7 +58,7 @@ final class RegisterViewModelProvider
   }
 }
 
-String _$registerViewModelHash() => r'21868d9e0066535287abb09e5a49f4ba39c4902f';
+String _$registerViewModelHash() => r'd4eb96c8939a811944cd5c3d20de690b59cfa3ab';
 
 final class RegisterViewModelFamily extends $Family
     with
