@@ -89,6 +89,7 @@ class MapViewModel extends _$MapViewModel {
         destination: destination,
         tripId: tripId,
         driverId: trip?.driverId,
+        activeTrip: activeTrip,
         tripStatus: switch (trip?.tripStatusId) {
           2 => MapTripStatus.driverComing,
           3 => MapTripStatus.goingToDestination,
@@ -244,6 +245,27 @@ class MapViewModel extends _$MapViewModel {
       if (ref.mounted && state.tripId == tripId) {
         state = state.copyWith(customerProfileLoaded: true);
       }
+    }
+  }
+
+  /// Reloads the customer's active trip so the assigned driver's details
+  /// (name, phone, plate) are available once a driver accepts.
+  Future<void> _refreshCustomerTripDetails(int tripId) async {
+    final customerId = _profileId;
+    if (customerId == null) return;
+    try {
+      final activeTrip = await _tripService.getTripActive(
+        customerId: customerId,
+      );
+      if (!ref.mounted ||
+          _profileId != customerId ||
+          state.tripId != tripId ||
+          activeTrip?.data?.tripId != tripId) {
+        return;
+      }
+      state = state.copyWith(activeTrip: activeTrip);
+    } catch (error) {
+      debugPrint('Could not load assigned driver for trip $tripId: $error');
     }
   }
 
@@ -408,6 +430,8 @@ class MapViewModel extends _$MapViewModel {
       );
 
       _waitingForFirstDriverLocation = true;
+      final tripId = state.tripId;
+      if (tripId != null) unawaited(_refreshCustomerTripDetails(tripId));
       return;
     }
     if (type == 'driver_location') {
@@ -633,6 +657,8 @@ class MapViewModel extends _$MapViewModel {
         pickup: pickup,
         destination: destination,
         tripId: tripId,
+        tripDistance: trip['trip_distance'] as num?,
+        tripPrice: trip['trip_price'] as num?,
         tripStatus: MapTripStatus.driverComing,
         pendingTrips: state.pendingTrips
             .where((item) => (item['trip_id'] as num).toInt() != tripId)
@@ -707,12 +733,18 @@ class MapViewModel extends _$MapViewModel {
     if (_profileId == null || state.tripId == null) return;
     AppLoading.instance.show();
     try {
-      await _tripService.completeTrip(
+      final platformFee = await _tripService.completeTrip(
         driverId: _profileId!,
         tripId: state.tripId!,
       );
 
-      state = state.copyWith(tripStatus: MapTripStatus.completed);
+      // Back to the "available" view so the driver can take the next trip.
+      state = MapState(
+        driverLocation: state.driverLocation,
+        pendingTrips: state.pendingTrips,
+        driverOnlineStatus: state.driverOnlineStatus,
+        completedTripFee: platformFee,
+      );
       ref.invalidate(tripHistoryProvider(_profileId!));
     } catch (error) {
       _setError(error.toString());

@@ -81,7 +81,7 @@ class MapRepositoryImpl extends MapRepository {
   }
 
   @override
-  Future<void> completeTrip({
+  Future<int?> completeTrip({
     required int driverId,
     required int tripId,
   }) async {
@@ -89,6 +89,7 @@ class MapRepositoryImpl extends MapRepository {
       param: CompleteTripParam(tripId: tripId, driverId: driverId),
     );
     debugPrint('------- Complete trip : $response');
+    return response is Map ? (response['platform_fee'] as num?)?.toInt() : null;
   }
 
   @override

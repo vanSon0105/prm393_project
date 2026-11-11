@@ -3529,6 +3529,11 @@ func getActiveCustomerTripV2(w http.ResponseWriter, r *http.Request) {
 		tripStatusID         int
 		statusText           sql.NullString
 		driverID             sql.NullInt64
+		driverFullName       sql.NullString
+		driverUserName       sql.NullString
+		driverPhone          sql.NullString
+		licensePlate         sql.NullString
+		vehicleType          sql.NullString
 	)
 
 	err = db.QueryRowContext(r.Context(), `
@@ -3542,9 +3547,17 @@ func getActiveCustomerTripV2(w http.ResponseWriter, r *http.Request) {
 			t.destination_longitude,
 			t.trip_status_id,
 			ts.status,
-			t.driver_id
+			t.driver_id,
+			dp.full_name,
+			dp.user_name,
+			dp.phone_number,
+			d.licensePlate,
+			vt.type
 		FROM Trip t
 		LEFT JOIN TripStatus ts ON ts.trip_status_id = t.trip_status_id
+		LEFT JOIN Profile dp ON dp.profile_id = t.driver_id
+		LEFT JOIN Driver d ON d.driver_id = t.driver_id
+		LEFT JOIN VehicleType vt ON vt.id = d.vehicleType_id
 		WHERE t.customer_id = ?
 		  AND t.trip_status_id IN (?, ?, ?)
 		ORDER BY t.trip_id DESC
@@ -3560,6 +3573,11 @@ func getActiveCustomerTripV2(w http.ResponseWriter, r *http.Request) {
 		&tripStatusID,
 		&statusText,
 		&driverID,
+		&driverFullName,
+		&driverUserName,
+		&driverPhone,
+		&licensePlate,
+		&vehicleType,
 	)
 
 	if err == sql.ErrNoRows {
@@ -3595,6 +3613,11 @@ func getActiveCustomerTripV2(w http.ResponseWriter, r *http.Request) {
 			"trip_status_id":        tripStatusID,
 			"status_text":           parseNullString(statusText),
 			"driver_id":             driverIDValue,
+			"driver_full_name":      parseNullString(driverFullName),
+			"driver_user_name":      parseNullString(driverUserName),
+			"driver_phone":          parseNullString(driverPhone),
+			"license_plate":         parseNullString(licensePlate),
+			"vehicle_type":          parseNullString(vehicleType),
 		},
 		"message": "Lấy chuyến đi đang hoạt động thành công",
 	})
@@ -4346,7 +4369,14 @@ func completeTripV2(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := db.Exec(`
+	tx, err := db.BeginTx(r.Context(), nil)
+	if err != nil {
+		tripJSONErrorV2(w, http.StatusInternalServerError, "Không thể hoàn thành chuyến đi")
+		return
+	}
+	defer tx.Rollback()
+
+	result, err := tx.ExecContext(r.Context(), `
 		UPDATE Trip SET trip_status_id = ?
 		WHERE trip_id = ? AND driver_id = ? AND trip_status_id IN (?, ?)
 	`, tripStatusCompletedV2, tripID, req.DriverID, tripStatusAcceptedV2, tripStatusGoingV2)
@@ -4354,12 +4384,62 @@ func completeTripV2(w http.ResponseWriter, r *http.Request) {
 		tripJSONErrorV2(w, http.StatusInternalServerError, "Không thể hoàn thành chuyến đi")
 		return
 	}
-	rowsAffected, _ := result.RowsAffected()
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		tripJSONErrorV2(w, http.StatusInternalServerError, "Không thể hoàn thành chuyến đi")
+		return
+	}
 	if rowsAffected != 1 {
 		tripJSONErrorV2(w, http.StatusConflict, "Chuyến đi không thuộc tài xế này hoặc đã kết thúc")
 		return
 	}
 
+	var tripPrice sql.NullFloat64
+	if err := tx.QueryRowContext(r.Context(),
+		"SELECT trip_price FROM Trip WHERE trip_id = ?", tripID,
+	).Scan(&tripPrice); err != nil || !tripPrice.Valid || tripPrice.Float64 < 0 {
+		log.Printf("Lỗi lấy giá chuyến %d khi hoàn thành: %v", tripID, err)
+		tripJSONErrorV2(w, http.StatusInternalServerError, "Không thể lấy giá chuyến đi")
+		return
+	}
+
+	// Customers pay the driver in cash, so the platform takes its commission
+	// out of the driver's wallet when the trip is completed.
+	platformFee := int64(math.Round(tripPrice.Float64 * platformCommissionRate))
+	if _, err := tx.ExecContext(r.Context(),
+		"INSERT INTO DriverWallet (driver_id, money) VALUES (?, ?) "+
+			"ON DUPLICATE KEY UPDATE money = COALESCE(money, 0) - ?",
+		req.DriverID, -platformFee, platformFee,
+	); err != nil {
+		log.Printf("Lỗi trừ phí chuyến %d vào ví driver %d: %v", tripID, req.DriverID, err)
+		tripJSONErrorV2(w, http.StatusInternalServerError, "Không thể trừ phí chuyến đi vào ví tài xế")
+		return
+	}
+
+	var walletBalance int64
+	if err := tx.QueryRowContext(r.Context(),
+		"SELECT COALESCE(money, 0) FROM DriverWallet WHERE driver_id = ?", req.DriverID,
+	).Scan(&walletBalance); err != nil {
+		log.Printf("Lỗi đọc ví driver %d: %v", req.DriverID, err)
+		tripJSONErrorV2(w, http.StatusInternalServerError, "Không thể hoàn thành chuyến đi")
+		return
+	}
+
+	if err := tx.Commit(); err != nil {
+		tripJSONErrorV2(w, http.StatusInternalServerError, "Không thể hoàn thành chuyến đi")
+		return
+	}
+
 	broadcastCustomerTripV2(tripID, map[string]interface{}{"type": "trip_completed", "trip_id": tripID, "driver_id": req.DriverID})
-	_ = json.NewEncoder(w).Encode(map[string]interface{}{"message": "Hoàn thành chuyến đi thành công", "trip_id": tripID})
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
+		"message":        "Hoàn thành chuyến đi thành công",
+		"trip_id":        tripID,
+		"trip_price":     tripPrice.Float64,
+		"platform_fee":   platformFee,
+		"wallet_balance": walletBalance,
+	})
 }
+
+// platformCommissionRate is the share of each fare deducted from the driver's
+// wallet when a cash trip is completed.
+const platformCommissionRate = 0.30

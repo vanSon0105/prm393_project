@@ -19,7 +19,9 @@ abstract class MapRepository {
 
   Future<void> startTrip({required int driverId, required int tripId});
 
-  Future<void> completeTrip({required int driverId, required int tripId});
+  /// Completes the trip and returns the commission deducted from the
+  /// driver's wallet, when the server reports it.
+  Future<int?> completeTrip({required int driverId, required int tripId});
 
   Future<void> cancelCustomerTrip({
     required int customerId,

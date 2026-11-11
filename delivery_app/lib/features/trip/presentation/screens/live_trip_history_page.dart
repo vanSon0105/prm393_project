@@ -1,5 +1,6 @@
 import 'package:delivery_app/features/auth/domain/entities/role.dart';
 import 'package:delivery_app/features/driver_rating/driver_rating_screen.dart';
+import 'package:delivery_app/features/map/map_view_model.dart';
 import 'package:delivery_app/generated/locale_keys.g.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
@@ -9,6 +10,7 @@ import '../../../../core/theme/trip_colors.dart';
 import '../../../../shared/widgets/asset_icon.dart';
 import '../../data/models/trip_history_model.dart';
 import '../providers/trip_history_provider.dart';
+import 'active_trip_page.dart';
 
 class LiveTripHistoryPage extends ConsumerStatefulWidget {
   const LiveTripHistoryPage({
@@ -27,7 +29,9 @@ class LiveTripHistoryPage extends ConsumerStatefulWidget {
       _LiveTripHistoryPageState();
 }
 
-class _LiveTripHistoryPageState extends ConsumerState<LiveTripHistoryPage> {
+class _LiveTripHistoryPageState extends ConsumerState<LiveTripHistoryPage>
+    with SingleTickerProviderStateMixin {
+  late final TabController _tabController;
   final List<TripHistoryEntry> _moreEntries = [];
   int _filter = 0;
   int? _selectedTripId;
@@ -35,6 +39,46 @@ class _LiveTripHistoryPageState extends ConsumerState<LiveTripHistoryPage> {
   bool? _moreHasMore;
   bool _moreFailed = false;
   final Set<int> _knownRatedTripIds = {};
+
+  @override
+  void initState() {
+    super.initState();
+    // Open on the ongoing tab when a trip is in progress.
+    final ongoing = hasTripProgress(
+      ref.read(mapViewModelProvider(widget.role)),
+    );
+    _tabController = TabController(
+      length: 2,
+      vsync: this,
+      initialIndex: ongoing ? 0 : 1,
+    );
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  Tab _ongoingTab(bool hasTrip) => Tab(
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(LocaleKeys.active_trip_tab_ongoing.tr()),
+        if (hasTrip) ...[
+          const SizedBox(width: 6),
+          Container(
+            width: 8,
+            height: 8,
+            decoration: const BoxDecoration(
+              color: green,
+              shape: BoxShape.circle,
+            ),
+          ),
+        ],
+      ],
+    ),
+  );
 
   Future<void> _refresh() async {
     setState(() {
@@ -137,6 +181,10 @@ class _LiveTripHistoryPageState extends ConsumerState<LiveTripHistoryPage> {
       }
     });
     final history = ref.watch(tripHistoryProvider(widget.profileId));
+    final hasTrip = ref.watch(
+      mapViewModelProvider(widget.role).select(hasTripProgress),
+    );
+    final showTabs = _selectedTripId == null;
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
@@ -150,9 +198,18 @@ class _LiveTripHistoryPageState extends ConsumerState<LiveTripHistoryPage> {
         ),
         title: Text(
           _selectedTripId == null
-              ? LocaleKeys.trip_history_title.tr()
+              ? LocaleKeys.trip_tab.tr()
               : LocaleKeys.trip_details_title.tr(),
         ),
+        bottom: showTabs
+            ? TabBar(
+                controller: _tabController,
+                tabs: [
+                  _ongoingTab(hasTrip),
+                  Tab(text: LocaleKeys.active_trip_tab_history.tr()),
+                ],
+              )
+            : null,
         actions: [
           if (_selectedTripId == null)
             IconButton(
@@ -162,109 +219,126 @@ class _LiveTripHistoryPageState extends ConsumerState<LiveTripHistoryPage> {
             ),
         ],
       ),
-      body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 600),
-            child: history.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (error, stack) => _message(
-                LocaleKeys.trip_history_load_error.tr(),
-                LocaleKeys.trip_history_retry.tr(),
-                _refresh,
-              ),
-              data: (firstPage) {
-                final entries = [...firstPage.entries, ..._moreEntries];
-                final selected = entries
-                    .where((trip) => trip.tripId == _selectedTripId)
-                    .firstOrNull;
-                if (selected != null) return _details(selected);
-                final visible = entries
-                    .where(
-                      (trip) =>
-                          _filter == 0 ||
-                          (_filter == 1 && trip.isCompleted) ||
-                          (_filter == 2 && !trip.isCompleted),
-                    )
-                    .toList();
-                return RefreshIndicator(
-                  onRefresh: _refresh,
-                  child: ListView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
-                    children: [
-                      Text(
-                        widget.role == Role.driver
-                            ? LocaleKeys.trip_driver_upper.tr()
-                            : LocaleKeys.trip_customer_upper.tr(),
-                        style: const TextStyle(
-                          color: muted,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      Wrap(
-                        spacing: 8,
-                        children:
-                            [
-                                  LocaleKeys.trip_filter_all.tr(),
-                                  LocaleKeys.trip_status_completed.tr(),
-                                  LocaleKeys.trip_status_cancelled.tr(),
-                                ]
-                                .asMap()
-                                .entries
-                                .map(
-                                  (item) => ChoiceChip(
-                                    label: Text(item.value),
-                                    selected: _filter == item.key,
-                                    onSelected: (_) =>
-                                        setState(() => _filter = item.key),
-                                  ),
-                                )
-                                .toList(),
-                      ),
-                      const SizedBox(height: 14),
-                      if (visible.isEmpty)
-                        Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 48),
-                          child: Center(
-                            child: Text(LocaleKeys.trip_no_matching.tr()),
-                          ),
-                        ),
-                      for (final trip in visible) _tripCard(trip),
-                      if (_moreFailed)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 12),
-                          child: Text(
-                            LocaleKeys.trip_history_load_error.tr(),
-                            textAlign: TextAlign.center,
-                          ),
-                        ),
-                      if (_moreHasMore ?? firstPage.hasMore)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 12),
-                          child: OutlinedButton(
-                            onPressed: _loadingMore
-                                ? null
-                                : () => _loadMore(entries.length),
-                            child: Text(
-                              _loadingMore
-                                  ? LocaleKeys.loading_txt.tr()
-                                  : LocaleKeys.trip_history_load_more.tr(),
-                            ),
-                          ),
-                        ),
-                    ],
+      body: showTabs
+          ? TabBarView(
+              controller: _tabController,
+              children: [
+                SafeArea(
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 600),
+                      child: ActiveTripView(role: widget.role),
+                    ),
                   ),
-                );
-              },
-            ),
-          ),
-        ),
-      ),
+                ),
+                _historyContent(history),
+              ],
+            )
+          : _historyContent(history),
     );
   }
+
+  Widget _historyContent(AsyncValue<TripHistoryPageData> history) => SafeArea(
+    child: Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 600),
+        child: history.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (error, stack) => _message(
+            LocaleKeys.trip_history_load_error.tr(),
+            LocaleKeys.trip_history_retry.tr(),
+            _refresh,
+          ),
+          data: (firstPage) {
+            final entries = [...firstPage.entries, ..._moreEntries];
+            final selected = entries
+                .where((trip) => trip.tripId == _selectedTripId)
+                .firstOrNull;
+            if (selected != null) return _details(selected);
+            final visible = entries
+                .where(
+                  (trip) =>
+                      _filter == 0 ||
+                      (_filter == 1 && trip.isCompleted) ||
+                      (_filter == 2 && !trip.isCompleted),
+                )
+                .toList();
+            return RefreshIndicator(
+              onRefresh: _refresh,
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+                children: [
+                  Text(
+                    widget.role == Role.driver
+                        ? LocaleKeys.trip_driver_upper.tr()
+                        : LocaleKeys.trip_customer_upper.tr(),
+                    style: const TextStyle(
+                      color: muted,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 8,
+                    children:
+                        [
+                              LocaleKeys.trip_filter_all.tr(),
+                              LocaleKeys.trip_status_completed.tr(),
+                              LocaleKeys.trip_status_cancelled.tr(),
+                            ]
+                            .asMap()
+                            .entries
+                            .map(
+                              (item) => ChoiceChip(
+                                label: Text(item.value),
+                                selected: _filter == item.key,
+                                onSelected: (_) =>
+                                    setState(() => _filter = item.key),
+                              ),
+                            )
+                            .toList(),
+                  ),
+                  const SizedBox(height: 14),
+                  if (visible.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 48),
+                      child: Center(
+                        child: Text(LocaleKeys.trip_no_matching.tr()),
+                      ),
+                    ),
+                  for (final trip in visible) _tripCard(trip),
+                  if (_moreFailed)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 12),
+                      child: Text(
+                        LocaleKeys.trip_history_load_error.tr(),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  if (_moreHasMore ?? firstPage.hasMore)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 12),
+                      child: OutlinedButton(
+                        onPressed: _loadingMore
+                            ? null
+                            : () => _loadMore(entries.length),
+                        child: Text(
+                          _loadingMore
+                              ? LocaleKeys.loading_txt.tr()
+                              : LocaleKeys.trip_history_load_more.tr(),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            );
+          },
+        ),
+      ),
+    ),
+  );
 
   Widget _message(String message, String action, VoidCallback onPressed) =>
       Center(

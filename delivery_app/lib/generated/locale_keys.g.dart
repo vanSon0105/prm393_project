@@ -539,4 +539,36 @@ abstract class LocaleKeys {
   static const earnings_weekday_saturday = 'earnings_weekday_saturday';
   static const earnings_weekday_sunday = 'earnings_weekday_sunday';
   static const trip_demo_today_time = 'trip_demo_today_time';
+  static const active_trip_title = 'active_trip_title';
+  static const active_trip_tab_ongoing = 'active_trip_tab_ongoing';
+  static const active_trip_tab_history = 'active_trip_tab_history';
+  static const active_trip_empty_title = 'active_trip_empty_title';
+  static const active_trip_empty_customer = 'active_trip_empty_customer';
+  static const active_trip_empty_driver = 'active_trip_empty_driver';
+  static const active_trip_open_map = 'active_trip_open_map';
+  static const active_trip_view_map = 'active_trip_view_map';
+  static const active_trip_view_progress = 'active_trip_view_progress';
+  static const active_trip_step_finding = 'active_trip_step_finding';
+  static const active_trip_step_coming = 'active_trip_step_coming';
+  static const active_trip_step_on_trip = 'active_trip_step_on_trip';
+  static const active_trip_step_done = 'active_trip_step_done';
+  static const active_trip_status_finding = 'active_trip_status_finding';
+  static const active_trip_status_coming_customer =
+      'active_trip_status_coming_customer';
+  static const active_trip_status_coming_driver =
+      'active_trip_status_coming_driver';
+  static const active_trip_status_on_trip = 'active_trip_status_on_trip';
+  static const active_trip_status_completed = 'active_trip_status_completed';
+  static const active_trip_eta = 'active_trip_eta';
+  static const active_trip_finding_hint = 'active_trip_finding_hint';
+  static const active_trip_completed_hint = 'active_trip_completed_hint';
+  static const active_trip_waiting_driver = 'active_trip_waiting_driver';
+  static const active_trip_driver_fallback = 'active_trip_driver_fallback';
+  static const active_trip_call = 'active_trip_call';
+  static const active_trip_vehicle_bike = 'active_trip_vehicle_bike';
+  static const active_trip_vehicle_car = 'active_trip_vehicle_car';
+  static const active_trip_cash_note_customer =
+      'active_trip_cash_note_customer';
+  static const active_trip_cash_note_driver = 'active_trip_cash_note_driver';
+  static const map_trip_completed_fee = 'map_trip_completed_fee';
 }
