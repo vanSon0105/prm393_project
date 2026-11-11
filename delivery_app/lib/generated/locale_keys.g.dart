@@ -187,6 +187,7 @@ abstract class LocaleKeys {
   static const settings_driver_account = 'settings_driver_account';
   static const settings_edit_profile = 'settings_edit_profile';
   static const users_search_hint = 'users_search_hint';
+  static const users_username = 'users_username';
   static const users_active = 'users_active';
   static const users_locked = 'users_locked';
   static const nav_overview = 'nav_overview';
@@ -195,7 +196,6 @@ abstract class LocaleKeys {
   static const nav_users = 'nav_users';
   static const users_admin = 'users_admin';
   static const users_management = 'users_management';
-  static const users_admin_options_demo = 'users_admin_options_demo';
   static const users_none = 'users_none';
   static const users_view_info = 'users_view_info';
   static const users_account_status = 'users_account_status';
@@ -249,7 +249,7 @@ abstract class LocaleKeys {
   static const admin_view_all = 'admin_view_all';
   static const admin_new_requests = 'admin_new_requests';
   static const admin_no_pending_requests = 'admin_no_pending_requests';
-  static const admin_metric_active = 'admin_metric_active';
+  static const admin_metric_approved = 'admin_metric_approved';
   static const admin_metric_pending = 'admin_metric_pending';
   static const admin_driver_list_title = 'admin_driver_list_title';
   static const admin_requests_title = 'admin_requests_title';
@@ -262,6 +262,7 @@ abstract class LocaleKeys {
   static const admin_driver_load_error = 'admin_driver_load_error';
   static const admin_try_again = 'admin_try_again';
   static const admin_no_matching_drivers = 'admin_no_matching_drivers';
+  static const admin_no_rated_drivers = 'admin_no_rated_drivers';
   static const admin_pending_request_count = 'admin_pending_request_count';
   static const admin_requests_load_error = 'admin_requests_load_error';
   static const admin_approve_driver_question = 'admin_approve_driver_question';
@@ -288,8 +289,7 @@ abstract class LocaleKeys {
   static const admin_request_subtitle = 'admin_request_subtitle';
   static const admin_vehicle_motorcycle = 'admin_vehicle_motorcycle';
   static const admin_vehicle_car = 'admin_vehicle_car';
-  static const admin_users_driver_load_error = 'admin_users_driver_load_error';
-  static const admin_finance_section = 'admin_finance_section';
+  static const admin_users_load_error = 'admin_users_load_error';
   static const admin_bank_title = 'admin_bank_title';
   static const admin_bank_shortcut = 'admin_bank_shortcut';
   static const admin_bank_description = 'admin_bank_description';

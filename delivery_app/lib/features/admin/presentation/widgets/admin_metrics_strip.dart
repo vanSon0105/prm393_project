@@ -3,12 +3,12 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:delivery_app/generated/locale_keys.g.dart';
 
 import '../../../../core/theme/app_theme.dart';
-import '../../../driver/presentation/providers/driver_provider.dart';
+import '../../data/admin_dashboard_repository.dart';
 
 class AdminMetricsStrip extends StatelessWidget {
-  const AdminMetricsStrip({required this.metrics, super.key});
+  const AdminMetricsStrip({required this.overview, super.key});
 
-  final DriverMetrics metrics;
+  final AdminDashboardOverview overview;
 
   @override
   Widget build(BuildContext context) {
@@ -38,7 +38,7 @@ class AdminMetricsStrip extends StatelessWidget {
               children: [
                 Expanded(
                   child: _MetricItem(
-                    value: metrics.totalDrivers.toString().padLeft(2, '0'),
+                    value: overview.totalDrivers.toString().padLeft(2, '0'),
                     label: LocaleKeys.users_role_driver.tr(),
                     isSmall: isSmall,
                   ),
@@ -48,8 +48,8 @@ class AdminMetricsStrip extends StatelessWidget {
 
                 Expanded(
                   child: _MetricItem(
-                    value: metrics.activeDrivers.toString().padLeft(2, '0'),
-                    label: LocaleKeys.admin_metric_active.tr(),
+                    value: overview.approvedDrivers.toString().padLeft(2, '0'),
+                    label: LocaleKeys.admin_metric_approved.tr(),
                     isSmall: isSmall,
                   ),
                 ),
@@ -58,7 +58,7 @@ class AdminMetricsStrip extends StatelessWidget {
 
                 Expanded(
                   child: _MetricItem(
-                    value: metrics.pendingRequests.toString().padLeft(2, '0'),
+                    value: overview.pendingRequests.toString().padLeft(2, '0'),
                     label: LocaleKeys.admin_metric_pending.tr(),
                     isSmall: isSmall,
                   ),

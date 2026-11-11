@@ -67,6 +67,30 @@ type DriverRequestResponse struct {
 	LicensePlateExpiredDate string `json:"license_plate_expired_date"`
 }
 
+type AdminRatedDriverResponse struct {
+	DriverID       int     `json:"driver_id"`
+	FullName       string  `json:"full_name"`
+	Rating         float64 `json:"rating"`
+	CompletedTrips int     `json:"completed_trips"`
+}
+
+type AdminUserDocuments struct {
+	DrivingLicenseFrontURL string `json:"driving_license_front_url"`
+	DrivingLicenseBackURL  string `json:"driving_license_back_url"`
+	IdentityCardFrontURL   string `json:"identity_card_front_url"`
+	IdentityCardBackURL    string `json:"identity_card_back_url"`
+}
+
+type AdminUserResponse struct {
+	ProfileID int                 `json:"profile_id"`
+	FullName  string              `json:"full_name"`
+	UserName  string              `json:"user_name"`
+	Phone     string              `json:"phone_number"`
+	Address   string              `json:"address"`
+	Role      string              `json:"role"`
+	Documents *AdminUserDocuments `json:"driver_documents,omitempty"`
+}
+
 type Trip struct {
 	TripID       int     `json:"trip_id"`
 	TripDistance int     `json:"trip_distance"`
@@ -139,6 +163,8 @@ func main() {
 
 	// Admin APIs
 	r.HandleFunc("/api/admin/drivers/requests", getDriverRequests).Methods("GET")
+	r.HandleFunc("/api/admin/dashboard", getAdminDashboard).Methods("GET")
+	r.HandleFunc("/api/admin/users", getAdminUsers).Methods("GET")
 	r.HandleFunc("/api/admin/drivers", getAllDrivers).Methods("GET")
 	r.HandleFunc("/api/admin/drivers/{id}/approve", approveDriver).Methods("POST")
 	r.HandleFunc("/api/admin/bank-info", getAdminBankInfo).Methods("GET")
@@ -343,6 +369,136 @@ func getVehicleType(w http.ResponseWriter, r *http.Request) {
 }
 
 // --- Admin Handlers ---
+func getAdminUsers(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	rows, err := db.QueryContext(r.Context(), `
+		SELECT p.profile_id, p.full_name, p.user_name, p.phone_number, p.address,
+			r.role_value, d.driver_id,
+			d.driving_license_front_side, d.driving_license_back_side,
+			d.front_side_of_the_identity_card, d.the_back_of_the_identity_card
+		FROM Profile p
+		JOIN Role r ON r.role_id = p.role_id
+		LEFT JOIN Driver d ON d.driver_id = p.profile_id
+		ORDER BY p.profile_id DESC
+	`)
+	if err != nil {
+		log.Printf("Error loading admin users: %v", err)
+		http.Error(w, `{"error":"Could not load users"}`, http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	users := []AdminUserResponse{}
+	imageURL := func(value sql.NullString) string {
+		if !value.Valid || value.String == "" {
+			return ""
+		}
+		return fmt.Sprintf("http://%s/image/%s", r.Host, value.String)
+	}
+	for rows.Next() {
+		var user AdminUserResponse
+		var fullName, phone, address sql.NullString
+		var driverID sql.NullInt64
+		var licenseFront, licenseBack, identityFront, identityBack sql.NullString
+		if err := rows.Scan(&user.ProfileID, &fullName, &user.UserName, &phone,
+			&address, &user.Role, &driverID, &licenseFront, &licenseBack,
+			&identityFront, &identityBack); err != nil {
+			log.Printf("Error scanning admin user: %v", err)
+			http.Error(w, `{"error":"Could not load users"}`, http.StatusInternalServerError)
+			return
+		}
+		user.FullName = parseNullString(fullName)
+		if user.FullName == "" {
+			user.FullName = user.UserName
+		}
+		user.Phone = parseNullString(phone)
+		user.Address = parseNullString(address)
+		if driverID.Valid {
+			user.Documents = &AdminUserDocuments{
+				DrivingLicenseFrontURL: imageURL(licenseFront),
+				DrivingLicenseBackURL:  imageURL(licenseBack),
+				IdentityCardFrontURL:   imageURL(identityFront),
+				IdentityCardBackURL:    imageURL(identityBack),
+			}
+		}
+		users = append(users, user)
+	}
+	if err := rows.Err(); err != nil {
+		log.Printf("Error iterating admin users: %v", err)
+		http.Error(w, `{"error":"Could not load users"}`, http.StatusInternalServerError)
+		return
+	}
+	json.NewEncoder(w).Encode(users)
+}
+
+func getAdminDashboard(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	var totalDrivers, approvedDrivers, pendingRequests int
+	err := db.QueryRowContext(r.Context(), `
+		SELECT
+			(SELECT COUNT(*) FROM Driver),
+			(SELECT COUNT(*) FROM Driver WHERE active = 1),
+			(SELECT COUNT(*) FROM Driver d WHERE d.active = 0
+				AND NOT EXISTS (SELECT 1 FROM ReasonReject rr WHERE rr.driver_id = d.driver_id))
+	`).Scan(&totalDrivers, &approvedDrivers, &pendingRequests)
+	if err != nil {
+		log.Printf("Error loading admin driver counts: %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Could not load dashboard"})
+		return
+	}
+
+	rows, err := db.QueryContext(r.Context(), `
+		SELECT d.driver_id,
+			COALESCE(NULLIF(TRIM(p.full_name), ''), p.user_name),
+			AVG(rt.vote) AS rating,
+			(SELECT COUNT(*) FROM Trip completed
+				WHERE completed.driver_id = d.driver_id AND completed.trip_status_id = 4) AS completed_trips
+		FROM Driver d
+		JOIN Profile p ON p.profile_id = d.driver_id
+		JOIN Trip t ON t.driver_id = d.driver_id AND t.trip_status_id = 4
+		JOIN ReviewTrip rt ON rt.trip_id = t.trip_id AND rt.vote BETWEEN 1 AND 5
+		WHERE d.active = 1
+		GROUP BY d.driver_id, p.full_name, p.user_name
+		ORDER BY rating DESC, completed_trips DESC, d.driver_id ASC
+		LIMIT 6
+	`)
+	if err != nil {
+		log.Printf("Error loading top rated drivers: %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Could not load dashboard"})
+		return
+	}
+	defer rows.Close()
+
+	topRatedDrivers := []AdminRatedDriverResponse{}
+	for rows.Next() {
+		var driver AdminRatedDriverResponse
+		if err := rows.Scan(&driver.DriverID, &driver.FullName, &driver.Rating, &driver.CompletedTrips); err != nil {
+			log.Printf("Error scanning top rated driver: %v", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(map[string]string{"error": "Could not load dashboard"})
+			return
+		}
+		topRatedDrivers = append(topRatedDrivers, driver)
+	}
+	if err := rows.Err(); err != nil {
+		log.Printf("Error iterating top rated drivers: %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Could not load dashboard"})
+		return
+	}
+
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"data": map[string]interface{}{
+			"total_drivers":     totalDrivers,
+			"approved_drivers":  approvedDrivers,
+			"pending_requests":  pendingRequests,
+			"top_rated_drivers": topRatedDrivers,
+		},
+	})
+}
+
 func getDriverRequests(w http.ResponseWriter, r *http.Request) {
 	baseImgURL := fmt.Sprintf("http://%s:8080/image/", getLocalIP())
 	query := `
@@ -358,6 +514,7 @@ func getDriverRequests(w http.ResponseWriter, r *http.Request) {
 		  AND NOT EXISTS (
 			SELECT 1 FROM ReasonReject rr WHERE rr.driver_id = d.driver_id
 		  )
+		ORDER BY d.driver_id DESC
 	`
 	rows, err := db.Query(query)
 	if err != nil {
@@ -367,7 +524,7 @@ func getDriverRequests(w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 
-	var drivers []DriverRequestResponse
+	drivers := []DriverRequestResponse{}
 	log.Print("Request get all request drivers")
 
 	for rows.Next() {
