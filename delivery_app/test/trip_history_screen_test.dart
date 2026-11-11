@@ -147,6 +147,7 @@ void main() {
     expect(find.text('Trip 31'), findsOneWidget);
     expect(find.text('Driver B'), findsOneWidget);
     expect(find.byTooltip('Choose role'), findsNothing);
+    expect(find.byTooltip('Back to map'), findsNothing);
 
     await tester.tap(find.text('Load more trips'));
     await tester.pumpAndSettle();

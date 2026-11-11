@@ -12,6 +12,7 @@ class MapboxMapView extends StatefulWidget {
     required this.destination,
     required this.driverLocation,
     required this.initialLocation,
+    this.styleUri = MapboxStyles.STANDARD,
     this.cameraTarget,
     this.cameraRequestId = 0,
   });
@@ -21,6 +22,7 @@ class MapboxMapView extends StatefulWidget {
   final LatLng? destination;
   final LatLng? driverLocation;
   final LatLng initialLocation;
+  final String styleUri;
 
   // Vị trí MapPage muốn camera di chuyển tới.
   final LatLng? cameraTarget;
@@ -173,7 +175,7 @@ class _MapboxMapViewState extends State<MapboxMapView> {
   Widget build(BuildContext context) {
     return MapWidget(
       key: const ValueKey('mapbox-map'),
-      styleUri: MapboxStyles.STANDARD,
+      styleUri: widget.styleUri,
       viewport: CameraViewportState(
         center: Point(
           coordinates: Position(

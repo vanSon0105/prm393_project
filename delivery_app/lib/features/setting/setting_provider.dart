@@ -3,18 +3,13 @@ import 'package:delivery_app/di/repository_module.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class SettingUiState {
-  const SettingUiState({
-    this.selectedLanguage = 'en-US',
-    this.selectedMapType = 'default',
-  });
+  const SettingUiState({this.selectedLanguage = 'en-US'});
 
   final String selectedLanguage;
-  final String selectedMapType;
 
-  SettingUiState copyWith({String? selectedLanguage, String? selectedMapType}) {
+  SettingUiState copyWith({String? selectedLanguage}) {
     return SettingUiState(
       selectedLanguage: selectedLanguage ?? this.selectedLanguage,
-      selectedMapType: selectedMapType ?? this.selectedMapType,
     );
   }
 }
@@ -30,10 +25,6 @@ class SettingUiNotifier extends Notifier<SettingUiState> {
 
   void selectLanguage(String value) {
     state = state.copyWith(selectedLanguage: value);
-  }
-
-  void selectMapType(String value) {
-    state = state.copyWith(selectedMapType: value);
   }
 }
 

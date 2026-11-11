@@ -1,5 +1,6 @@
 import 'package:delivery_app/features/app_view_model.dart';
 import 'package:delivery_app/features/auth/domain/entities/role.dart';
+import 'package:delivery_app/features/driver/presentation/providers/driver_wallet_provider.dart';
 import 'package:delivery_app/features/map/service/trip_service.dart';
 import 'package:delivery_app/generated/locale_keys.g.dart';
 import 'package:delivery_app/routes/app_navigate.dart';
@@ -14,6 +15,7 @@ import '../../gen/assets.gen.dart';
 import '../../shared/widgets/app_screen_header.dart';
 import 'setting_provider.dart';
 import 'widgets/account_summary_card.dart';
+import 'widgets/driver_wallet_card.dart';
 import 'widgets/setting_option_tile.dart';
 import 'widgets/setting_section.dart';
 
@@ -22,11 +24,9 @@ class SettingPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final setting = ref.watch(settingUiProvider);
     final notifier = ref.read(settingUiProvider.notifier);
-    final isDriver =
-        ref.watch(appViewModelProvider.select((app) => app.role)) ==
-        Role.driver;
+    final app = ref.watch(appViewModelProvider);
+    final isDriver = app.role == Role.driver;
 
     return Theme(
       data: AppTheme.light(),
@@ -48,6 +48,10 @@ class SettingPage extends ConsumerWidget {
                   AppNavigate.instance.gotoEditProfile();
                 },
               ),
+              if (isDriver && app.profileId != null && app.profileId! > 0) ...[
+                const SizedBox(height: 12),
+                DriverWalletCard(driverId: app.profileId!),
+              ],
               SizedBox(height: 24),
               SettingSection(
                 title: LocaleKeys.settings_customization.tr(),
@@ -71,19 +75,6 @@ class SettingPage extends ConsumerWidget {
                       },
                     ),
                   ),
-                  SettingOptionTile(
-                    icon: Assets.images.icMapType,
-                    title: LocaleKeys.settings_map_type.tr(),
-                    subtitle: LocaleKeys.settings_route_style.tr(),
-                    trailing: _buildDropdown(
-                      value: setting.selectedMapType,
-                      options: {
-                        'default': LocaleKeys.settings_map_default.tr(),
-                        'satellite': LocaleKeys.settings_map_satellite.tr(),
-                      },
-                      onSelected: notifier.selectMapType,
-                    ),
-                  ),
                 ],
               ),
               SizedBox(height: 24),
@@ -95,7 +86,14 @@ class SettingPage extends ConsumerWidget {
                       icon: Assets.images.icUserEdit,
                       title: LocaleKeys.driver_topup_title.tr(),
                       subtitle: LocaleKeys.driver_topup_shortcut.tr(),
-                      onTap: () => context.push(AppRoute.driverTopup.rawValue),
+                      onTap: () async {
+                        await context.push(AppRoute.driverTopup.rawValue);
+                        if (context.mounted && app.profileId != null) {
+                          ref.invalidate(
+                            driverWalletBalanceProvider(app.profileId!),
+                          );
+                        }
+                      },
                       trailing: const Icon(Icons.chevron_right_rounded),
                     ),
                   SettingOptionTile(

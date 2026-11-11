@@ -424,6 +424,9 @@ abstract class LocaleKeys {
   static const driver_terms_agree = 'driver_terms_agree';
   static const driver_terms_continue = 'driver_terms_continue';
   static const driver_topup_title = 'driver_topup_title';
+  static const settings_driver_wallet_balance = 'settings_driver_wallet_balance';
+  static const settings_driver_wallet_error = 'settings_driver_wallet_error';
+  static const settings_driver_wallet_refresh = 'settings_driver_wallet_refresh';
   static const driver_topup_shortcut = 'driver_topup_shortcut';
   static const driver_topup_bank_title = 'driver_topup_bank_title';
   static const driver_topup_new = 'driver_topup_new';
@@ -496,6 +499,7 @@ abstract class LocaleKeys {
   static const map_destination_coordinates_missing =
       'map_destination_coordinates_missing';
   static const map_trip_unavailable = 'map_trip_unavailable';
+  static const map_request_failed = 'map_request_failed';
   static const map_pickup_too_far = 'map_pickup_too_far';
   static const map_location_service_disabled = 'map_location_service_disabled';
   static const map_location_permission_denied =

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:delivery_app/generated/locale_keys.g.dart';
@@ -26,7 +25,6 @@ class DetailDeliveryPage extends ConsumerWidget {
               key: ValueKey(profileId),
               profileId: profileId,
               role: app.role!,
-              onExit: () => context.go('/map'),
             )
           : Scaffold(
               appBar: AppBar(title: Text(LocaleKeys.trip_history_title.tr())),

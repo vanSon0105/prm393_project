@@ -5,21 +5,22 @@ import 'package:delivery_app/features/app_view_model.dart';
 import 'package:delivery_app/features/auth/domain/entities/role.dart';
 import 'package:delivery_app/features/driver_rating/driver_rating_screen.dart';
 import 'package:delivery_app/features/map/widget/map_box_view.dart';
+import 'package:delivery_app/features/map/widget/driver_pending_trip_sheet.dart';
 import 'package:delivery_app/features/trip/presentation/providers/trip_history_provider.dart';
 import 'package:delivery_app/gen/assets.gen.dart';
 import 'package:delivery_app/generated/locale_keys.g.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart' as fl;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart' show MapboxStyles;
 
 import 'data/models/place_suggestion.dart';
 import 'map_state.dart';
 import 'map_view_model.dart';
 import 'service/current_map_location_provider.dart';
 
-enum MapType { flutterMap, mapBox }
+enum MapType { mapBox, mapBoxSatellite }
 
 class MapPage extends ConsumerStatefulWidget {
   const MapPage({super.key});
@@ -29,11 +30,7 @@ class MapPage extends ConsumerStatefulWidget {
 }
 
 class _MapPageState extends ConsumerState<MapPage> {
-  final fl.MapController _mapController = fl.MapController();
-  bool _mapReady = false;
   bool _hasTripPickup = false;
-  LatLng? _pendingMapTarget;
-  Offset _pendingMapOffset = Offset.zero;
 
   final TextEditingController _pickupController = TextEditingController();
   final TextEditingController _destinationController = TextEditingController();
@@ -93,6 +90,41 @@ class _MapPageState extends ConsumerState<MapPage> {
   int _mapboxCameraRequestId = 0;
 
   MapType _mapType = MapType.mapBox;
+
+  void _selectMapType(MapType type) {
+    if (type == _mapType) return;
+    setState(() => _mapType = type);
+  }
+
+  Widget _buildMapTypeControl() {
+    return Material(
+      color: Colors.white,
+      elevation: 3,
+      shape: const CircleBorder(),
+      child: PopupMenuButton<MapType>(
+        key: const Key('map-layer-selector'),
+        tooltip: LocaleKeys.settings_map_type.tr(),
+        initialValue: _mapType,
+        onSelected: _selectMapType,
+        itemBuilder: (context) => [
+          CheckedPopupMenuItem(
+            value: MapType.mapBox,
+            checked: _mapType == MapType.mapBox,
+            child: Text(LocaleKeys.settings_map_default.tr()),
+          ),
+          CheckedPopupMenuItem(
+            value: MapType.mapBoxSatellite,
+            checked: _mapType == MapType.mapBoxSatellite,
+            child: Text(LocaleKeys.settings_map_satellite.tr()),
+          ),
+        ],
+        child: const SizedBox.square(
+          dimension: 52,
+          child: Icon(Icons.layers_outlined, color: AppColors.blue),
+        ),
+      ),
+    );
+  }
 
   void _onAddressChanged(int field, String value) {
     if (field == 0) {
@@ -344,27 +376,16 @@ class _MapPageState extends ConsumerState<MapPage> {
     if (confirmed == true && mounted) onConfirm();
   }
 
-  void _moveMap(LatLng target, {Offset offset = Offset.zero}) {
-    if (!_mapReady) {
-      _pendingMapTarget = target;
-      _pendingMapOffset = offset;
-      return;
-    }
-
-    if (_mapType == MapType.flutterMap) {
-      _mapController.move(target, 15, offset: offset);
-    } else {
-      setState(() {
-        _mapboxCameraTarget = target;
-        _mapboxCameraRequestId++;
-      });
-    }
+  void _moveMap(LatLng target) {
+    setState(() {
+      _mapboxCameraTarget = target;
+      _mapboxCameraRequestId++;
+    });
   }
 
   void _moveMapToPickup(LatLng pickup) {
     _hasTripPickup = true;
-    final role = ref.read(appViewModelProvider).role;
-    _moveMap(pickup, offset: Offset(0, role == Role.driver ? -120 : 140));
+    _moveMap(pickup);
   }
 
   Future<void> _moveMapToCurrentLocation(Role role) async {
@@ -424,7 +445,6 @@ class _MapPageState extends ConsumerState<MapPage> {
   void dispose() {
     _suggestionTimer?.cancel();
     _errorTimer?.cancel();
-    _mapController.dispose();
     _pickupController.dispose();
     _destinationController.dispose();
     super.dispose();
@@ -467,6 +487,19 @@ class _MapPageState extends ConsumerState<MapPage> {
         _errorTimer?.cancel();
         final message = next.errorMessage;
         if (message != null) {
+          if (role == Role.driver) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (!mounted) return;
+              ScaffoldMessenger.of(context)
+                ..hideCurrentSnackBar()
+                ..showSnackBar(
+                  SnackBar(
+                    content: Text(message),
+                    duration: const Duration(seconds: 4),
+                  ),
+                );
+            });
+          }
           _errorTimer = Timer(const Duration(seconds: 6), () {
             if (!mounted) return;
             if (ref.read(provider).errorMessage == message) {
@@ -496,7 +529,7 @@ class _MapPageState extends ConsumerState<MapPage> {
     return Scaffold(
       body: Stack(
         children: [
-          _buildMap(state),
+          _buildMapbox(state),
 
           if (role == Role.customer)
             _buildCustomerPanel(
@@ -562,134 +595,25 @@ class _MapPageState extends ConsumerState<MapPage> {
               },
             ),
 
-          if (role == Role.driver && state.errorMessage != null)
-            Positioned(
-              top: MediaQuery.of(context).padding.top + 80,
-              left: 16,
-              right: 16,
-              child: Material(
-                color: Colors.red.shade100,
-                borderRadius: BorderRadius.circular(8),
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          state.errorMessage!,
-                          style: const TextStyle(color: Colors.red),
-                        ),
-                      ),
-                      IconButton(
-                        tooltip: LocaleKeys.map_dismiss_warning.tr(),
-                        onPressed: () =>
-                            ref.read(provider.notifier).clearError(),
-                        icon: const Icon(Icons.close, color: Colors.red),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
+          Positioned(
+            right: 16,
+            top: role == Role.driver
+                ? MediaQuery.paddingOf(context).top + 16
+                : null,
+            bottom: role == Role.customer ? 16 : null,
+            child: _buildMapTypeControl(),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildFlutterMap(MapState state) {
-    final markers = <fl.Marker>[];
-
-    final pickupMarker = state.pickup ?? _selectedPickupLocation;
-    final destinationMarker = state.destination ?? _selectedDestinationLocation;
-    if (pickupMarker != null) {
-      markers.add(
-        fl.Marker(
-          point: pickupMarker,
-          width: 46,
-          height: 46,
-          child: _mapMarker(
-            asset: Assets.images.icLocation,
-            label: LocaleKeys.map_pickup.tr(),
-            color: AppColors.blue,
-          ),
-        ),
-      );
-    }
-
-    if (destinationMarker != null) {
-      markers.add(
-        fl.Marker(
-          point: destinationMarker,
-          width: 46,
-          height: 46,
-          child: _mapMarker(
-            asset: Assets.images.icNavigation,
-            label: LocaleKeys.map_destination.tr(),
-            color: AppColors.text,
-          ),
-        ),
-      );
-    }
-
-    if (state.driverLocation != null) {
-      markers.add(
-        fl.Marker(
-          point: state.driverLocation!,
-          width: 46,
-          height: 46,
-          child: _mapMarker(
-            asset: Assets.images.icCar,
-            label: LocaleKeys.map_driver_location.tr(),
-            color: AppColors.blue,
-            filled: true,
-          ),
-        ),
-      );
-    }
-
-    return fl.FlutterMap(
-      mapController: _mapController,
-      options: fl.MapOptions(
-        initialCenter:
-            state.pickup ??
-            state.driverLocation ??
-            const LatLng(21.0285, 105.8542),
-        initialZoom: 14,
-        minZoom: 5,
-        maxZoom: 18,
-        onMapReady: () {
-          _mapReady = true;
-
-          final target = _pendingMapTarget;
-          if (target != null) {
-            _pendingMapTarget = null;
-            _mapController.move(target, 15, offset: _pendingMapOffset);
-          }
-        },
-      ),
-
-      children: [
-        fl.TileLayer(
-          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-          userAgentPackageName: 'com.example.delivery_app',
-        ),
-        if (state.route != null)
-          fl.PolylineLayer(
-            polylines: [
-              fl.Polyline(
-                points: state.route!.points,
-                strokeWidth: 5,
-                color: AppColors.blue,
-              ),
-            ],
-          ),
-        fl.MarkerLayer(markers: markers),
-      ],
-    );
-  }
-
   Widget _buildMapbox(MapState state) {
     return MapboxMapView(
+      key: ValueKey(_mapType),
+      styleUri: _mapType == MapType.mapBoxSatellite
+          ? MapboxStyles.SATELLITE_STREETS
+          : MapboxStyles.STANDARD,
       routePoints: state.route?.points ?? const [],
       pickup: state.pickup ?? _selectedPickupLocation,
       destination: state.destination ?? _selectedDestinationLocation,
@@ -700,50 +624,6 @@ class _MapPageState extends ConsumerState<MapPage> {
           const LatLng(21.0285, 105.8542),
       cameraTarget: _mapboxCameraTarget,
       cameraRequestId: _mapboxCameraRequestId,
-    );
-  }
-
-  Widget _buildMap(MapState state) {
-    switch (_mapType) {
-      case MapType.flutterMap:
-        return _buildFlutterMap(state);
-
-      case MapType.mapBox:
-        return _buildMapbox(state);
-    }
-  }
-
-  Widget _mapMarker({
-    required SvgGenImage asset,
-    required String label,
-    required Color color,
-    bool filled = false,
-  }) {
-    return Semantics(
-      label: label,
-      child: Container(
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: filled ? color : Colors.white,
-          shape: BoxShape.circle,
-          border: Border.all(color: color, width: 2),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x330F172A),
-              blurRadius: 8,
-              offset: Offset(0, 3),
-            ),
-          ],
-        ),
-        child: asset.svg(
-          width: 23,
-          height: 23,
-          colorFilter: ColorFilter.mode(
-            filled ? Colors.white : color,
-            BlendMode.srcIn,
-          ),
-        ),
-      ),
     );
   }
 
@@ -927,116 +807,143 @@ class _MapPageState extends ConsumerState<MapPage> {
         onCancel: onCancel,
       );
     }
-    return Positioned(
-      left: 12,
-      right: 12,
-      bottom: 20,
-      child: Card(
-        child: ConstrainedBox(
-          constraints: BoxConstraints(
-            maxHeight: MediaQuery.sizeOf(context).height * 0.55,
-          ),
-          child: SingleChildScrollView(
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    LocaleKeys.map_pending_trips.tr(),
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 8),
-                  Chip(
-                    avatar:
-                        state.driverOnlineStatus ==
-                                DriverOnlineStatus.connecting ||
-                            state.driverOnlineStatus ==
-                                DriverOnlineStatus.disconnecting
-                        ? const SizedBox.square(
-                            dimension: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : Icon(
-                            Icons.circle,
-                            size: 12,
-                            color:
-                                state.driverOnlineStatus ==
-                                    DriverOnlineStatus.online
-                                ? Colors.green
-                                : Colors.grey,
-                          ),
-                    label: Text(switch (state.driverOnlineStatus) {
-                      DriverOnlineStatus.offline =>
-                        LocaleKeys.map_status_offline.tr(),
-                      DriverOnlineStatus.connecting =>
-                        LocaleKeys.map_status_connecting.tr(),
-                      DriverOnlineStatus.online =>
-                        LocaleKeys.map_status_online.tr(),
-                      DriverOnlineStatus.disconnecting =>
-                        LocaleKeys.map_status_disconnecting.tr(),
-                    }),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed:
-                              state.driverOnlineStatus ==
-                                  DriverOnlineStatus.offline
-                              ? onOnline
-                              : null,
-                          child: Text(LocaleKeys.map_go_online.tr()),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed:
-                              state.driverOnlineStatus ==
-                                  DriverOnlineStatus.online
-                              ? onOffline
-                              : null,
-                          child: Text(LocaleKeys.map_go_offline.tr()),
-                        ),
-                      ),
-                    ],
-                  ),
-                  if (state.pendingTrips.isEmpty)
-                    Padding(
-                      padding: const EdgeInsets.all(8),
-                      child: Text(LocaleKeys.map_no_pending_trips.tr()),
-                    ),
-                  ...state.pendingTrips.map((trip) {
-                    final tripId = (trip['trip_id'] as num).toInt();
-
-                    return ListTile(
-                      leading: _fieldIcon(Assets.images.icRoute),
-                      title: Text(
-                        LocaleKeys.map_trip_number.tr(
-                          namedArgs: {'id': '$tripId'},
-                        ),
-                      ),
-                      subtitle: Text(
-                        LocaleKeys.map_pickup_coordinates.tr(
-                          namedArgs: {
-                            'latitude': '${trip['trip_latitude']}',
-                            'longitude': '${trip['trip_longitude']}',
-                          },
-                        ),
-                      ),
-                      trailing: ElevatedButton(
-                        onPressed: () => onAccept(tripId),
-                        child: Text(LocaleKeys.map_accept_trip.tr()),
-                      ),
-                    );
-                  }),
-                ],
+    return DraggableScrollableSheet(
+      key: const ValueKey('driver-available-trips-sheet'),
+      minChildSize: 0.09,
+      initialChildSize: 0.42,
+      maxChildSize: 0.70,
+      snap: true,
+      snapSizes: const [0.42],
+      builder: (context, scrollController) => Card(
+        margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+        clipBehavior: Clip.antiAlias,
+        child: ListView(
+          controller: scrollController,
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+          children: [
+            Center(
+              child: Container(
+                width: 42,
+                height: 5,
+                margin: const EdgeInsets.only(bottom: 10),
+                decoration: BoxDecoration(
+                  color: AppColors.textSoft,
+                  borderRadius: BorderRadius.circular(99),
+                ),
               ),
             ),
-          ),
+            Text(
+              LocaleKeys.map_pending_trips.tr(),
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            Chip(
+              avatar:
+                  state.driverOnlineStatus == DriverOnlineStatus.connecting ||
+                      state.driverOnlineStatus ==
+                          DriverOnlineStatus.disconnecting
+                  ? const SizedBox.square(
+                      dimension: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Icon(
+                      Icons.circle,
+                      size: 12,
+                      color:
+                          state.driverOnlineStatus == DriverOnlineStatus.online
+                          ? Colors.green
+                          : Colors.grey,
+                    ),
+              label: Text(switch (state.driverOnlineStatus) {
+                DriverOnlineStatus.offline =>
+                  LocaleKeys.map_status_offline.tr(),
+                DriverOnlineStatus.connecting =>
+                  LocaleKeys.map_status_connecting.tr(),
+                DriverOnlineStatus.online => LocaleKeys.map_status_online.tr(),
+                DriverOnlineStatus.disconnecting =>
+                  LocaleKeys.map_status_disconnecting.tr(),
+              }),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed:
+                        state.driverOnlineStatus == DriverOnlineStatus.offline
+                        ? onOnline
+                        : null,
+                    child: Text(LocaleKeys.map_go_online.tr()),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed:
+                        state.driverOnlineStatus == DriverOnlineStatus.online
+                        ? onOffline
+                        : null,
+                    child: Text(LocaleKeys.map_go_offline.tr()),
+                  ),
+                ),
+              ],
+            ),
+            if (state.pendingTrips.isEmpty)
+              Padding(
+                padding: const EdgeInsets.all(8),
+                child: Text(LocaleKeys.map_no_pending_trips.tr()),
+              ),
+            ...state.pendingTrips.map((trip) {
+              final tripId = (trip['trip_id'] as num).toInt();
+
+              return ListTile(
+                key: ValueKey('pending-trip-$tripId'),
+                leading: _fieldIcon(Assets.images.icRoute),
+                title: Text(
+                  LocaleKeys.map_trip_number.tr(namedArgs: {'id': '$tripId'}),
+                ),
+                subtitle: Text(LocaleKeys.trip_view_details.tr()),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () => _showPendingTripDetails(trip, onAccept),
+              );
+            }),
+          ],
         ),
+      ),
+    );
+  }
+
+  Future<void> _showPendingTripDetails(
+    Map<String, dynamic> trip,
+    ValueChanged<int> onAccept,
+  ) async {
+    final tripId = (trip['trip_id'] as num).toInt();
+    final reverseGeocode = ref
+        .read(mapViewModelProvider(Role.driver).notifier)
+        .reverseGeocode;
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (sheetContext) => Consumer(
+        builder: (context, sheetRef, _) {
+          final available = sheetRef.watch(
+            mapViewModelProvider(Role.driver).select(
+              (state) =>
+                  state.pendingTrips.any((item) => item['trip_id'] == tripId),
+            ),
+          );
+          return DriverPendingTripSheet(
+            trip: trip,
+            available: available,
+            reverseGeocode: reverseGeocode,
+            onAccept: () {
+              Navigator.pop(sheetContext);
+              onAccept(tripId);
+            },
+          );
+        },
       ),
     );
   }
