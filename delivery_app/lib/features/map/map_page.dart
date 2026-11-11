@@ -7,11 +7,14 @@ import 'package:delivery_app/features/driver_rating/driver_rating_screen.dart';
 import 'package:delivery_app/features/map/widget/map_box_view.dart';
 import 'package:delivery_app/features/map/widget/driver_pending_trip_sheet.dart';
 import 'package:delivery_app/features/trip/presentation/providers/trip_history_provider.dart';
+import 'package:delivery_app/features/trip/presentation/screens/active_trip_page.dart';
+import 'package:delivery_app/routes/app_router.dart';
 import 'package:delivery_app/gen/assets.gen.dart';
 import 'package:delivery_app/generated/locale_keys.g.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart' show MapboxStyles;
 
@@ -85,6 +88,46 @@ class _MapPageState extends ConsumerState<MapPage> {
       ),
     );
   }
+
+  void _openTripProgress() {
+    unawaited(context.push(AppRoute.activeTrip.rawValue));
+  }
+
+  Widget _tripProgressTile(String status) => Material(
+    color: AppColors.blueSoft,
+    borderRadius: BorderRadius.circular(12),
+    child: InkWell(
+      key: const ValueKey('open-trip-progress'),
+      borderRadius: BorderRadius.circular(12),
+      onTap: _openTripProgress,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        child: Row(
+          children: [
+            const Icon(Icons.route_outlined, color: AppColors.blue),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    status,
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    LocaleKeys.active_trip_view_progress.tr(),
+                    style: const TextStyle(color: AppColors.blue, fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right_rounded, color: AppColors.blue),
+          ],
+        ),
+      ),
+    ),
+  );
 
   LatLng? _mapboxCameraTarget;
   int _mapboxCameraRequestId = 0;
@@ -511,6 +554,28 @@ class _MapPageState extends ConsumerState<MapPage> {
       if (previous?.tripId != null && next.tripId == null) {
         _hasTripPickup = false;
         _moveMapToCurrentLocation(role);
+        // A driver can only leave a trip in progress by completing it.
+        if (role == Role.driver &&
+            previous?.tripStatus == MapTripStatus.goingToDestination) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            final fee = next.completedTripFee;
+            ScaffoldMessenger.of(context)
+              ..hideCurrentSnackBar()
+              ..showSnackBar(
+                SnackBar(
+                  content: Text(
+                    fee == null
+                        ? LocaleKeys.map_trip_completed.tr()
+                        : LocaleKeys.map_trip_completed_fee.tr(
+                            namedArgs: {'fee': '$fee'},
+                          ),
+                  ),
+                  duration: const Duration(seconds: 5),
+                ),
+              );
+          });
+        }
       }
       final pickup = next.pickup;
 
@@ -642,146 +707,171 @@ class _MapPageState extends ConsumerState<MapPage> {
     required VoidCallback onCalculate,
     required VoidCallback onCancel,
   }) {
+    final showProgress = hasTripProgress(state);
     return Positioned(
       top: MediaQuery.of(context).padding.top + 12,
       left: 12,
       right: 12,
       child: Card(
-        child: ConstrainedBox(
-          constraints: BoxConstraints(
-            maxHeight: MediaQuery.sizeOf(context).height * 0.62,
-          ),
-          child: SingleChildScrollView(
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  SegmentedButton<bool>(
-                    showSelectedIcon: false,
-                    segments: [
-                      ButtonSegment(
-                        value: false,
-                        label: Text(LocaleKeys.map_pickup_manual_option.tr()),
-                      ),
-                      ButtonSegment(
-                        value: true,
-                        label: Text(
-                          _locatingPickup
-                              ? LocaleKeys.map_locating_pickup.tr()
-                              : LocaleKeys.map_pickup_current_option.tr(),
-                        ),
-                      ),
-                    ],
-                    selected: {_usingCurrentPickup},
-                    onSelectionChanged:
-                        state.tripStatus == MapTripStatus.idle ||
-                            state.tripStatus == MapTripStatus.cancelled
-                        ? (selection) {
-                            if (selection.first) {
-                              unawaited(_useCurrentPickup());
-                            } else {
-                              _selectManualPickup();
-                            }
-                          }
-                        : null,
-                  ),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: _pickupController,
-                    enabled: !_usingCurrentPickup,
-                    onChanged: (value) => _onAddressChanged(0, value),
-                    onTap: () => _searchPlaces(0, _pickupController.text),
-                    decoration: InputDecoration(
-                      labelText: LocaleKeys.map_pickup.tr(),
-                      hintText: LocaleKeys.map_pickup_hint.tr(),
-                      prefixIcon: _fieldIcon(Assets.images.icLocation),
-                    ),
-                  ),
-                  _placeSuggestions(0),
-                  TextField(
-                    controller: _destinationController,
-                    onChanged: (value) => _onAddressChanged(1, value),
-                    onTap: () => _searchPlaces(1, _destinationController.text),
-                    decoration: InputDecoration(
-                      labelText: LocaleKeys.map_destination.tr(),
-                      hintText: LocaleKeys.map_destination_hint.tr(),
-                      prefixIcon: _fieldIcon(Assets.images.icNavigation),
-                    ),
-                  ),
-                  _placeSuggestions(1),
-                  if (state.errorMessage != null)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 10),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.red.shade100,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Padding(
-                                padding: const EdgeInsets.all(12),
-                                child: Text(
-                                  state.errorMessage!,
-                                  style: const TextStyle(color: Colors.red),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: showProgress ? _openTripProgress : null,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.sizeOf(context).height * 0.62,
+            ),
+            child: SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IgnorePointer(
+                      ignoring: showProgress,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          SegmentedButton<bool>(
+                            showSelectedIcon: false,
+                            segments: [
+                              ButtonSegment(
+                                value: false,
+                                label: Text(
+                                  LocaleKeys.map_pickup_manual_option.tr(),
                                 ),
                               ),
+                              ButtonSegment(
+                                value: true,
+                                label: Text(
+                                  _locatingPickup
+                                      ? LocaleKeys.map_locating_pickup.tr()
+                                      : LocaleKeys.map_pickup_current_option
+                                            .tr(),
+                                ),
+                              ),
+                            ],
+                            selected: {_usingCurrentPickup},
+                            onSelectionChanged:
+                                state.tripStatus == MapTripStatus.idle ||
+                                    state.tripStatus == MapTripStatus.cancelled
+                                ? (selection) {
+                                    if (selection.first) {
+                                      unawaited(_useCurrentPickup());
+                                    } else {
+                                      _selectManualPickup();
+                                    }
+                                  }
+                                : null,
+                          ),
+                          const SizedBox(height: 8),
+                          TextField(
+                            controller: _pickupController,
+                            enabled: !_usingCurrentPickup,
+                            onChanged: (value) => _onAddressChanged(0, value),
+                            onTap: () =>
+                                _searchPlaces(0, _pickupController.text),
+                            decoration: InputDecoration(
+                              labelText: LocaleKeys.map_pickup.tr(),
+                              hintText: LocaleKeys.map_pickup_hint.tr(),
+                              prefixIcon: _fieldIcon(Assets.images.icLocation),
                             ),
-                            IconButton(
-                              tooltip: LocaleKeys.map_dismiss_warning.tr(),
-                              onPressed: () => ref
-                                  .read(
-                                    mapViewModelProvider(Role.customer)
-                                        .notifier,
-                                  )
-                                  .clearError(),
-                              icon: const Icon(Icons.close, color: Colors.red),
+                          ),
+                          _placeSuggestions(0),
+                          TextField(
+                            controller: _destinationController,
+                            onChanged: (value) => _onAddressChanged(1, value),
+                            onTap: () =>
+                                _searchPlaces(1, _destinationController.text),
+                            decoration: InputDecoration(
+                              labelText: LocaleKeys.map_destination.tr(),
+                              hintText: LocaleKeys.map_destination_hint.tr(),
+                              prefixIcon: _fieldIcon(
+                                Assets.images.icNavigation,
+                              ),
                             ),
-                          ],
+                          ),
+                          _placeSuggestions(1),
+                        ],
+                      ),
+                    ),
+                    if (state.errorMessage != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 10),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.red.shade100,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Padding(
+                                  padding: const EdgeInsets.all(12),
+                                  child: Text(
+                                    state.errorMessage!,
+                                    style: const TextStyle(color: Colors.red),
+                                  ),
+                                ),
+                              ),
+                              IconButton(
+                                tooltip: LocaleKeys.map_dismiss_warning.tr(),
+                                onPressed: () => ref
+                                    .read(
+                                      mapViewModelProvider(Role.customer)
+                                          .notifier,
+                                    )
+                                    .clearError(),
+                                icon: const Icon(
+                                  Icons.close,
+                                  color: Colors.red,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                    ),
-                  const SizedBox(height: 12),
-                  if (state.tripPrice != null)
-                    Text(
-                      'Quãng đường: ${state.tripDistance} - Giá tiền: ${state.tripPrice}',
-                    ),
-                  const SizedBox(height: 12),
-                  if (state.tripStatus == MapTripStatus.idle ||
-                      state.tripStatus == MapTripStatus.cancelled)
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: () {
-                          if (state.tripPrice == null) {
-                            onCalculate();
-                            return;
-                          }
-                          _locatingPickup ? null : onBook();
-                        },
-                        child: Text(LocaleKeys.map_book_trip.tr()),
+                    const SizedBox(height: 12),
+                    if (state.tripPrice != null)
+                      Text(
+                        'Quãng đường: ${state.tripDistance} - Giá tiền: ${state.tripPrice}',
                       ),
-                    ),
-                  if (state.tripStatus == MapTripStatus.booking)
-                    Text(LocaleKeys.map_calculating_route.tr()),
-                  if (state.tripStatus == MapTripStatus.waitingForDriver)
-                    Text(LocaleKeys.map_finding_driver.tr()),
-                  if (state.tripStatus == MapTripStatus.driverComing)
-                    Text(LocaleKeys.map_driver_coming.tr()),
-                  if (state.tripStatus == MapTripStatus.goingToDestination)
-                    Text(LocaleKeys.map_going_to_destination.tr()),
-                  if (state.tripStatus == MapTripStatus.completed)
-                    Text(LocaleKeys.map_trip_completed.tr()),
-                  if (state.tripId != null &&
-                      (state.tripStatus == MapTripStatus.waitingForDriver ||
-                          state.tripStatus == MapTripStatus.driverComing))
-                    TextButton(
-                      onPressed: onCancel,
-                      child: Text(LocaleKeys.map_cancel_trip.tr()),
-                    ),
-                ],
+                    const SizedBox(height: 12),
+                    if (state.tripStatus == MapTripStatus.idle ||
+                        state.tripStatus == MapTripStatus.cancelled)
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: () {
+                            if (state.tripPrice == null) {
+                              onCalculate();
+                              return;
+                            }
+                            _locatingPickup ? null : onBook();
+                          },
+                          child: Text(LocaleKeys.map_book_trip.tr()),
+                        ),
+                      ),
+                    if (state.tripStatus == MapTripStatus.booking)
+                      Text(LocaleKeys.map_calculating_route.tr()),
+                    if (showProgress)
+                      _tripProgressTile(switch (state.tripStatus) {
+                        MapTripStatus.waitingForDriver =>
+                          LocaleKeys.map_finding_driver.tr(),
+                        MapTripStatus.driverComing =>
+                          LocaleKeys.map_driver_coming.tr(),
+                        MapTripStatus.goingToDestination =>
+                          LocaleKeys.map_going_to_destination.tr(),
+                        _ => LocaleKeys.map_trip_completed.tr(),
+                      }),
+                    if (state.tripId != null &&
+                        (state.tripStatus == MapTripStatus.waitingForDriver ||
+                            state.tripStatus == MapTripStatus.driverComing))
+                      TextButton(
+                        onPressed: onCancel,
+                        child: Text(LocaleKeys.map_cancel_trip.tr()),
+                      ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -1003,11 +1093,13 @@ class _MapPageState extends ConsumerState<MapPage> {
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 4),
-                  Text(
+                  const SizedBox(height: 6),
+                  _tripProgressTile(
                     state.tripStatus == MapTripStatus.goingToDestination
                         ? LocaleKeys.map_driver_trip_in_progress.tr()
+                        : state.tripStatus == MapTripStatus.completed
+                        ? LocaleKeys.map_trip_completed.tr()
                         : LocaleKeys.map_driver_trip_to_pickup.tr(),
-                    textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 10),
                   if (state.tripStatus == MapTripStatus.driverComing)

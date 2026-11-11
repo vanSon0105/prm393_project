@@ -42,6 +42,9 @@ class MapState {
   final num? tripPrice;
   final num? tripDistance;
 
+  /// Commission deducted from the driver's wallet for the trip just completed.
+  final int? completedTripFee;
+
   const MapState({
     this.activeTrip,
     this.errorMessage,
@@ -61,6 +64,7 @@ class MapState {
     this.driverOnlineStatus = DriverOnlineStatus.offline,
     this.tripDistance,
     this.tripPrice,
+    this.completedTripFee,
   });
 
   MapState copyWith({
@@ -83,6 +87,8 @@ class MapState {
     DriverOnlineStatus? driverOnlineStatus,
     num? tripDistance,
     num? tripPrice,
+    // One-shot value: not carried over unless passed again.
+    int? completedTripFee,
   }) {
     return MapState(
       activeTrip: activeTrip ?? this.activeTrip,
@@ -105,6 +111,7 @@ class MapState {
       driverOnlineStatus: driverOnlineStatus ?? this.driverOnlineStatus,
       tripDistance: tripDistance ?? this.tripDistance,
       tripPrice: tripPrice ?? this.tripPrice,
+      completedTripFee: completedTripFee,
     );
   }
 
