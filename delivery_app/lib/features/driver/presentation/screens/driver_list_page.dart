@@ -10,9 +10,7 @@ import '../widgets/driver_directory_header.dart';
 import '../widgets/driver_search_field.dart';
 
 class DriverListPage extends ConsumerWidget {
-  const DriverListPage({this.onBack, super.key});
-
-  final VoidCallback? onBack;
+  const DriverListPage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -21,7 +19,7 @@ class DriverListPage extends ConsumerWidget {
     return ListView(
       padding: EdgeInsets.zero,
       children: [
-        DriverDirectoryHeader(onBack: onBack),
+        const DriverDirectoryHeader(),
         const SizedBox(height: 56),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),

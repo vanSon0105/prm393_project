@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_theme.dart';
-import '../../../driver/presentation/screens/driver_list_page.dart';
 import '../../../driver/presentation/screens/driver_requests_page.dart';
+import '../../../driver/presentation/providers/driver_provider.dart';
+import '../providers/admin_dashboard_provider.dart';
 import '../providers/admin_navigation_provider.dart';
+import '../providers/admin_users_provider.dart';
 import '../widgets/admin_bottom_nav.dart';
 import 'admin_dashboard_page.dart';
 import 'user_management_page.dart';
@@ -16,6 +18,22 @@ class AdminHomePage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final selectedIndex = ref.watch(adminNavigationProvider);
     final navigation = ref.read(adminNavigationProvider.notifier);
+    void selectTab(int index) {
+      if (index == 0) {
+        ref.invalidate(adminDashboardOverviewProvider);
+        ref.invalidate(adminDriverRequestsProvider);
+      } else if (index == 1) {
+        ref.invalidate(adminDriverRequestsProvider);
+      } else if (index == 2) {
+        ref.invalidate(adminUsersListProvider);
+      }
+      navigation.select(index);
+    }
+
+    void showDrivers() {
+      ref.read(adminUsersProvider.notifier).selectRole('DRIVER');
+      selectTab(2);
+    }
 
     return Theme(
       data: AppTheme.light(),
@@ -25,15 +43,11 @@ class AdminHomePage extends ConsumerWidget {
             index: selectedIndex,
             children: [
               AdminDashboardPage(
-                onViewDrivers: () => navigation.select(1),
-                onViewRequests: () => navigation.select(2),
+                onViewDrivers: showDrivers,
+                onViewRequests: () => selectTab(1),
               ),
               if (selectedIndex == 1)
-                DriverListPage(onBack: () => navigation.select(0))
-              else
-                const SizedBox.shrink(),
-              if (selectedIndex == 2)
-                DriverRequestsPage(onBack: () => navigation.select(0))
+                const DriverRequestsPage()
               else
                 const SizedBox.shrink(),
               const UserManagementPage(),
@@ -42,7 +56,12 @@ class AdminHomePage extends ConsumerWidget {
         ),
         bottomNavigationBar: AdminBottomNav(
           selectedIndex: selectedIndex,
-          onSelected: navigation.select,
+          onSelected: (index) {
+            if (index == 2) {
+              ref.read(adminUsersProvider.notifier).selectRole('ALL');
+            }
+            selectTab(index);
+          },
         ),
       ),
     );

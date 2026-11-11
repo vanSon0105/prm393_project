@@ -14,7 +14,7 @@ class UserRoleFilter extends StatelessWidget {
   final String selectedRole;
   final ValueChanged<String> onRoleChanged;
 
-  static const roles = ['Tất cả', 'Khách hàng', 'Tài xế', 'Admin'];
+  static const roles = ['ALL', 'CUSTOMER', 'DRIVER', 'ADMIN'];
 
   @override
   Widget build(BuildContext context) {
@@ -24,14 +24,12 @@ class UserRoleFilter extends StatelessWidget {
       children: roles.map((role) {
         final selected = role == selectedRole;
         return ChoiceChip(
-          label: Text(
-            switch (role) {
-              'Tất cả' => LocaleKeys.users_role_all.tr(),
-              'Khách hàng' => LocaleKeys.users_role_customer.tr(),
-              'Tài xế' => LocaleKeys.users_role_driver.tr(),
-              _ => LocaleKeys.users_role_admin.tr(),
-            },
-          ),
+          label: Text(switch (role) {
+            'ALL' => LocaleKeys.users_role_all.tr(),
+            'CUSTOMER' => LocaleKeys.users_role_customer.tr(),
+            'DRIVER' => LocaleKeys.users_role_driver.tr(),
+            _ => LocaleKeys.users_role_admin.tr(),
+          }),
           selected: selected,
           onSelected: (_) => onRoleChanged(role),
           showCheckmark: false,
