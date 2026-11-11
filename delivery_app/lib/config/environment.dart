@@ -21,6 +21,7 @@ extension Environment on FlavorValue {
       FlavorValue.dev;
 
   static const _baseUrl = 'BASE_URL';
+  static const _baseUrlOverride = String.fromEnvironment('API_BASE_URL');
 
   String get _name {
     switch (this) {
@@ -34,7 +35,11 @@ extension Environment on FlavorValue {
   Map<String, String> get _variables {
     switch (this) {
       case FlavorValue.dev:
-        return {_baseUrl: 'http://192.168.2.14:8080'};
+        return {
+          _baseUrl: _baseUrlOverride.isEmpty
+              ? 'http://10.0.2.2:8080'
+              : _baseUrlOverride,
+        };
       case FlavorValue.prod:
         return {_baseUrl: 'https:prod'};
     }
