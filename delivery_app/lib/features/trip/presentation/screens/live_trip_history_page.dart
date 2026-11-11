@@ -17,12 +17,10 @@ class LiveTripHistoryPage extends ConsumerStatefulWidget {
     super.key,
     required this.profileId,
     required this.role,
-    required this.onExit,
   });
 
   final int profileId;
   final Role role;
-  final VoidCallback onExit;
 
   @override
   ConsumerState<LiveTripHistoryPage> createState() =>
@@ -187,15 +185,14 @@ class _LiveTripHistoryPageState extends ConsumerState<LiveTripHistoryPage>
     final showTabs = _selectedTripId == null;
     return Scaffold(
       appBar: AppBar(
-        leading: IconButton(
-          tooltip: _selectedTripId == null
-              ? LocaleKeys.trip_back_map.tr()
-              : LocaleKeys.trip_back_history.tr(),
-          onPressed: _selectedTripId == null
-              ? widget.onExit
-              : () => setState(() => _selectedTripId = null),
-          icon: const AssetIcon('ic_back'),
-        ),
+        automaticallyImplyLeading: false,
+        leading: _selectedTripId == null
+            ? null
+            : IconButton(
+                tooltip: LocaleKeys.trip_back_history.tr(),
+                onPressed: () => setState(() => _selectedTripId = null),
+                icon: const AssetIcon('ic_back'),
+              ),
         title: Text(
           _selectedTripId == null
               ? LocaleKeys.trip_tab.tr()

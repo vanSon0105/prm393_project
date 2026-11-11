@@ -396,7 +396,7 @@ class MapViewModel extends _$MapViewModel {
     } catch (error) {
       state = state.copyWith(
         tripStatus: MapTripStatus.idle,
-        errorMessage: error.toString(),
+        errorMessage: _userFacingError(error),
       );
     } finally {
       AppLoading.instance.dismiss();
@@ -564,7 +564,7 @@ class MapViewModel extends _$MapViewModel {
               ? LocaleKeys.map_online_timeout.tr()
               : error is _DriverConnectionLostException
               ? LocaleKeys.map_online_connection_lost.tr()
-              : error.toString(),
+              : _userFacingError(error),
         );
       }
     }
@@ -619,13 +619,20 @@ class MapViewModel extends _$MapViewModel {
       );
     }
 
-    if (type == 'trip_cancelled_by_customer' &&
-        (message['trip_id'] as num?)?.toInt() == state.tripId) {
-      state = MapState(
-        driverLocation: state.driverLocation,
-        pendingTrips: state.pendingTrips,
-        driverOnlineStatus: state.driverOnlineStatus,
-      );
+    if (type == 'trip_cancelled_by_customer') {
+      final tripId = (message['trip_id'] as num?)?.toInt();
+      final remainingTrips = state.pendingTrips
+          .where((item) => (item['trip_id'] as num).toInt() != tripId)
+          .toList();
+      if (tripId == state.tripId) {
+        state = MapState(
+          driverLocation: state.driverLocation,
+          pendingTrips: remainingTrips,
+          driverOnlineStatus: state.driverOnlineStatus,
+        );
+      } else {
+        state = state.copyWith(pendingTrips: remainingTrips);
+      }
     }
   }
 
@@ -686,7 +693,7 @@ class MapViewModel extends _$MapViewModel {
         route: route,
       );
     } catch (error) {
-      state = state.copyWith(errorMessage: error.toString());
+      state = state.copyWith(errorMessage: _userFacingError(error));
     } finally {
       AppLoading.instance.dismiss();
     }
@@ -722,7 +729,7 @@ class MapViewModel extends _$MapViewModel {
         tripStatus: MapTripStatus.goingToDestination,
       );
     } catch (error) {
-      state = state.copyWith(errorMessage: error.toString());
+      state = state.copyWith(errorMessage: _userFacingError(error));
     } finally {
       AppLoading.instance.dismiss();
     }
@@ -747,7 +754,7 @@ class MapViewModel extends _$MapViewModel {
       );
       ref.invalidate(tripHistoryProvider(_profileId!));
     } catch (error) {
-      _setError(error.toString());
+      _setError(_userFacingError(error));
     } finally {
       AppLoading.instance.dismiss();
     }
@@ -800,7 +807,7 @@ class MapViewModel extends _$MapViewModel {
             : LocaleKeys.map_cancel_failed.tr(),
       );
     } catch (error) {
-      _setError(error.toString());
+      _setError(_userFacingError(error));
     } finally {
       _isCancellingTrip = false;
       AppLoading.instance.dismiss();
@@ -825,6 +832,19 @@ class MapViewModel extends _$MapViewModel {
 
   void _setError(String message) {
     state = state.copyWith(errorMessage: message);
+  }
+
+  String _userFacingError(Object error) {
+    if (error is ApiException) {
+      return error.httpCode == 409
+          ? LocaleKeys.map_trip_unavailable.tr()
+          : LocaleKeys.map_request_failed.tr();
+    }
+    final message = error.toString();
+    if (message.startsWith('Exception: ')) {
+      return message.substring('Exception: '.length);
+    }
+    return LocaleKeys.map_request_failed.tr();
   }
 
   Future<void> goOffline() async {

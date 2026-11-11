@@ -186,6 +186,7 @@ func main() {
 	r.HandleFunc("/api/driver/{id}/register-info", getRegisterRequest).Methods("GET")
 	r.HandleFunc("/api/driver/{id}/register-info", resubmitDriverRegisterInfo).Methods("POST")
 	r.HandleFunc("/api/driver/topup", createTopupRequest).Methods("POST")
+	r.HandleFunc("/api/driver/{id}/wallet", getDriverWallet).Methods("GET")
 	r.HandleFunc("/api/driver/{id}/topup/requests", getDriverTopupRequests).Methods("GET")
 	r.HandleFunc("/api/topup/{id}", getTopupRequestDetail).Methods("GET")
 	r.HandleFunc("/api/driver/topup/{id}/update", updateTopupRequest).Methods("PUT", "POST")
@@ -3008,6 +3009,39 @@ func getAllTopupRequests(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(list)
+}
+
+func getDriverWallet(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	driverID, err := strconv.Atoi(mux.Vars(r)["id"])
+	if err != nil || driverID <= 0 {
+		topupError(w, http.StatusBadRequest, "driver_id khong hop le")
+		return
+	}
+
+	var balance int64
+	err = db.QueryRowContext(r.Context(), `
+		SELECT COALESCE(w.money, 0)
+		FROM Driver d
+		LEFT JOIN DriverWallet w ON w.driver_id = d.driver_id
+		WHERE d.driver_id = ?
+	`, driverID).Scan(&balance)
+	if err == sql.ErrNoRows {
+		topupError(w, http.StatusNotFound, "Khong tim thay tai xe")
+		return
+	}
+	if err != nil {
+		log.Printf("Error loading driver %d wallet: %v", driverID, err)
+		topupError(w, http.StatusInternalServerError, "Khong the lay so du vi")
+		return
+	}
+
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"data": map[string]interface{}{
+			"driver_id": driverID,
+			"balance":   balance,
+		},
+	})
 }
 
 func getDriverTopupRequests(w http.ResponseWriter, r *http.Request) {

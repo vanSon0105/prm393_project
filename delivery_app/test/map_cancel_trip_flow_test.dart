@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:delivery_app/features/app_state.dart';
 import 'package:delivery_app/features/app_view_model.dart';
 import 'package:delivery_app/data/network/base/exception.dart';
@@ -11,6 +13,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:latlong2/latlong.dart';
 
 class _UnusedRepository implements MapRepository {
   @override
@@ -72,6 +75,26 @@ class _RecordingTripService extends TripService {
   }
 }
 
+class _NotificationTripService extends _RecordingTripService {
+  final notifications = StreamController<Map<String, dynamic>>();
+
+  @override
+  Stream<Map<String, dynamic>> connectTripNotifications(int driverId) =>
+      notifications.stream;
+
+  @override
+  Future<void> waitForDriverNotifications() async {}
+
+  @override
+  Stream<LatLng> get driverLocationStream => const Stream.empty();
+
+  @override
+  Future<void> startLocationUpdates({required int driverId}) async {}
+
+  @override
+  Future<void> goOffline() async {}
+}
+
 class _ActiveTripViewModel extends MapViewModel {
   @override
   MapState build(Role role) {
@@ -131,11 +154,7 @@ void main() {
   ) async {
     final service = _RecordingTripService()
       ..activeTrip = TripModel(
-        data: TripData(
-          tripId: 55,
-          tripStatusId: 2,
-          driverId: 9,
-        ),
+        data: TripData(tripId: 55, tripStatusId: 2, driverId: 9),
       );
     final container = await _start(
       tester,
@@ -184,5 +203,34 @@ void main() {
     expect(container.read(provider).tripId, 42);
     expect(container.read(provider).tripStatus, MapTripStatus.driverComing);
     expect(container.read(provider).errorMessage, isNotNull);
+  });
+
+  testWidgets('customer cancellation removes a pending driver trip', (
+    tester,
+  ) async {
+    final service = _NotificationTripService();
+    addTearDown(service.notifications.close);
+    final container = await _start(
+      tester,
+      Role.driver,
+      service,
+      createViewModel: MapViewModel.new,
+    );
+    final provider = mapViewModelProvider(Role.driver);
+
+    await container.read(provider.notifier).goOnline();
+    service.notifications.add({
+      'type': 'new_trip',
+      'data': {'trip_id': 8},
+    });
+    await tester.pump();
+    expect(container.read(provider).pendingTrips, hasLength(1));
+
+    service.notifications.add({
+      'type': 'trip_cancelled_by_customer',
+      'trip_id': 8,
+    });
+    await tester.pump();
+    expect(container.read(provider).pendingTrips, isEmpty);
   });
 }
