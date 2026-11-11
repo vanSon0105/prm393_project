@@ -10,6 +10,7 @@ import '../../domain/entities/admin_driver_request.dart';
 import '../../domain/entities/driver.dart';
 import '../../domain/repositories/admin_driver_repository.dart';
 import '../../domain/repositories/driver_repository.dart';
+import '../../../admin/presentation/providers/admin_dashboard_provider.dart';
 
 class DriverMetrics {
   const DriverMetrics({
@@ -44,13 +45,13 @@ final adminDriverRepositoryProvider = Provider<AdminDriverRepository>((ref) {
 
 final adminDriversProvider = FutureProvider<List<AdminDriver>>((ref) {
   return ref.watch(adminDriverRepositoryProvider).getDrivers();
-});
+}, retry: (retryCount, error) => null);
 
 final adminDriverRequestsProvider = FutureProvider<List<AdminDriverRequest>>((
   ref,
 ) {
   return ref.watch(adminDriverRepositoryProvider).getRequests();
-});
+}, retry: (retryCount, error) => null);
 
 class AdminDriverReviewNotifier extends Notifier<Set<int>> {
   @override
@@ -72,6 +73,7 @@ class AdminDriverReviewNotifier extends Notifier<Set<int>> {
             reason: reason,
           );
       ref.invalidate(adminDriverRequestsProvider);
+      ref.invalidate(adminDashboardOverviewProvider);
       if (approved) ref.invalidate(adminDriversProvider);
     } finally {
       state = {...state}..remove(driverId);

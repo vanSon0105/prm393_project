@@ -9,9 +9,7 @@ import '../widgets/admin_driver_request_card.dart';
 import '../widgets/driver_request_header.dart';
 
 class DriverRequestsPage extends ConsumerWidget {
-  const DriverRequestsPage({this.onBack, super.key});
-
-  final VoidCallback? onBack;
+  const DriverRequestsPage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -21,7 +19,7 @@ class DriverRequestsPage extends ConsumerWidget {
     return ListView(
       padding: EdgeInsets.zero,
       children: [
-        DriverRequestHeader(onBack: onBack),
+        const DriverRequestHeader(),
         const SizedBox(height: 54),
         requests.when(
           skipLoadingOnRefresh: false,

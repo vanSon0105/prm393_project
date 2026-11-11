@@ -9,6 +9,11 @@ Returns the active trip in data, or data: null when no trip is assigned.
 GetRole: curl -i http://localhost:8080/api/getRoles
 GetALLDriver: curl -i http://localhost:8080/api/admin/drivers
 GetALLRequestDriver: curl -i http://localhost:8080/api/admin/drivers/requests
+AdminDashboard: curl -i http://localhost:8080/api/admin/dashboard
+Returns total/approved/pending driver counts and up to six top-rated drivers from completed trips and ReviewTrip. Empty request list returns [].
+
+AdminUsers: curl -i http://localhost:8080/api/admin/users
+Returns a JSON array of profiles with profile_id, full_name, user_name, phone_number, address and role (ADMIN, CUSTOMER or DRIVER). Driver records include driver_documents with four image URLs. Passwords are never returned. The Profile schema has no email or customer/admin account-lock field.
 
 Approved Driver :
 curl -i -X POST http://localhost:8080/api/admin/drivers/1/approve \

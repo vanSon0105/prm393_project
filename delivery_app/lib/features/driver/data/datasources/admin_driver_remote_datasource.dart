@@ -26,6 +26,7 @@ class AdminDriverRemoteDataSource {
     final response = await _apiProvider.requestApi(
       param: AdminDriverRequestsParam(),
     );
+    if (response == null) return const [];
     if (response is! List) {
       throw const FormatException('Invalid driver requests response');
     }

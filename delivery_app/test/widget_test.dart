@@ -1,5 +1,8 @@
 import 'package:delivery_app/features/admin/presentation/screens/admin_home_page.dart';
+import 'package:delivery_app/features/admin/data/admin_dashboard_repository.dart';
+import 'package:delivery_app/features/admin/presentation/providers/admin_dashboard_provider.dart';
 import 'package:delivery_app/features/admin/presentation/providers/admin_users_provider.dart';
+import 'package:delivery_app/features/admin/domain/entities/app_user.dart';
 import 'package:delivery_app/features/admin/presentation/widgets/user_card.dart';
 import 'package:delivery_app/features/driver/presentation/providers/driver_earnings_provider.dart';
 import 'package:delivery_app/features/driver/presentation/providers/driver_provider.dart';
@@ -52,25 +55,37 @@ void main() {
     container.read(driverEarningsProvider.notifier).selectFilter('30 ngày');
     expect(container.read(driverEarningsProvider).selectedFilter, '30 ngày');
 
-    container.read(adminUsersProvider.notifier).selectRole('Khách hàng');
-    expect(container.read(adminUsersProvider).filteredUsers.length, 3);
+    const users = [
+      AppUser(
+        id: 1,
+        name: 'Phạm Mai',
+        username: 'phammai',
+        phone: '0901',
+        address: '',
+        role: 'CUSTOMER',
+      ),
+      AppUser(
+        id: 2,
+        name: 'Driver',
+        username: 'driver',
+        phone: '0902',
+        address: '',
+        role: 'DRIVER',
+      ),
+    ];
+    container.read(adminUsersProvider.notifier).selectRole('CUSTOMER');
+    expect(container.read(adminUsersProvider).filter(users).length, 1);
 
     container.read(adminUsersProvider.notifier).updateSearch('phammai');
     expect(
-      container.read(adminUsersProvider).filteredUsers.single.name,
+      container.read(adminUsersProvider).filter(users).single.name,
       'Phạm Mai',
-    );
-
-    container
-        .read(adminUsersProvider.notifier)
-        .toggleStatus('phammai@gmail.com');
-    expect(
-      container.read(adminUsersProvider).filteredUsers.single.isActive,
-      isFalse,
     );
   });
 
-  testWidgets('Admin can switch between the four screens', (tester) async {
+  testWidgets('Admin uses the three tabs and filters database users', (
+    tester,
+  ) async {
     final adminRepository = _TestAdminDriverRepository();
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
@@ -88,27 +103,52 @@ void main() {
           builder: (context) => ProviderScope(
             overrides: [
               adminDriverRepositoryProvider.overrideWithValue(adminRepository),
-              adminDriversProvider.overrideWith(
+              adminDashboardOverviewProvider.overrideWith(
+                (ref) async => const AdminDashboardOverview(
+                  totalDrivers: 2,
+                  approvedDrivers: 2,
+                  pendingRequests: 1,
+                  topRatedDrivers: [
+                    AdminRatedDriver(
+                      id: 1,
+                      name: 'Rated Driver',
+                      rating: 4.5,
+                      completedTrips: 3,
+                    ),
+                  ],
+                ),
+              ),
+              adminUsersListProvider.overrideWith(
                 (ref) async => const [
-                  AdminDriver(
+                  AppUser(
                     id: 1,
                     name: 'Trần Anh',
-                    phone: '0901234567',
-                    address: 'Quận 1',
-                    avatarUrl: '',
-                    documents: DriverDocuments(
+                    username: 'trananh',
+                    phone: '0912345678',
+                    address: 'Hà Nội',
+                    role: 'CUSTOMER',
+                  ),
+                  AppUser(
+                    id: 2,
+                    name: 'Lê Hoàng',
+                    username: 'lehoang',
+                    phone: '0918821204',
+                    address: 'Hà Nội',
+                    role: 'DRIVER',
+                    documents: AppUserDocuments(
                       licenseFrontUrl: '',
                       licenseBackUrl: '',
                       identityFrontUrl: '',
                       identityBackUrl: '',
                     ),
                   ),
-                  AdminDriver(
-                    id: 2,
-                    name: 'Lê Hoàng',
-                    phone: '0918821204',
-                    address: 'Quận 3',
-                    avatarUrl: '',
+                  AppUser(
+                    id: 3,
+                    name: 'Admin',
+                    username: 'admin',
+                    phone: '',
+                    address: '',
+                    role: 'ADMIN',
                   ),
                 ],
               ),
@@ -127,19 +167,25 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Operations'), findsOneWidget);
+    expect(find.text('Rated Driver'), findsOneWidget);
+    expect(find.text('Wallet and transfers'), findsNothing);
 
-    await tester.tap(find.byKey(const ValueKey('admin-nav-drivers')));
+    expect(find.byKey(const ValueKey('admin-nav-drivers')), findsNothing);
+    await tester.ensureVisible(find.text('View all').first);
+    await tester.tap(find.text('View all').first);
     await tester.pumpAndSettle();
-    expect(find.text('Driver list'), findsOneWidget);
+    expect(find.text('User management'), findsOneWidget);
+    expect(find.text('1 users'), findsOneWidget);
+    expect(find.text('Lê Hoàng'), findsOneWidget);
 
-    await tester.enterText(find.byType(TextField), '0901');
-    await tester.pump();
-    expect(find.text('Trần Anh'), findsOneWidget);
-    expect(find.text('Lê Hoàng'), findsNothing);
+    await tester.tap(find.byKey(const ValueKey('admin-nav-overview')));
+    await tester.pumpAndSettle();
 
     await tester.tap(find.byKey(const ValueKey('admin-nav-requests')));
     await tester.pumpAndSettle();
     expect(find.text('Account opening\nrequests'), findsOneWidget);
+    expect(find.byKey(const ValueKey('admin-nav-overview')), findsOneWidget);
+    expect(find.byTooltip('Back'), findsNothing);
 
     await tester.tap(find.text('Approve').first);
     await tester.pumpAndSettle();
@@ -148,31 +194,26 @@ void main() {
     expect(find.text('Đỗ Quang Huy'), findsNothing);
 
     await tester.tap(find.byKey(const ValueKey('admin-nav-users')));
-    await tester.pump();
+    await tester.pumpAndSettle();
     expect(find.text('User management'), findsOneWidget);
-    expect(find.text('6 users'), findsOneWidget);
+    expect(find.text('3 users'), findsOneWidget);
+    expect(find.byIcon(Icons.more_horiz), findsNothing);
 
     await tester.tap(find.byType(UserCard).first);
     await tester.pumpAndSettle();
-    await tester.tap(find.text('View information'));
-    await tester.pumpAndSettle();
     expect(find.text('Full name'), findsOneWidget);
-    expect(find.text('trananh@gmail.com'), findsWidgets);
+    expect(find.text('trananh'), findsWidgets);
     expect(find.text('0912345678'), findsOneWidget);
     expect(find.text('Account role'), findsOneWidget);
-    expect(find.text('Account status'), findsOneWidget);
-    expect(find.text('Active'), findsWidgets);
 
     await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
     await tester.tap(find.byType(ChoiceChip).at(2));
     await tester.pumpAndSettle();
-    expect(find.text('2 users'), findsOneWidget);
+    expect(find.text('1 users'), findsOneWidget);
     await tester.tap(find.byType(UserCard).first);
     await tester.pumpAndSettle();
     expect(find.text('Lock account'), findsNothing);
-    await tester.tap(find.text('View information'));
-    await tester.pumpAndSettle();
     expect(find.text('Driver documents'), findsOneWidget);
     expect(find.text('Driving license - front'), findsOneWidget);
     expect(find.text('No image available'), findsWidgets);

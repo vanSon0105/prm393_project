@@ -6,14 +6,14 @@ class AppScreenHeader extends StatelessWidget {
   const AppScreenHeader({
     required this.eyebrow,
     required this.title,
-    this.actionIcon = Icons.settings_outlined,
+    this.actionIcon,
     this.onActionPressed,
     super.key,
   });
 
   final String eyebrow;
   final String title;
-  final IconData actionIcon;
+  final IconData? actionIcon;
   final VoidCallback? onActionPressed;
 
   @override
@@ -39,7 +39,8 @@ class AppScreenHeader extends StatelessWidget {
             ],
           ),
         ),
-        _HeaderButton(icon: actionIcon, onPressed: onActionPressed),
+        if (actionIcon != null && onActionPressed != null)
+          _HeaderButton(icon: actionIcon!, onPressed: onActionPressed),
       ],
     );
   }

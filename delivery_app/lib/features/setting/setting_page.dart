@@ -39,8 +39,6 @@ class SettingPage extends ConsumerWidget {
               AppScreenHeader(
                 eyebrow: LocaleKeys.settings_account.tr(),
                 title: LocaleKeys.settings_title.tr(),
-                actionIcon: Icons.close_rounded,
-                onActionPressed: () => Navigator.maybePop(context),
               ),
               SizedBox(height: 28),
               AccountSummaryCard(

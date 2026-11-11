@@ -4,12 +4,13 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:delivery_app/generated/locale_keys.g.dart';
 
 import '../../../driver/presentation/providers/driver_provider.dart';
-import '../../../driver/presentation/widgets/driver_list_panel.dart';
+import '../providers/admin_dashboard_provider.dart';
 import '../widgets/admin_metrics_strip.dart';
 import '../widgets/admin_finance_shortcuts.dart';
 import '../widgets/admin_overview_header.dart';
 import '../widgets/admin_request_preview_section.dart';
 import '../widgets/admin_section_header.dart';
+import '../widgets/admin_top_rated_panel.dart';
 
 class AdminDashboardPage extends ConsumerWidget {
   const AdminDashboardPage({
@@ -23,9 +24,8 @@ class AdminDashboardPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final metrics = ref.watch(driverMetricsProvider);
-    final topDrivers = ref.watch(topRatedDriversProvider);
-    final latestRequests = ref.watch(latestDriverRequestsProvider);
+    final overview = ref.watch(adminDashboardOverviewProvider);
+    final requests = ref.watch(adminDriverRequestsProvider);
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -53,7 +53,17 @@ class AdminDashboardPage extends ConsumerWidget {
           children: [
             const AdminOverviewHeader(),
 
-            AdminMetricsStrip(metrics: metrics),
+            overview.when(
+              data: (data) => AdminMetricsStrip(overview: data),
+              loading: () => const Padding(
+                padding: EdgeInsets.all(28),
+                child: Center(child: CircularProgressIndicator()),
+              ),
+              error: (_, _) => _LoadError(
+                message: LocaleKeys.admin_driver_load_error.tr(),
+                onRetry: () => ref.invalidate(adminDashboardOverviewProvider),
+              ),
+            ),
 
             Padding(
               padding: EdgeInsets.fromLTRB(
@@ -85,9 +95,16 @@ class AdminDashboardPage extends ConsumerWidget {
 
                       SizedBox(height: isMobile ? 14 : 18),
 
-                      DriverListPanel(
-                        drivers: topDrivers,
-                        mode: DriverListPanelMode.rating,
+                      overview.when(
+                        data: (data) =>
+                            AdminTopRatedPanel(drivers: data.topRatedDrivers),
+                        loading: () =>
+                            const Center(child: CircularProgressIndicator()),
+                        error: (_, _) => _LoadError(
+                          message: LocaleKeys.admin_driver_load_error.tr(),
+                          onRetry: () =>
+                              ref.invalidate(adminDashboardOverviewProvider),
+                        ),
                       ),
                     ],
                   ),
@@ -97,13 +114,48 @@ class AdminDashboardPage extends ConsumerWidget {
 
             SizedBox(height: sectionSpacing),
 
-            AdminRequestPreviewSection(
-              requests: latestRequests,
-              onViewAllPressed: onViewRequests,
+            requests.when(
+              data: (items) => AdminRequestPreviewSection(
+                requests: items.take(3).toList(growable: false),
+                onViewAllPressed: onViewRequests,
+              ),
+              loading: () => const Padding(
+                padding: EdgeInsets.all(28),
+                child: Center(child: CircularProgressIndicator()),
+              ),
+              error: (_, _) => _LoadError(
+                message: LocaleKeys.admin_requests_load_error.tr(),
+                onRetry: () => ref.invalidate(adminDriverRequestsProvider),
+              ),
             ),
           ],
         );
       },
+    );
+  }
+}
+
+class _LoadError extends StatelessWidget {
+  const _LoadError({required this.message, required this.onRetry});
+
+  final String message;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        children: [
+          Text(message),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed: onRetry,
+            icon: const Icon(Icons.refresh_rounded),
+            label: Text(LocaleKeys.admin_try_again.tr()),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -12,11 +12,6 @@ class AdminFinanceShortcuts extends StatelessWidget {
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
-      Text(
-        LocaleKeys.admin_finance_section.tr(),
-        style: Theme.of(context).textTheme.titleLarge,
-      ),
-      const SizedBox(height: 12),
       _Shortcut(
         icon: Icons.account_balance_outlined,
         title: LocaleKeys.admin_bank_title.tr(),

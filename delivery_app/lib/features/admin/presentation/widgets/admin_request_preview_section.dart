@@ -5,7 +5,7 @@ import 'package:delivery_app/generated/locale_keys.g.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../gen/assets.gen.dart';
 import '../../../../shared/widgets/initials_avatar.dart';
-import '../../../driver/domain/entities/driver.dart';
+import '../../../driver/domain/entities/admin_driver_request.dart';
 import 'admin_section_header.dart';
 
 class AdminRequestPreviewSection extends StatelessWidget {
@@ -15,7 +15,7 @@ class AdminRequestPreviewSection extends StatelessWidget {
     super.key,
   });
 
-  final List<DriverAccountRequest> requests;
+  final List<AdminDriverRequest> requests;
   final VoidCallback onViewAllPressed;
 
   @override
@@ -48,7 +48,7 @@ class AdminRequestPreviewSection extends StatelessWidget {
 class _RequestPreviewRow extends StatelessWidget {
   const _RequestPreviewRow({required this.request});
 
-  final DriverAccountRequest request;
+  final AdminDriverRequest request;
 
   @override
   Widget build(BuildContext context) {
@@ -64,12 +64,8 @@ class _RequestPreviewRow extends StatelessWidget {
             InitialsAvatar(
               label: request.initials,
               size: 58,
-              backgroundColor: request.id == 'request-01'
-                  ? AppColors.blueSoft
-                  : AppColors.surfaceMuted,
-              foregroundColor: request.id == 'request-01'
-                  ? AppColors.blue
-                  : const Color(0xFF31465F),
+              backgroundColor: AppColors.blueSoft,
+              foregroundColor: AppColors.blue,
             ),
             const SizedBox(width: 18),
             Expanded(
@@ -90,8 +86,8 @@ class _RequestPreviewRow extends StatelessWidget {
                   const SizedBox(height: 3),
                   Text(
                     switch (request.vehicleType) {
-                      'Xe máy' => LocaleKeys.admin_vehicle_motorcycle.tr(),
-                      'Ô tô' => LocaleKeys.admin_vehicle_car.tr(),
+                      'BIKE' => LocaleKeys.admin_vehicle_motorcycle.tr(),
+                      'CAR_4_SEAT' => LocaleKeys.admin_vehicle_car.tr(),
                       _ => request.vehicleType,
                     },
                     style: const TextStyle(
