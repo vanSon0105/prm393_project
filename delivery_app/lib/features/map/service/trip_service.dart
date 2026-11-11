@@ -203,13 +203,17 @@ class TripService {
     await _sendCurrentLocation();
   }
 
-  Future<void> completeTrip({
+  Future<int?> completeTrip({
     required int driverId,
     required int tripId,
   }) async {
-    await mapRepository.completeTrip(driverId: driverId, tripId: tripId);
+    final platformFee = await mapRepository.completeTrip(
+      driverId: driverId,
+      tripId: tripId,
+    );
 
     _currentTripId = 0;
+    return platformFee;
   }
 
   Future<void> cancelCustomerTrip({

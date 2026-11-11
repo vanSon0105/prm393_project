@@ -31,6 +31,11 @@ class TripData {
   final double? tripLongitude;
   final int? tripPrice;
   final int? tripStatusId;
+  final String? driverFullName;
+  final String? driverUserName;
+  final String? driverPhone;
+  final String? licensePlate;
+  final String? vehicleType;
 
   TripData({
     this.customerId,
@@ -46,7 +51,20 @@ class TripData {
     this.tripLongitude,
     this.tripPrice,
     this.tripStatusId,
+    this.driverFullName,
+    this.driverUserName,
+    this.driverPhone,
+    this.licensePlate,
+    this.vehicleType,
   });
+
+  /// Best available name for the assigned driver, or null when unknown.
+  String? get driverDisplayName {
+    for (final name in [driverFullName, driverUserName]) {
+      if (name != null && name.trim().isNotEmpty) return name.trim();
+    }
+    return null;
+  }
 
   factory TripData.fromJson(Map<String, dynamic> json) => TripData(
     customerId: json["customer_id"],
@@ -60,8 +78,13 @@ class TripData {
     tripId: json["trip_id"],
     tripLatitude: json["trip_latitude"]?.toDouble(),
     tripLongitude: json["trip_longitude"]?.toDouble(),
-    tripPrice: json["trip_price"],
+    tripPrice: (json["trip_price"] as num?)?.toInt(),
     tripStatusId: json["trip_status_id"],
+    driverFullName: json["driver_full_name"],
+    driverUserName: json["driver_user_name"],
+    driverPhone: json["driver_phone"],
+    licensePlate: json["license_plate"],
+    vehicleType: json["vehicle_type"],
   );
 
   Map<String, dynamic> toJson() => {
@@ -78,5 +101,10 @@ class TripData {
     "trip_longitude": tripLongitude,
     "trip_price": tripPrice,
     "trip_status_id": tripStatusId,
+    "driver_full_name": driverFullName,
+    "driver_user_name": driverUserName,
+    "driver_phone": driverPhone,
+    "license_plate": licensePlate,
+    "vehicle_type": vehicleType,
   };
 }

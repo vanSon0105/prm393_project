@@ -13,6 +13,7 @@ import 'package:delivery_app/features/map/map_page.dart';
 import 'package:delivery_app/features/payment/trip_payment_screen.dart';
 import 'package:delivery_app/features/profile/edit_profile_screen.dart';
 import 'package:delivery_app/features/setting/setting_page.dart';
+import 'package:delivery_app/features/trip/presentation/screens/active_trip_page.dart';
 import 'package:delivery_app/routes/app_navigate.dart';
 import 'package:go_router/go_router.dart';
 
@@ -34,6 +35,7 @@ enum AppRoute {
   driverRating(rawValue: '/driver-rating'),
   tripPayment(rawValue: '/trip-payment'),
   editProfile(rawValue: '/edit-profile'),
+  activeTrip(rawValue: '/active-trip'),
   map(rawValue: '/map'),
   detailDelivery(rawValue: '/detailDelivery'),
   setting(rawValue: '/setting');
@@ -120,6 +122,11 @@ GoRouter createAppRouter({String? initialLocation}) => GoRouter(
       path: AppRoute.driverTopup.rawValue,
       name: AppRoute.driverTopup.rawValue,
       builder: (context, state) => const DriverTopupPage(),
+    ),
+    GoRoute(
+      path: AppRoute.activeTrip.rawValue,
+      name: AppRoute.activeTrip.rawValue,
+      builder: (context, state) => const ActiveTripPage(),
     ),
 
     StatefulShellRoute.indexedStack(
